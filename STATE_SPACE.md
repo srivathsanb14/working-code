@@ -1,5 +1,5 @@
 # One Controller for Every Building
-### The NeurIPS 2026 Smart Buildings competition: the problem, the data interface, a state-space model of the building, and our method
+### The NeurIPS 2026 Smart Buildings competition: the problem, the interface, a state-space model of the building, and our method
 
 *Based on the starter kit `smart-buildings-2026/starter-kit` · Competition page: <https://www.kaggle.com/competitions/neurips-2026-smart-buildings/>*
 
@@ -7,41 +7,57 @@
 
 ## Summary
 
-Heating, cooling and ventilating an office building is one of the largest energy loads in the world, and it is still run mostly by rules written once and never revisited. The Smart Buildings competition asks for **a single control policy that can run the HVAC system of any commercial building**, with different shapes, sizes, equipment counts, wall constructions and climates, keeping people comfortable while spending as little energy, money and carbon as possible. The policy is judged on buildings and weather it has never seen.
+Heating, cooling and ventilating an office building is one of the largest energy loads in the world, and it is still run mostly by rules written once and never revisited. The Smart Buildings competition asks for **a single control policy that can run the HVAC system of any commercial building**, with different shapes, sizes, equipment counts, wall constructions and climates, keeping people comfortable while spending as little energy, money and carbon as possible. The policy is a Kaggle notebook, and it is judged on buildings and weather it has never seen.
 
-This report starts from the problem and the benchmark (§1–§3), then documents the **interface exactly**: every entry of the action vector (§4) and of the observation vector (§5), and which quantities are controllable, observable or hidden (§6). It then describes the physics inside the simulator (§7), the six training buildings and their geometry (§8), the five climates (§9), what the baseline controllers achieve (§10–§11) and why generalization is hard (§12).
+**Parts I–III** set out the problem and the interface. They cover how a building is heated and cooled, the reward and the score, and what a submission is (§1–§4); every entry of the action vector and of the observation vector, and which quantities are controllable, observable or hidden (§5–§7); and the world being controlled: the simulator's physics, the six training buildings, the five climates, the shipped baselines and why generalization is hard (§8–§12).
 
-The middle of the report is the **state-space model**. Only a minority of the observation vector carries information a dynamics model needs; the rest echoes the policy's own commands, mirrors setpoints, duplicates other fields or is constant (§13). Room identity and room type (corner, edge, interior) can be rebuilt exactly from the metadata a policy receives, and the type predicts how strongly a room is coupled to the weather, so a fixed-size hidden state indexed by room type is feasible (§14).
+**Part IV** is the state-space model. Only a minority of the observation vector carries information a dynamics model needs; the rest echoes the policy's own commands, mirrors setpoints, duplicates other fields or is constant (§13). Room identity and room type (corner, edge, interior) can be rebuilt exactly from the metadata a policy receives, and the type predicts how strongly a room is coupled to the weather, so a fixed-size hidden state indexed by room type is feasible (§14).
 
-The last part is **our proposed method**. Every building obeys the same kind of physics (an energy balance between the air in each room, the walls and slab around it, the weather and the heat from the HVAC plant) and differs only in a handful of numbers. We **discover the structure of those equations from simulator data by symbolic regression**, identify each new building's few parameters while it runs, and **plan with the discovered model inside a control policy** (§15–§19). The report closes with what has been verified and what has not (§20).
+**Part V** is our proposed method. Every building obeys the same kind of physics, an energy balance between the air in each room, the walls and slab around it, the weather and the heat from the HVAC plant, and differs only in a handful of numbers. We **generate as much data as possible from the simulator, discover the structure of those equations by symbolic regression, identify each new building's few parameters while the policy runs, and plan with the discovered model inside a control policy** (§15–§19). **Part VI** closes with what has been verified and what has not (§20).
 
 **Reading guide.** Reference tables sit beside the text they support. Statements are tagged where it matters: **[S]** read from source or config; **[D]** computed from the shipped data files (`floor_plan.npy`, `zone_map.npy`, weather, `baseline_returns.json`); **[R]** read from the instantiated environments; **[X]** measured in a rollout (§20.2); **[I]** inferred and still to be checked. §16 onward is proposal and hypothesis, not result. Nothing in this analysis modifies the starter-kit repository; the scripts live in `code/` and write only to `outputs/`.
 
 ### Contents
+
+**Part I. The problem**
 1. The challenge
 2. How a building is heated and cooled
 3. The benchmark: episodes, reward and score
-4. The action vector
-5. The observation vector
-6. Controllable, observable and hidden quantities
-7. The physics inside the simulator
-8. The six training buildings
-9. The five climates
-10. A day in the life, and what the baselines do about it
-11. How the shipped baselines score
+4. What is submitted
+
+**Part II. The interface**
+5. The action vector
+6. The observation vector
+7. Controllable, observable and hidden quantities
+
+**Part III. The world being controlled**
+8. The physics inside the simulator
+9. The six training buildings
+10. The five climates
+11. A day in the life, and the shipped baselines
 12. Why generalization is hard
+
+**Part IV. The state-space model**
 13. The dynamics model: what belongs in it
 14. A hidden state indexed by room type
+
+**Part V. Our method**
 15. What a control policy is, and the ways to build one
 16. Our idea: discover the physics, then control with it
-17. Stage one: discovering the dynamics
+17. Stage one: data and discovering the dynamics
 18. Stage two: wrapping the model in a controller
 19. Testing it honestly, and what could go wrong
+
+**Part VI. Verification**
 20. What has been verified and what is still unknown
 
 Appendix A — Files · Appendix B — Profiling run guide for another machine · Appendix C — Using the starter kit · Appendix D — Glossary · Appendix E — Every entry of the `train_8` vectors
 
 ---
+
+# Part I. The problem
+
+*What the competition asks, how an office building is heated and cooled, how a run is scored, and what exactly is handed in.*
 
 ## 1. The challenge
 
@@ -129,15 +145,51 @@ In a one-day check, the reward matched `0.6·npr − 0.2·nec − 0.2·nce` to a
 For each scenario the score is the mean per-step reward over the 8,640 steps. The leaderboard metric is the **mean absolute error against zero** across the 30 scenarios — equally weighted, with no per-building or per-climate grouping, deliberately — so **lower is better**. Episodes of any other length are refused, because shorter ones are less negative and not comparable. The official ranking is computed on Kaggle against held-out buildings and weather strips. The best shipped baseline scores about **0.054**.
 
 ### 3.5 The reward as a planner's cost function
-For a model-based controller the reward is more than a score: it is the cost function to minimize. Comfort is a piecewise function of each occupied zone's deviation, and energy and carbon are closed-form functions of fan, pump, cooling and boiler power (§7). A controller that predicts the next few hours can therefore *evaluate the true reward on its predictions* rather than learn it from experience. The unbounded comfort tail also tells it how to behave under uncertainty: avoid even small probabilities of large excursions.
+For a model-based controller the reward is more than a score: it is the cost function to minimize. Comfort is a piecewise function of each occupied zone's deviation, and energy and carbon are closed-form functions of fan, pump, cooling and boiler power (§8). A controller that predicts the next few hours can therefore *evaluate the true reward on its predictions* rather than learn it from experience. The unbounded comfort tail also tells it how to behave under uncertainty: avoid even small probabilities of large excursions.
 
 ---
 
-## 4. The action vector
+## 4. What is submitted
+
+### 4.1 The artifact and its contract
+A submission is a **Kaggle Notebook** and nothing else. A working example (the "TransferPolicy Notebook") is on the competition's Code tab. The notebook defines one policy class; when the notebook is submitted, the same notebook is re-run unchanged against the hidden test scenarios, and the leaderboard number (§3.4) is computed server-side. The competition's Data page describes the class as subclassing `smart_buildings_inference_server.Policy`; the starter kit's template, and every shipped baseline, needs only two methods:
+
+```python
+__init__(self, building_meta_data, action_spec)   # called once per scenario (per building)
+get_action(self, obs) -> {"continuous_action": float32[3K+2+2V],
+                          "discrete_action":   int32[K+1]}   # called once per 5-minute step
+```
+
+The local harness (`evaluate.py`) needs no base class: `initialize_policy` tries `Policy(meta, action_spec)`, then `Policy(meta)`, then `Policy()`, and `get_policy_action` calls `get_action(obs)`. The Kaggle runtime imports `smart_buildings_inference_server`, which is not in the starter kit (it ships in the competition's `kaggle_evaluation` folder, visible only after accepting the rules). So we develop against the two-method contract, keep the class free of local-only imports, and make the final class inherit from `Policy` when the notebook is assembled. The base class's exact behaviour (extra hooks, how metadata is delivered) is unverified (§20.3).
+
+### 4.2 What the harness does with the policy
+For each scenario `run_policy` resets the environment and loops 8,640 times: `get_action(obs)`, then `validate_action` (exact shapes; continuous cast to float32, discrete to int32; a wrong shape raises), then `tracker.step(action)`. The policy sees only the observation vector and the metadata (§6.5), never the reward, weather label, month, station or building id, and **hardcoding a reference to a held-out building or weather seed is disqualifying** (template docstring). The policy object is created once per scenario, so it can keep state between calls: the estimator, its previous action, a history.
+
+### 4.3 Limits and rules
+
+| Property | Value | Source |
+|---|---|---|
+| Notebook runtime | CPU ≤ 9 h or GPU ≤ 9 h per run | Overview page |
+| Internet during the run | disabled | Overview page |
+| External data and pre-trained models | allowed if free and public; a reasonableness test applies to cost | Overview page, Rules §2.6 |
+| Open-source code | only OSI-approved, commercially unrestricted licences | Rules §3.6c |
+| Daily submissions | 5; 2 final submissions selected | Rules §2.2 |
+| Team size | ≤ 5; mergers allowed | Rules §2.1 |
+| Winners | license the winning code CC-BY 4.0 and deliver training and inference code | Rules §2.5, §2.8 |
+| Dates | entry and merger deadline 3 Jan 2027; final submission 15 Jan 2027 | Overview page |
+| Compute budget per step | not stated; 9 h over 30 scenarios × 8,640 steps ≈ 1.25 s per step, minus simulator time | derived [I] |
+
+What these limits mean for our method is worked out in §17.6.
+
+# Part II. The interface
+
+*What the policy can set and what it can see, entry by entry.*
+
+## 5. The action vector
 
 Every step the policy returns a **hybrid action**: `K+1` discrete on/off entries and `3K+2+2V` continuous setpoints, where **K** is the number of air handlers (AHUs) and **V** the number of zones (one VAV box per zone). That is `4K+3+2V` values, from 75 for the smallest building to 209 for the largest. The container is `{"continuous_action": float32[3K+2+2V], "discrete_action": int32[K+1]}`. Continuous entries travel normalized to [−1, 1] and the environment maps them linearly to the native ranges below; discrete entries are {0, 1}.
 
-### 4.1 Every entry
+### 5.1 Every entry
 
 | # | Entry | Count | Type | Native range | What the simulator does with it |
 |---|---|---|---|---|---|
@@ -153,7 +205,7 @@ Every step the policy returns a **hybrid action**: `K+1` discrete on/off entries
 
 **Every entry is an input to the building's dynamics.** The per-zone entries dominate the dimension (84–86 % of the continuous action), while there are only 11–29 plant-level continuous entries and 4–10 switches; the per-zone pair is the same kind of object in every room. The plant responds on very different timescales: dampers and airflow within a step, boiler water at about 0.5 K/min up and 0.1 K/min down, building mass over hours. Thinking in blocks of 15–60 minutes loses little and avoids chatter. The default action in each scenario's `config.gin` is supply air 293 K, pressure 2000 Pa, recirculation 0.3, water 340 K, differential pressure 20, damper 1.0, reheat 0.0, all units on [S].
 
-### 4.2 Order of the entries [R]
+### 5.2 Order of the entries [R]
 
 The discrete and continuous parts are separate arrays, each filled in the order of `env._device_action_tuples`: for each AHU j = 1..K the run command (discrete) and then temperature, pressure, recirculation (continuous); then the hot-water loop (run command; water temperature, differential pressure); then every zone in **lexicographic VAV order** (`VAV_1, VAV_10, VAV_11, …, VAV_2, …`) with damper then reheat. For `train_8` (K = 3, V = 30) the discrete array is `[ahu_1, ahu_2, ahu_3, hws]`; continuous slots 0–2 belong to AHU 1, 3–5 to AHU 2, 6–8 to AHU 3, slot 9 is the water temperature, slot 10 the differential pressure, 11–12 are `VAV_1` (damper, reheat), 13–14 `VAV_10`, and so on to slot 70. The metadata provides `temp_indices = [0, 3, 6]`, `pressure_indices = [1, 4, 7, 10]`, `recirculation_indices = [2, 5, 8]`, `water_indices = [9]` and `zone_action_indices` (VAV id → setpoint name → index).
 
@@ -162,11 +214,11 @@ Three traps follow from the layout, and each silently drives the wrong actuator:
 - **Never hard-code offsets.** Read the index lists from the metadata. `pressure_indices` has **K+1** entries, not K: the first K are the AHU pressure setpoints and the last is the hot-water differential pressure, so treating the list as one-per-AHU drives the pump instead.
 - **Commands override the local thermostat.** Each VAV has a thermostat loop that, left alone, would choose damper and reheat from the zone's comfort band. A command wins over that loop, separately for damper and reheat [S: `vav.py`]. Because the policy writes both every step, the thermostat has no influence on the physics.
 
-Two further facts make the entries more than free variables: a **floor** is applied inside the simulator to the damper (0.1), the pressure (200 Pa while running) and the recirculation (0.7), and the observation reports the realized value (§5).
+Two further facts make the entries more than free variables: a **floor** is applied inside the simulator to the damper (0.1), the pressure (200 Pa while running) and the recirculation (0.7), and the observation reports the realized value (§6).
 
 ---
 
-## 5. The observation vector
+## 6. The observation vector
 
 The observation is a flat float32 vector of length **`6V + 15K + 58`**, from 283 (`train_8`) to 703 (`train_2`) [R]. It is assembled by sorting devices by `device_id` as strings, sorting each device's fields alphabetically, then appending the time block [S: `environment.py`]. The layout is therefore:
 
@@ -175,11 +227,11 @@ The observation is a flat float32 vector of length **`6V + 15K + 58`**, from 283
 | 0 … 6V−1 | **VAV blocks**, six fields each, in the order `VAV_1, VAV_10, VAV_11, …, VAV_2, …` (lexicographic, so `VAV_10` precedes `VAV_2`) | 6V |
 | next 15K | **AHU blocks** `ahs_ahu_1_*, …, ahs_ahu_K_*`, fifteen fields each | 15K |
 | next 7 | **hot-water block** `hws_*` | 7 |
-| last 51 | **time and occupancy** (§5.4) | 51 |
+| last 51 | **time and occupancy** (§6.4) | 51 |
 
 The order should always be read from `observation_field_names` in the metadata, never computed. The observation at step *t* reports the state after the action of step *t−1* was applied: the realized and echoed values below equal the action just taken [X].
 
-### 5.1 The six fields of every VAV block
+### 6.1 The six fields of every VAV block
 
 | Field (alphabetical) | Units as delivered | What it is |
 |---|---|---|
@@ -192,7 +244,7 @@ The order should always be read from `observation_field_names` in the metadata, 
 
 The comfort bounds are reported one step *after* the mode flag changes (3 transitions, 4 mismatched steps in a 601-step rollout [X]).
 
-### 5.2 The fifteen fields of every AHU block
+### 6.2 The fifteen fields of every AHU block
 
 Several of the fifteen are the same underlying attribute under different names or mirror the policy's own commands. A 600-step rollout (§20.2) shows that **only the outside temperature is an independent exogenous signal**.
 
@@ -214,7 +266,7 @@ Several of the fifteen are the same underlying attribute under different names o
 | `supply_fan_run_command` | supply-fan on/off | **identical** to `supervisor_run_command` |
 | `supply_fan_speed_percentage_command` | fan speed fraction | tracks the flow (correlation 1.000) |
 
-### 5.3 The seven hot-water fields
+### 6.3 The seven hot-water fields
 
 | Field (alphabetical) | What it is | Relation found [X] |
 |---|---|---|
@@ -226,7 +278,7 @@ Several of the fifteen are the same underlying attribute under different names o
 | `supply_water_temperature_sensor` | loop temperature, K | **the only observed plant state with memory**: ramp-limited (+2.5 K per step at most up, −0.5 K per step down), equal to the setpoint 41 % of the time |
 | `supply_water_temperature_setpoint` | realized water setpoint | equals the native action |
 
-### 5.4 The 51 time and occupancy fields
+### 6.4 The 51 time and occupancy fields
 
 | Fields | Count | What they are |
 |---|---|---|
@@ -238,7 +290,7 @@ Several of the fifteen are the same underlying attribute under different names o
 
 The 48 sinusoids are redundant encodings of two numbers (hour of day, day of week).
 
-### 5.5 Scaling and what the observation does not contain
+### 6.5 Scaling and what the observation does not contain
 
 - **Normalized fields** (matched by exact measurement name in the config) are the zone temperature `(T−295)/5`, the VAV damper and reheat `(x−0.5)/0.5`, the hot-water run command and run status (to {−1, +1}) and the hot-water differential-pressure setpoint `(x−10)/6` [X]. Every AHU field (they carry an `ahu_N_` prefix), the hot-water temperatures and pressure sensor, the comfort bounds and the box airflow are raw. Anything fitted to physical equations must undo the normalization first.
 - **Weather is one number**: the current outside temperature. There is no forecast, humidity, wind, solar or dew point, and no weather label, month, station name or building id. A policy must infer the climate from the temperature trace and the time.
@@ -248,9 +300,9 @@ The 48 sinusoids are redundant encodings of two numbers (hour of day, day of wee
 
 ---
 
-## 6. Controllable, observable and hidden quantities
+## 7. Controllable, observable and hidden quantities
 
-### 6.1 Sizes
+### 7.1 Sizes
 
 | Building | K | V | Observation `6V+15K+58` | Discrete `K+1` | Continuous `3K+2+2V` | Total action |
 |---|---|---|---|---|---|---|
@@ -261,9 +313,9 @@ The 48 sinusoids are redundant encodings of two numbers (hour of day, day of wee
 | train_7 | 4 | 36 | 334 | 5 | 86 | 91 |
 | train_8 | 3 | 30 | 283 | 4 | 71 | 75 |
 
-A typical decision involves roughly 75–209 commands, chosen from 283–703 observed numbers, for a physical system whose full state is about **10⁵-dimensional** (the simulator's thermal grid has 1.2–2.9×10⁵ cells, §8.2). The reduced model used by our method has about two states per zone (air and mass) plus a few plant states, i.e. **70–180 states**, with **5–8 parameters per zone** to estimate (§13, §14).
+A typical decision involves roughly 75–209 commands, chosen from 283–703 observed numbers, for a physical system whose full state is about **10⁵-dimensional** (the simulator's thermal grid has 1.2–2.9×10⁵ cells, §9.2). The reduced model used by our method has about two states per zone (air and mass) plus a few plant states, i.e. **70–180 states**, with **5–8 parameters per zone** to estimate (§13, §14).
 
-### 6.2 Who can see and who can set what
+### 7.2 Who can see and who can set what
 
 | Quantity | Controllable | Observable | Role in the dynamics |
 |---|---|---|---|
@@ -272,7 +324,7 @@ A typical decision involves roughly 75–209 commands, chosen from 283–703 obs
 | Zone damper, reheat valve | yes (command) | yes (realized) | zone-level input |
 | Zone air temperature | no | yes | **output and primary state** |
 | Supply-water temperature | no | yes | plant state with memory |
-| Supply-air and pressure sensors, flows, fan speeds | no | yes | mirror the commands or derive from them (§5) |
+| Supply-air and pressure sensors, flows, fan speeds | no | yes | mirror the commands or derive from them (§6) |
 | Comfort bounds, comfort-mode flags | no | yes | schedule context; enters the reward |
 | Outside-air temperature | no | yes | **disturbance** |
 | Total occupancy | no | yes | **disturbance** (also enters the reward) |
@@ -284,16 +336,18 @@ A typical decision involves roughly 75–209 commands, chosen from 283–703 obs
 
 The **hidden quantities** are the ones that make the problem hard: slab and wall temperatures, per-room occupancy and heat gains, the boiler tank and, above all, the building's thermal parameters. A controller that does well has to act as if it knew them, which means estimating them from how the visible quantities respond. Room temperature is observed, not hidden; what is hidden is what sits behind it.
 
----
+# Part III. The world being controlled
 
-## 7. The physics inside the simulator
+*The physics, the six training buildings, the five climates, the baselines to beat, and why a controller must transfer.*
+
+## 8. The physics inside the simulator
 
 The simulator is a composition of subsystems of very different mathematical character. Reading its source (`smart_buildings/smart_control/`), the plant breaks naturally into six blocks. These equations matter because they are what our method tries to rediscover.
 
-### 7.1 How the simulator is organized
+### 8.1 How the simulator is organized
 The building is a 2D grid of **control volumes** — cells labelled exterior, interior wall, interior mass (slab and furniture) or air. Each step, a backward-Euler heat-diffusion solve advances the temperature field, factorized once per episode with SciPy (it replaced an older truncated iterative solver that added an artificial, weather-dependent thermal lag). The equipment models (`air_handler.py`, `vav.py`, `boiler.py`, `hot_water_system.py`, `pump.py`) turn commands into heat and energy; `stochastic_occupancy.py` makes occupants arrive, leave and take lunch at random; `thermostat.py` runs a per-zone hysteretic Heat/Cool/Off/Passive-Cool state machine; `setpoint_schedule.py` provides the comfort and eco bands; `weather_controller.py` replays the recorded station data (linearly interpolated from hourly to five-minute values [S]); and the `reward/` package computes the score. Floors and the discharge-temperature limit are enforced inside the simulator, so a policy sits *on top of* these inner loops rather than replacing them.
 
-### 7.2 The six blocks
+### 8.2 The six blocks
 
 **A. Zone thermal dynamics — the hard, slow part.** The grid is well captured, zone by zone, by a reduced-order resistor–capacitor (RC) network:
 
@@ -318,14 +372,14 @@ The capacitances and resistances are exactly what the six sampled material prope
 
 **F. The reward** is a closed-form function of state and action (§3).
 
-### 7.3 What this means for identification
+### 8.3 What this means for identification
 Most of the inputs to these equations are visible: zone temperature, damper and valve positions, outside temperature, air-handler supply temperature and pressure, water supply temperature. What is missing is the slab and wall temperatures, per-room occupancy and heat gains, and the parameters. **That gap — between what is visible and what the equations need — is the identification problem our method addresses.**
 
 ---
 
-## 8. The six training buildings
+## 9. The six training buildings
 
-### 8.1 What a building is
+### 9.1 What a building is
 Each shipped building is a multi-storey office block with an irregular ("composite") outline, divided into rectangular rooms. A **zone** is one room served by exactly one VAV box; every zone belongs to exactly one air handler, up to ten per air handler. The generator also sets how many people occupy each zone — one or two — and a set of envelope properties.
 
 Figure 2, from the repo, shows three of them floor by floor, with each room colored by the air handler that serves it.
@@ -336,8 +390,8 @@ Figure 2, from the repo, shows three of them floor by floor, with each room colo
 
 A policy therefore cannot assume that the rooms of one air handler form a compact block, nor that two buildings have anything in common beyond the rules of physics.
 
-### 8.2 Size: from compact to sprawling
-The six buildings span a wide range. The smallest, `building_train_8`, has 30 zones, 3 air handlers and 2 floors. `building_train_7` has 36 zones, `building_train_1` 39 (three floors), `building_train_4` 54 (six air handlers), `building_train_5` 79 across four floors — the tallest — and `building_train_2` 85 zones, 9 air handlers on two wide floors with many small rooms. More zones mean a longer action vector (up to 209 values), more simultaneous decisions, more coupling through the shared hot-water loop, and slower simulation. The table below gives each building's structure and §8.1 the vector sizes.
+### 9.2 Size: from compact to sprawling
+The six buildings span a wide range. The smallest, `building_train_8`, has 30 zones, 3 air handlers and 2 floors. `building_train_7` has 36 zones, `building_train_1` 39 (three floors), `building_train_4` 54 (six air handlers), `building_train_5` 79 across four floors — the tallest — and `building_train_2` 85 zones, 9 air handlers on two wide floors with many small rooms. More zones mean a longer action vector (up to 209 values), more simultaneous decisions, more coupling through the shared hot-water loop, and slower simulation. The table below gives each building's structure and §7.1 the vector sizes.
 
 
 | Building | AHUs K | Zones V | Zones per AHU | Floors | Footprint W×H | Occupants / zone | Total occupants [S] | Thermal grid cells [D] |
@@ -350,7 +404,7 @@ The six buildings span a wide range. The smallest, `building_train_8`, has 30 zo
 | train_8 | 3 | 30 | 10, 10, 10 | 2 | 318×198 | 2 | 60 | 386×320 = 123,520 |
 
 
-### 8.3 Character: how leaky, how heavy
+### 9.3 Character: how leaky, how heavy
 The most important differences are invisible in the floor plan. Each building's envelope is described by six sampled numbers (table below), which reduce to a few physical ideas: *how leaky* the facade is (its U-value, derived from conductivity through the generator's relation `1/U = 0.1/k + 0.299`), *how heavy* it is (density × heat capacity, which sets thermal inertia), how much **slab mass** the interior holds (which governs overnight coasting), how strongly the **partitions couple** neighbouring rooms, and how many occupants each zone has (which sets internal heat gain and the weight of comfort in the reward). The derived U-values and heaviness figures below are computed from the shipped YAMLs, not simulator outputs.
 
 - **`building_train_1` — tight and heavy.** Low conductivity (U ≈ 1.30) and a very heavy facade (≈ 1.87 MJ/m³K). It is slow to warm up or cool down and coasts for hours, so it rewards patient *pre*-conditioning and punishes late reaction.
@@ -373,7 +427,7 @@ The six sampled envelope properties [S], with two derived columns computed from 
 | train_7 | 0.548 | 415 | 35.7 | 0.478 | 155 | 972 | 2.08 | 0.40 |
 | train_8 | 0.270 | 1139 | 11.5 | 0.581 | 336 | 843 | 1.49 | 0.96 |
 
-### 8.4 How the geometry is stored [D]
+### 9.4 How the geometry is stored [D]
 
 - **Codes.** `floor_plan.npy` and `zone_map.npy` both use 0 = interior space, 1 = wall, 2 = exterior, on a 20 cm grid, with the shape of the building's thermal grid. `floor_plan` has **doors as open cells**; `zone_map` has the same doors filled in as walls, so **rooms are exactly the connected components of `zone_map == 0`**. The two files differ only at door cells (2 cells per door: 40 cells in `train_7` and `train_8`, 72 in `train_1`, 102 in `train_4`, 118 in `train_5`, 166 in `train_2`). Because the thermal solver runs on `floor_plan`, doors are paths for heat between neighbouring rooms. For example `train_1` has 141,779 interior-space, 6,946 wall and 56,709 exterior cells. Grids are identical across a building's five weather strips.
 - **Room numbers.** The simulator names the rooms `room_1 … room_V` by connected-component label in raster order, and the box of `room_N` is `VAV_N`. §14.1 shows that the same numbering is reproduced from the metadata arrays alone.
@@ -391,9 +445,9 @@ The six sampled envelope properties [S], with two derived columns computed from 
 
 ---
 
-## 9. The five climates
+## 10. The five climates
 
-### 9.1 Five stations, one year
+### 10.1 Five stations, one year
 The weather is a full year (2023) of recorded hourly data from five airport stations — and a sixth, Minneapolis, that ships as generator input but is not used in the 30 scenarios. Each scenario replays one 30-day window. The stations span almost the full range of conditions an HVAC system sees:
 
 - **Fairbanks** (subarctic) is the most extreme. Over the year it runs from −42 °C to +29 °C. Winter windows are pure heating problems: the envelope loses heat fast, hot water is the only effective lever, and the air-side supply temperature is inert about a third of the time. Summer windows are mild and cheap. The air is calm (about 3–10 km/h) and the convection coefficient is the lowest (8.8 W/m²K).
@@ -402,19 +456,19 @@ The weather is a full year (2023) of recorded hourly data from five airport stat
 - **Phoenix** (hot desert) reaches 46 °C in summer, is very dry (15–47 % humidity) and has a large day–night swing, so summer windows are cooling-dominated with the largest air-side and fan loads; its winters are mild (minimum 0.4 °C).
 - **Singapore** (equatorial) hardly changes: 23–34 °C all year, with 76–85 % humidity. There is no heating at all, only a steady cooling load whose pattern repeats every day.
 
-### 9.2 Season matters as much as station
+### 10.2 Season matters as much as station
 The shipped windows start on different dates, so the *season* of a window matters as much as its station. Taking each window's mean temperature against the 21–24 °C comfort band as a rough guide (a rough classification, not a simulator output):
 
 - **8 windows are heating-dominated** (mean below about 10 °C): four Fairbanks (`fairbanks_1, 2, 7, 8`), two Denver (`denver_2, 8`) and two Atlanta (`atlanta_1, 8`).
 - **7 are shoulder** (about 10–20 °C): `fairbanks_4, 5`, `denver_3, 7`, `atlanta_2` and `phoenix_1, 8`.
 - **15 are cooling-dominated** (above about 20 °C): `denver_5, 6`, `atlanta_3, 5, 6`, `phoenix_3, 4, 5, 6` and all six Singapore windows.
 
-So half the scenarios are cooling problems, about a quarter are heating problems and the rest sit between — the climate label alone does not tell the regime; the window does (Fairbanks means alone run from −21 °C to +19 °C). The extremes are instructive: `fairbanks_1` (1 January, −42 to +1 °C) is the hardest heating case; `phoenix_5` (mid-July, 25–46 °C) is the hardest cooling case; the Singapore windows are the easiest; and `fairbanks_5` (mid-June, 11–29 °C) is the easiest of the cold-climate set. §9.4 lists all 30 windows.
+So half the scenarios are cooling problems, about a quarter are heating problems and the rest sit between — the climate label alone does not tell the regime; the window does (Fairbanks means alone run from −21 °C to +19 °C). The extremes are instructive: `fairbanks_1` (1 January, −42 to +1 °C) is the hardest heating case; `phoenix_5` (mid-July, 25–46 °C) is the hardest cooling case; the Singapore windows are the easiest; and `fairbanks_5` (mid-June, 11–29 °C) is the easiest of the cold-climate set. §10.4 lists all 30 windows.
 
-### 9.3 What the policy actually experiences
+### 10.3 What the policy actually experiences
 Of all this, the policy sees only **one number**: the current outside-air temperature. Humidity, wind and dew point exist in the data files but are not exposed, and the convection coefficient is a fixed per-station constant. Weather therefore enters the problem through three channels: the heat the envelope gains or loses, the mixed-air temperature at the air handler, and whether the economizer (using outside air for cooling) helps. A subtle wrinkle is that all 30 scenarios configure a **US/Pacific** schedule time zone [D], even for Singapore or Atlanta strips whose weather timestamps are station-local; whether that matters is unverified.
 
-### 9.4 The weather data
+### 10.4 The weather data
 
 Annual 2023 hourly records (8,760 rows each, no missing values) [D]:
 
@@ -452,9 +506,9 @@ The 30 scored windows (720 hourly rows each; temperatures in °C) [D]:
 
 ---
 
-## 10. A day in the life, and what the baselines do about it
+## 11. A day in the life, and the shipped baselines
 
-### 10.1 What a day looks like
+### 11.1 What a day looks like
 Figure 3 is a two-day window from the repo (starting 10 July 06:00) for a building with six air handlers. It shows a baseline controller doing its job, and it makes concrete several things we have so far described only in words.
 
 ![Figure 3 — Two simulated days: zone temperatures against the comfort and eco bands, per-step reward, and occupancy (images/overview.png)](images/overview.png)
@@ -467,7 +521,7 @@ Reading it from the top:
 - **The reward** settles near a plateau of about −0.18 when nothing dramatic is happening — the unavoidable cost of running equipment and holding zones in band — and **dips sharply, to roughly −0.6 and −0.95, at the 06:00 switch to comfort mode**. At that moment zones that drifted down in the eco band are suddenly below the tighter comfort band. This is the price of *reactive* control, and it is the clearest opportunity for a controller that knows the morning is coming.
 - **Occupancy** ramps from about 06:00, peaks near midday at 30–33 people, and falls to a lingering 7–8 overnight, averaging 16.7.
 
-### 10.2 What the shipped baselines are
+### 11.2 What the shipped baselines are
 The repo includes five reference controllers (plus an unused extended PID in `pid_plus.py`) in `smart_buildings/baselines/`; there is no learned baseline ("bring your own"):
 
 - **`bang_bang`** switches each air handler on when its zones' mean temperature leaves the band and off once it returns, at full-blast setpoints.
@@ -478,11 +532,7 @@ The repo includes five reference controllers (plus an unused extended PID in `pi
 
 Their docstrings are candid about the lessons: gentle PID can *use more energy* than bang-bang if it holds fan pressure high through a long recovery, and the per-zone damper and reheat layer is "where the headroom over the shipped baselines mostly is." None of them uses a model, a forecast or a cost-aware optimization. That is the gap our method targets.
 
----
-
-## 11. How the shipped baselines score
-
-### 11.1 The headline numbers
+### 11.3 The headline numbers
 Using `baseline_returns.json` (total reward over 8,640 steps, converted to a per-step mean; closer to 0 is better) [D]:
 
 | Baseline | Mean per-step reward | Best scenario | Worst scenario |
@@ -492,17 +542,17 @@ Using `baseline_returns.json` (total reward over 8,640 steps, converted to a per
 | `pid` | −0.067 | −0.017 | −0.186 |
 | `pid_water` | **−0.054** | −0.017 | −0.212 |
 
-The bar to beat is therefore about **0.054**. Detailed breakdowns by climate and building are in §11.4.
+The bar to beat is therefore about **0.054**. Breakdowns by climate and building are in §11.6.
 
-### 11.2 No baseline wins everywhere
+### 11.4 No baseline wins everywhere
 The most interesting finding is that **no single baseline dominates.** `pid_water` is best in 18 of the 30 scenarios and the plain `fixed_setpoint` is best in the other 12; `pid_water` is actually *worse* than `fixed_setpoint` in 12. The simple fixed band wins in Singapore and in buildings 1, 4 and 5; the modulating controllers win in Denver and Phoenix and in buildings 2 and 7. The worst baseline differs by climate too: `bang_bang` is worst in the cold and `fixed_setpoint` is worst in the heat (Phoenix, −0.120), so a policy that beats the floor everywhere has to be good in both. In Singapore, the fixed band beats both PID variants, which is worth testing as a symptom of PID gains or fan-pressure scaling being mismatched to sustained cooling load [I].
 
 A sobering and useful number follows from this: an **oracle that picks the best of the four baselines for each scenario** would average about **−0.047**, against −0.054 for the best single baseline — roughly 13 % better, from *choosing the right behaviour* alone. That is a rough measure of what regime-aware control can gain before any new idea.
 
-### 11.3 The extremes
+### 11.5 The extremes
 The worst case is `building_train_1 / fairbanks_1` — a big, heavy, tight building through −42 °C: `pid_water` −0.212, `pid` −0.151, `fixed_setpoint` −0.147, `bang_bang` −0.287. The best cases are mild windows, such as `building_train_5 / fairbanks_5` (a mild Fairbanks summer), where three of the four baselines reach −0.017 — plausibly close to a floor set by unavoidable ventilation and occupied-hour energy [I]. The headroom, in other words, is in the extremes and in the transitions (mornings, evenings, seasons), not in the easy middle.
 
-### 11.4 Detail by climate and building
+### 11.6 Detail by climate and building
 
 Per-step mean reward from `baseline_returns.json` (closer to 0 is better) [D]:
 
@@ -533,19 +583,21 @@ The competition is designed so that memorizing is impossible. Five things vary o
 
 1. **Topology.** Zone count, air-handler count (the generator raises `num_ahus` to `ceil(zones/10)`), floor-plan shape and the room-to-air-handler assignment all change, and with them the observation and action sizes. Held-out buildings can be larger than any shipped one.
 2. **Construction.** Each building draws its six envelope properties *independently* by Latin hypercube sampling (`materials.py`): exterior conductivity 0.15–0.55 (log scale), exterior density 350–2400, interior-mass density 10–40, interior-wall conductivity 0.45–0.60, interior-wall density 110–700, exterior heat capacity 840–1000. The authors explain why: choosing among *named* constructions collapses to a one-dimensional "how heavy is the building" line, because the properties are almost perfectly correlated. Independent draws fill a volume that includes real-world corners — a leaky heavy masonry warehouse and a tight light panel build are both possible.
-3. **Climate and season** (§9): −42 °C to +46 °C, with different 30-day windows per scenario.
+3. **Climate and season** (§10): −42 °C to +46 °C, with different 30-day windows per scenario.
 4. **A hidden test set** from the same generator and ranges, with weather strips that do not ship.
 5. **No identity features.** No building id, month or station name appears in the observation, and hard-coding references to held-out configs or weather is disqualifying.
 
 The conclusion is that the policy must **infer both building physics and climate from live signals**. It is as much a system-identification problem as a control problem — which is exactly the bet in §16.
 
----
+# Part IV. The state-space model
+
+*Which of the interface's numbers belong in a model of the building, and a fixed-size hidden state built from room types.*
 
 ## 13. The dynamics model: what belongs in it
 
 ### 13.1 Sorting every entry by role
 
-The observation is the output of the data-generating process, and it mixes six different kinds of entry. Only some belong in a dynamics model. The roles of every individual index are listed in Appendix E and, for all six buildings, in `outputs/building_train_N_observation_annotated.csv` (filter on `use_in_dynamics_model`).
+The observation is the output of the data-generating process, and it mixes six different kinds of entry. Only some belong in a dynamics model. This regroups the role table of §7.2 by what the dynamics model needs. The roles of every individual index are listed in Appendix E and, for all six buildings, in `outputs/building_train_N_observation_annotated.csv` (filter on `use_in_dynamics_model`).
 
 | Group | Entries | In the dynamics model? |
 |---|---|---|
@@ -562,7 +614,7 @@ Of the six fields per zone, three are model signals (temperature, damper, reheat
 
 The observation vector itself cannot be shortened: its shape is fixed by the environment, and the evaluation server builds it. What can be removed is *use*: a policy selects entries by name through `observation_field_names` and ignores the rest, at no cost. The question is whether the entries it drops can be recovered, and for the setpoint-type entries they can, because each falls into one of two classes:
 
-- **Action setpoints** (AHU temperature, pressure and recirculation setpoints, water temperature, differential pressure, all run commands, and the realized damper and reheat): each is a deterministic function of the action just applied and the unit's run state, with the known floors (`max(a, 200 Pa)` when running and 0 when off, `min(a, 0.7)`, `max(a, 0.1)`) [X]. A stateful policy that stores its previous action reproduces them exactly, so they add no information. The one exception is the first step, whose observation reflects the reset state (for example a supply setpoint of 298 K and a pressure of 1000 Pa) rather than an action; the default action of §4.1 is applied from there.
+- **Action setpoints** (AHU temperature, pressure and recirculation setpoints, water temperature, differential pressure, all run commands, and the realized damper and reheat): each is a deterministic function of the action just applied and the unit's run state, with the known floors (`max(a, 200 Pa)` when running and 0 when off, `min(a, 0.7)`, `max(a, 0.1)`) [X]. A stateful policy that stores its previous action reproduces them exactly, so they add no information. The one exception is the first step, whose observation reflects the reset state (for example a supply setpoint of 298 K and a pressure of 1000 Pa) rather than an action; the default action of §5.1 is applied from there.
 - **Comfort setpoints** (the per-zone heating and cooling bounds): they are a function of the clock, the schedule and the metadata windows (`comfort_temp_window`, `eco_temp_window`, `morning_start_hour`, `evening_start_hour`), and all zones carry the same bounds in the shipped scenarios [X]. They trail `comfort_mode_now` by one step, which the schedule reproduces.
 
 Sensors that mirror setpoints (AHU pressure and supply temperature, hot-water differential pressure) fall in the first class, and the duplicate and constant fields need no recovery. Dropping all of these leaves the **lean observation**: zone temperatures (V), supply-water temperature (1), outside temperature (1), occupants (1), one cos/sin pair for the hour (2), one for the weekday (2) and the comfort-mode flag (1), i.e. **V + 8** values, optionally plus the airflow and outside-air-flow signals (2K).
@@ -590,13 +642,7 @@ x_{t+1} = f(x_t, u_t, d_t ; θ)                              one 5-minute step
 y_t     = [ T_z, T_water ]                                  what the model must reproduce
 ```
 
-The identifiable reduced form per zone is the resistor–capacitor balance of §7.2:
-
-```
-C_z dT_z/dt = Σ_j (T_j − T_z)/R_zj + (T_out − T_z)/R_env,z + (M_z − T_z)/R_m + Q_vav,z + q_z
-C_m dM_z/dt = (T_z − M_z)/R_m
-Q_vav,z     = ρ c_p · V̇_z(damper_z, P_ahu) · (T_disch,z − T_z),   T_disch,z = T_sa + ε(reheat_z, water flow)·(T_water − T_sa)
-```
+The identifiable reduced form per zone is the resistor–capacitor balance of §8.2 (block A), driven by the VAV heat of block B: `Q_vav,z = ρ c_p V̇_z(damper_z, P_ahu) (T_disch,z − T_z)` with `T_disch,z = T_sa + ε(reheat_z, water flow)(T_water − T_sa)`.
 
 Per zone the observed quantities are `T_z`, the realized damper and reheat, and the schedule bounds; the AHU contributes `T_sa` and `P` (from the actions), the loop `T_water`, and `T_out` is the disturbance. Hidden per zone: `M_z`, `q_z` and the parameters `(C_z, R_env,z, R_m, R_zj)`.
 
@@ -679,7 +725,9 @@ With three components per type (air-like, mass-like, gain-like) and a plant bloc
 - **Floors need no index** in the thermal model (they are independent in the grid); a floor index matters only through the serving AHU.
 - **The classification and regression use one weather strip per building.** Whether the type predicts the response in all regimes (hot, mixed, occupied) needs data from more scenarios.
 
----
+# Part V. Our method
+
+*Control-policy background, then the proposal: generate data from the simulator, discover a symbolic state-space model, and put a controller on top.*
 
 ## 15. What a control policy is, and the ways to build one
 
@@ -748,14 +796,14 @@ Because K and V vary, a policy needs an *architecture* that produces the right n
 ### 15.7 Where things go wrong
 Several failure modes deserve a mention because they come up repeatedly:
 - The **unbounded comfort penalty**: a failure invisible in the mean — a stuck valve, an air handler left off in a cold snap — can dominate a scenario. Guard rails help: if an occupied zone approaches the band edge, fall back to a conservative baseline-like action.
-- **Zero is not off** and **floors are silent**: write every slot, and read realized positions from the observation, not the command (§4, §5).
+- **Zero is not off** and **floors are silent**: write every slot, and read realized positions from the observation, not the command (§5, §6).
 - **Dead actuators**: tuning the supply-air temperature in cold climates wastes effort and mis-attributes effects.
 - **Chatter**: each VAV's thermostat has hysteresis (heating continues to the band midpoint), and toggling equipment faster than that loop causes oscillation.
 - **Short-episode flattery**: one-day runs skip eco periods, so never compare returns across step counts.
 - **Overfitting**: the shipped set is only six buildings. Sample many more with the generators (Appendix C) and split by building.
 - **Compute**: simulation cost scales with building size, and `get_action` runs 8,640 times per scenario; do index-table work once, in `__init__`.
 
-The policy contract itself is minimal: a class with `__init__(building_meta_data, action_spec)` and `get_action(obs)` returning `{"continuous_action": float32[3K+2+2V], "discrete_action": int32[K+1]}`.
+The submission contract itself is minimal (§4.1).
 
 ### 15.8 Candidate directions
 Putting this together, five directions look promising, and they combine well. (1) A **structured, physics-informed heuristic** that improves on `pid_water` with feed-forward from outside temperature and schedule, per-zone allocation, fan-pressure minimization, a hot-water reset keyed to the *maximum* zone demand, and pre-heat/pre-cool — cheap, interpretable and transfers by construction. (2) **MPC with an identified model**: fit a low-order RC model online from the first days and plan over a short horizon. (3) **Set- or graph-structured RL**, a shared per-zone and per-air-handler network (DeepSets, a GNN or a transformer) trained on the 30 scenarios plus many generated ones. (4) A **learned residual on a heuristic**, which stabilizes training and bounds the damage of the unbounded penalty. (5) **Imitation followed by RL fine-tuning**, or domain-randomized RL with a context encoder that infers a latent "building + climate" vector from recent history. **Our method combines directions 1 and 2**: a physics-structured controller around an *identified* model.
@@ -789,7 +837,7 @@ Instead of training a black-box policy or hand-tuning PIDs, **discover compact, 
 The governing principle is **parsimony**: among models of similar accuracy, prefer the simplest, because it generalizes better to unseen buildings and is easier to wrap in an optimizer.
 
 ### 16.4 What to discover, and what to leave known
-Using the blocks of §7.2, we divide the work so that the search space stays small and the result physical. The **zone RC dynamics** (block A) and the **inter-zone coupling** (restricted to floor-plan neighbours, since only adjacent rooms couple) are the core, building-dependent, hardest part: we *discover the structure and fit the parameters*. The **occupancy gain** is discovered as a low-order function of occupancy, schedule flags and hour, and the **weather-to-envelope** link as an effective loss coefficient plus convection coupling. The **VAV airflow and coil heat** (block B) are seeded with their known form and refined — symbolic regression confirms the saturations and fits the constants. The **air handler** (block C) and **boiler and pump** (block D) are algebraic and well documented, so we keep their known form and fit only COP, efficiency, dissipation and tank constants; gas is about half of the energy reward, so these matter.
+Using the blocks of §8.2, we divide the work so that the search space stays small and the result physical. The **zone RC dynamics** (block A) and the **inter-zone coupling** (restricted to floor-plan neighbours, since only adjacent rooms couple) are the core, building-dependent, hardest part: we *discover the structure and fit the parameters*. The **occupancy gain** is discovered as a low-order function of occupancy, schedule flags and hour, and the **weather-to-envelope** link as an effective loss coefficient plus convection coupling. The **VAV airflow and coil heat** (block B) are seeded with their known form and refined — symbolic regression confirms the saturations and fits the constants. The **air handler** (block C) and **boiler and pump** (block D) are algebraic and well documented, so we keep their known form and fit only COP, efficiency, dissipation and tank constants; gas is about half of the energy reward, so these matter.
 
 Where an equation is already known exactly — the fan and pump laws — we do not spend search budget rediscovering it, but we *do use the discovery pipeline to verify it*: if symbolic regression on simulator data recovers `√P` and `V̇·ΔP/η`, that validates the toolchain before we trust it on the harder zone dynamics.
 
@@ -817,55 +865,14 @@ Six stages take us from simulator data to a scored policy:
 
 Stages 1–3 are the subject of §17, stages 4–5 of §18, and stage 6 of §19.
 
-### 16.6 What a submission is
-
-**The artifact.** A submission is a **Kaggle Notebook** and nothing else. A working example (the "TransferPolicy Notebook") is on the competition's Code tab. The notebook defines one policy class; when it is run on the Kaggle side, the same notebook is re-run unchanged against the hidden test scenarios, and the leaderboard number is computed server-side (§3). The competition's Data page describes the class as subclassing `smart_buildings_inference_server.Policy`, implementing two methods, and the starter kit's local template agrees on the two methods:
-
-```python
-__init__(self, building_meta_data, action_spec)   # called once per scenario (per building)
-get_action(self, obs) -> {"continuous_action": float32[3K+2+2V],
-                          "discrete_action":   int32[K+1]}   # called once per 5-minute step
-```
-
-**Local versus Kaggle contract.** The local harness (`evaluate.py`) needs no base class: `initialize_policy` tries `Policy(meta, action_spec)`, then `Policy(meta)`, then `Policy()`, and `get_policy_action` calls `get_action(obs)`. The Kaggle runtime imports `smart_buildings_inference_server`, which is not in the starter kit (it ships with the competition's `kaggle_evaluation` folder, viewable only after accepting the rules). So we develop against the local two-method contract, keep the class free of local-only imports, and make the final class inherit from `Policy` when the notebook is assembled. The exact base-class behaviour (extra hooks, how metadata is delivered) is unverified (§20.3).
-
-**What the harness does with the policy.** For each scenario, `run_policy` resets the environment, then loops 8,640 times: `get_action(obs)` → `validate_action` (exact shapes; continuous cast to float32, discrete to int32; a wrong shape raises) → `tracker.step(action)`. The policy sees only the observation vector and the metadata; it never sees reward, weather labels, month, station or building id. **Hardcoding a reference to a held-out building or weather seed is disqualifying** (template docstring).
-
-| Property | Value | Source |
-|---|---|---|
-| Notebook runtime | CPU ≤ 9 h or GPU ≤ 9 h per run | Overview page |
-| Internet during the run | disabled | Overview page |
-| External data and pre-trained models | allowed if free and public; a reasonableness test applies to cost | Overview page, Rules §2.6 |
-| Open-source code | only OSI-approved, commercially unrestricted licences | Rules §3.6c |
-| Daily submissions | 5; 2 final submissions selected | Rules §2.2 |
-| Team size | ≤ 5; mergers allowed | Rules §2.1 |
-| Winners | must license the winning code CC-BY 4.0 and deliver training and inference code | Rules §2.5, §2.8 |
-| Dates | entry and merger deadline 3 Jan 2027; final submission 15 Jan 2027 | Overview page |
-| Compute budget per step | not stated; a 9 h budget over 30 scenarios × 8,640 steps ≈ 1.25 s per step, minus simulator time | derived, [I] |
-
-**Consequences for our design.**
-- **Everything the policy needs at run time must be in the notebook or an attached Kaggle dataset.** No downloads, no `pip install` from the internet, no Julia package installs at run time. The discovered equations, the fitted constants, the per-type parameter priors and any lookup tables are therefore frozen into the notebook source or into a small attached dataset, with versions pinned.
-- **The policy is stateful and built once per building.** `__init__` is where per-building setup happens (index tables, parameter priors from the floor plan and zone map, §14); the policy object then carries the estimator state and its previous action between calls (§13.2 relies on this to drop the setpoints from the model's inputs).
-- **The notebook is deterministic and re-run on unseen buildings**, so all adaptation has to happen online inside `get_action` (§18.3) with no per-building offline fit.
-- **The 8,640 × 30 evaluation must finish inside the notebook limit.** The simulator's own time counts; at about 100 steps per second on the smallest building (§20.2) that is roughly 90 s per scenario before any policy cost, but larger buildings are slower and unmeasured.
-
 ---
 
-## 17. Stage one: discovering the dynamics
+## 17. Stage one: data and discovering the dynamics
 
 ### 17.1 Generating the data
 There is no logged dataset (Appendix A), so the simulator is the data source, and the repo can generate arbitrarily many buildings and scenarios. Our angle is to **generate as much data as possible, then fit one symbolic state-space model on all of it, then put a controller on top.** Identification needs **persistent excitation**: the inputs must vary enough to reveal the dynamics.
 
-**How data is produced, using only the shipped commands.**
-
-| Step | Command (run from the starter-kit root) | Produces |
-|---|---|---|
-| New buildings | `python -m smart_buildings.run_floor_generator --start-seed 500 --count N --shape composite` | `building_XXXX.yaml` configs; materials are stratified across the batch and reproducible from the seed list |
-| Scenarios | `python -m smart_buildings.run_scenario_generator --buildings <yaml…> --weathers <presets…>` | `training_scenarios/<building>/<weather>/config.gin`; naming either axis takes the cross product, no arguments rebuilds the shipped 30 pairs |
-| Smoke test | `python -m smart_buildings.run_environment --building … --weather …` | prints the action spec, metadata and a short rollout |
-| Rollout | `evaluate.py` machinery: `load_hybrid_environment`, `create_building_meta_data`, `SimulationTracker`, `run_policy` | a stepped environment whose observation we can log |
-
-The shipped manifest pairs each building with one strip per station (30 scenarios, no strip reused); everything else is available too, since the generator inputs for other stations and buildings are shipped ("nothing here limits what you may generate"). Seeds from 500 upward are the documented range for new buildings. Our own collection loop lives outside the starter kit and drives the environment through `reset`/`step` as `code/rollout_checks.py` already does, with a behaviour policy in place of random actions.
+**How data is produced.** Buildings come from `run_floor_generator` (seeds from 500 upward; materials are stratified across a batch and reproducible from the seed list), scenarios from `run_scenario_generator` (naming `--buildings` or `--weathers` takes the cross product; no arguments rebuilds the shipped 30 pairs), and the commands are in Appendix C. The shipped manifest pairs each building with one strip per station, but the generator inputs for the other stations and buildings are shipped too ("nothing here limits what you may generate"). Our collection loop lives outside the starter kit and drives the environment through `reset` and `step` using the `evaluate.py` helpers (`load_hybrid_environment`, `create_building_meta_data`, `SimulationTracker`), as `code/rollout_checks.py` already does, with a behaviour policy in place of random actions.
 
 **What to vary.**
 - **Buildings.** Many seeds, so geometry, K, V and independently drawn materials span the generator's range. This is what lets the discovered *structure* generalize to hidden buildings; the number of distinct buildings, not the number of steps, limits transfer.
@@ -873,14 +880,14 @@ The shipped manifest pairs each building with one strip per station (30 scenario
 - **Behaviour policies (excitation).** Random-step or pseudo-random sequences on dampers and reheat valves, ramps on hot-water temperature and fan pressure, air-handler and pump on/off cycling, with the actions held for 6–24 steps so the thermal response shows through the 5-minute step; plus the four shipped baselines (`bang_bang`, `fixed_setpoint`, `pid`, `pid_water`) for realistic operating regimes, and `all_off` for pure envelope response (§14.3). Pure excitation visits unrealistic corners; baseline data alone is poorly excited because the baselines often sit on actuator floors, so both are needed. Later rounds add data collected under the fitted controller itself (DAgger-style), to cover the states it will actually visit.
 - **Regimes.** Occupied and eco periods, coils saturated and idle, floors active and inactive, full 30-day episodes (shorter runs skip the eco-setback periods and flatter schedule-aware behaviour).
 
-**What to log per step.** The full observation vector and the action actually sent; the realized damper and reheat values (already in the observation, §5.1); and, for the grey-box route, the simulator's *internal* quantities from the reward-info structures (heat applied to each zone, fan and gas power, electricity and carbon terms). The internal quantities identify blocks B–D in isolation with near-noise-free data, then compose them; the policy will not see them at submission time, so the final model may only *need* observable inputs. Store the metadata JSON beside every trajectory, so room types, floors and AHU assignments (§14) can be rebuilt for each building.
+**What to log per step.** The full observation vector and the action actually sent; the realized damper and reheat values (already in the observation, §6.1); and, for the grey-box route, the simulator's *internal* quantities from the reward-info structures (heat applied to each zone, fan and gas power, electricity and carbon terms). The internal quantities identify blocks B–D in isolation with near-noise-free data, then compose them; the policy will not see them at submission time, so the final model may only *need* observable inputs. Store the metadata JSON beside every trajectory, so room types, floors and AHU assignments (§14) can be rebuilt for each building.
 
 **Data budget.** One 8,640-step episode on the smallest building takes about 90 s [X] (≈100 steps/s); larger buildings are slower and unmeasured (§20.3), so the numbers below are for the smallest building and scale up by the measured slowdown for the others. One episode logs 8,640 rows of `V+8` to `6V+15K+58` values; for the 30 shipped scenarios that is 259,200 rows, about 45 minutes of simulation. Episodes are independent, so generation parallelizes across CPU processes with no coordination. The practical limits are the number of CPU cores and disk, not the method.
 
 **Fitting-side rules.**
 - **Targets.** Use the 300-second step with finite differences `(T_{t+1} − T_t)/Δt` as derivative targets, or fit a discrete-time one-step map directly, which avoids differentiating noise (the simulator is noise-free, §20.3).
 - **Split by building**, never by time within a building, otherwise we measure interpolation rather than transfer.
-- **Mind the scales.** The observation is mixed-scale (§5.5); undo the normalization before fitting physical equations.
+- **Mind the scales.** The observation is mixed-scale (§6.5); undo the normalization before fitting physical equations.
 - **Use the lean model inputs.** The model's inputs and outputs are the ones in §13.2–13.3 (zone temperatures, water temperature, outside air, occupants, time and comfort-mode features, plus the previous action), not the full 6V+15K+58 vector.
 
 ### 17.2 Designing the library
@@ -893,9 +900,9 @@ This is the heart of the method. We write each model as
 dT_z/dt = F( x_z, u_z, d_t ; θ_building )
 ```
 
-where **F — the symbolic structure — is discovered once on pooled data from many buildings**, and **θ — a small vector of lumped capacitances, conductances and gains — is specific to each building and estimated online.** This differs from "fit a separate model per building offline," which is impossible for held-out buildings, and from "one global model with no parameters," which cannot represent different constructions. In this light, the six buildings of §8 are simply six values of θ, and what separates `building_train_1` from `building_train_7` is a handful of numbers, not a different kind of physics.
+where **F — the symbolic structure — is discovered once on pooled data from many buildings**, and **θ — a small vector of lumped capacitances, conductances and gains — is specific to each building and estimated online.** This differs from "fit a separate model per building offline," which is impossible for held-out buildings, and from "one global model with no parameters," which cannot represent different constructions. In this light, the six buildings of §9 are simply six values of θ, and what separates `building_train_1` from `building_train_7` is a handful of numbers, not a different kind of physics.
 
-There are two ways to obtain θ for a new building. **Online estimation** from the first hours or days of the episode (recursive least squares, an extended Kalman filter or moving-horizon estimation) is fast and well posed because RC models are linear in their parameters. **Priors from metadata** use the floor-plan and zone-map arrays, which give zone area, perimeter and adjacency and so predict capacitance and exterior exposure; we can learn a symbolic map `θ = g(metadata)` as a starting point and refine it online. The material properties are not exposed (§5.5), so θ must otherwise be inferred from behaviour alone. §14 shows that room type, exterior exposure and adjacency can be rebuilt exactly from those arrays and that exposure predicts the envelope coupling, so the prior has a concrete form.
+There are two ways to obtain θ for a new building. **Online estimation** from the first hours or days of the episode (recursive least squares, an extended Kalman filter or moving-horizon estimation) is fast and well posed because RC models are linear in their parameters. **Priors from metadata** use the floor-plan and zone-map arrays, which give zone area, perimeter and adjacency and so predict capacitance and exterior exposure; we can learn a symbolic map `θ = g(metadata)` as a starting point and refine it online. The material properties are not exposed (§6.5), so θ must otherwise be inferred from behaviour alone. §14 shows that room type, exterior exposure and adjacency can be rebuilt exactly from those arrays and that exposure predicts the envelope coupling, so the prior has a concrete form.
 
 ### 17.4 Noise, hidden states and identifiability
 Several difficulties are predictable:
@@ -908,12 +915,12 @@ Several difficulties are predictable:
 ### 17.5 When is a model good enough to control with?
 One-step accuracy is misleading — nearly any model predicts `T_{t+1} ≈ T_t`. We will judge models by **multi-step rollout error** at 1, 3 and 6 hours *under the actions the controller would actually pick*; by performance on **held-out buildings and climates**, stratified by climate, season and occupied versus eco; and, ultimately, by **closed-loop value** — plug the model into the controller and measure the leaderboard-style score, since a less accurate but better-conditioned model often wins. We also require **physical sanity** (heat balance closes, no heat from nothing, correct signs, bounded extrapolation), **robustness** (a ±20 % parameter perturbation should not wreck the policy) and low **cost per evaluation**, since the model is called many times inside MPC.
 
-### 17.6 Shipping the fitted model
-
-No internet at run time means the fitted model has to travel inside the notebook.
-- **Symbolic output is naturally portable.** Equations, coefficients and per-type priors can be written as plain Python/NumPy expressions in the notebook source, or as a small JSON or `.npz` file in an attached dataset. Prefer plain NumPy at run time over a symbolic-regression toolchain: PySR needs Julia, and SINDy and CasADi availability in the Kaggle image is unverified (§20.3). Do the discovery off-line; ship only the result.
-- **Size and speed.** A closed-form model with tens of terms per zone and per type is evaluated in microseconds, so even a sampling MPC that rolls the model forward over hundreds of candidate action sequences is far inside the per-step budget; the simulator, not the policy, dominates the runtime.
-- **Reproducibility.** Winners must deliver training and inference code (Rules §2.8), so the data-generation scripts, seeds, the discovery configuration and the notebook builder are versioned together, and the generated trajectories are regenerable from seeds rather than stored.
+### 17.6 Shipping the fitted model and the runtime budget
+The constraints of §4.3 shape what can be submitted.
+- **Everything the policy needs at run time travels inside the notebook or an attached Kaggle dataset.** There is no internet, so no downloads and no installs. The discovered equations, fitted constants and per-type priors are written as plain Python/NumPy or a small JSON or `.npz` file, with versions pinned. Prefer NumPy at run time over a symbolic-regression toolchain: PySR needs Julia, and the availability of SINDy and CasADi in the Kaggle image is unverified (§20.3). Do the discovery off-line and ship only the result.
+- **The policy is built once per building and adapts online.** `__init__` does the per-building setup (index tables, parameter priors from the floor plan and zone map, §14); the object then carries the estimator state and its previous action between calls (§13.2 relies on this to drop the setpoints from the model's inputs). The notebook is deterministic and re-run on unseen buildings, so there is no per-building offline fit.
+- **Runtime.** The 8,640 × 30 evaluation must finish inside the notebook limit, and the simulator's own time counts: about 90 s per scenario on the smallest building [X], more on larger ones (unmeasured). A closed-form model with tens of terms per zone and per type evaluates in microseconds, so even a sampling MPC over hundreds of candidate action sequences is small next to the simulator.
+- **Reproducibility.** Winners must deliver training and inference code (Rules §2.8), so the data-generation scripts, seeds, the discovery configuration and the notebook builder are versioned together; trajectories are regenerable from seeds rather than stored.
 - **Fallbacks.** The notebook includes the PID-like fallback of §18.4 in the same file, so a bad model cannot take the policy off the leaderboard.
 
 ---
@@ -939,7 +946,7 @@ The controller needs the hidden states and the building parameters. In rough ord
 Models are wrong, and the comfort penalty is unforgiving, so safety is layered: an **integral-like correction** on the one-step prediction error (offset-free MPC) cancels persistent bias; **uncertainty-aware margins** widen the comfort buffer when parameter variance is high or the regime is poorly covered by training data; a **fallback controller** takes over if an occupied zone leaves a safe inner band or recent prediction error exceeds a threshold, handing control to a robust baseline-like policy (for instance `pid_water` logic) until the model recovers; the known **floors** (200 Pa, 0.7 recirculation, 10 % damper) are enforced inside the optimizer so planned actions are realizable; and **rate limits** protect against the thermostat's hysteretic inner loop and equipment transients.
 
 ### 18.5 What the submitted policy looks like
-It conforms to the two-method contract of §16.6 and, in the assembled notebook, inherits from `Policy`. This is a design sketch, not code in the repo:
+It conforms to the contract of §4.1 and, in the assembled notebook, inherits from `Policy`. This is a design sketch, not code in the repo:
 
 ```python
 class SymbolicMPCPolicy:
@@ -959,7 +966,7 @@ class SymbolicMPCPolicy:
         # return {"continuous_action": ..., "discrete_action": ...}
 ```
 
-`get_action` runs 8,640 times per scenario and 30 times over on the leaderboard, so model evaluation and any optimization must be budgeted against the 9-hour notebook limit (§16.6). The workflow around it: develop and score locally with `python -m smart_buildings.evaluate --policies <key>` and `score_leaderboard.py` (register the class in `POLICY_MAP`, or keep it outside the starter kit and call `run_policy` directly), then paste the same class into the Kaggle notebook.
+`get_action` runs 8,640 times per scenario and 30 times over on the leaderboard, so model evaluation and any optimization must be budgeted against the 9-hour notebook limit (§4.3, §17.6). The workflow around it: develop and score locally with `python -m smart_buildings.evaluate --policies <key>` and `score_leaderboard.py` (register the class in `POLICY_MAP`, or keep it outside the starter kit and call `run_policy` directly), then paste the same class into the Kaggle notebook.
 
 ---
 
@@ -973,7 +980,7 @@ class SymbolicMPCPolicy:
 5. **Where is the headroom per climate?** Break results down by station and season. We expect the cold to reward water-side and reheat management and pre-heat, the heat to reward supply temperature, fan pressure and damper allocation, and the mild middle to reward the economizer.
 
 ### 19.2 The protocol
-We evaluate on the **shipped 30 scenarios** at 8,640 steps — directly comparable with `baseline_returns.json` (the reference is about −0.054 for `pid_water`, and about −0.047 for the per-scenario best-of-baselines oracle of §11.2) — and on a **generated hold-out set** of many new buildings (seeds from 500) paired with station strips, including buildings larger than the shipped six. We report the leaderboard metric, a per-climate and per-season breakdown, the **worst-scenario score** (tail risk), the comfort/energy/carbon decomposition of §3.3, and wall-clock time per step. We never compare across step counts, never tune on the hold-out set, and run `check_scales.py` on generated scenarios so the reward scale is right. The baselines to beat and to include in ablations are `pid_water`, `pid`, `fixed_setpoint` and `bang_bang`; a learned RL controller would be a useful external comparison since the repo ships none.
+We evaluate on the **shipped 30 scenarios** at 8,640 steps — directly comparable with `baseline_returns.json` (the reference is about −0.054 for `pid_water`, and about −0.047 for the per-scenario best-of-baselines oracle of §11.4) — and on a **generated hold-out set** of many new buildings (seeds from 500) paired with station strips, including buildings larger than the shipped six. We report the leaderboard metric, a per-climate and per-season breakdown, the **worst-scenario score** (tail risk), the comfort/energy/carbon decomposition of §3.3, and wall-clock time per step. We never compare across step counts, never tune on the hold-out set, and run `check_scales.py` on generated scenarios so the reward scale is right. The baselines to beat and to include in ablations are `pid_water`, `pid`, `fixed_setpoint` and `bang_bang`; a learned RL controller would be a useful external comparison since the repo ships none.
 
 ### 19.3 The main risks
 - **The symbolic model is too simple for hidden-state dynamics**, giving multi-hour prediction errors and poor pre-conditioning. *Mitigation:* a latent mass state, online estimation, validation on multi-step rollouts.
@@ -985,7 +992,7 @@ We evaluate on the **shipped 30 scenarios** at 8,640 steps — directly comparab
 - **Overfitting to the six shipped buildings.** *Mitigation:* train and validate on generated buildings, split by building.
 - **Reward-hacking of model quirks**, where the model claims "free heat" and the simulator disagrees. *Mitigation:* energy-balance checks and closed-loop evaluation in the true simulator.
 - **Rule compliance**: the policy may use only the observation and the metadata; no station or building identifiers.
-- **Unknown rule details** — submission format, runtime limits, available libraries — which could invalidate an approach. *Mitigation:* read the Kaggle rules before committing to heavy dependencies.
+- **Unverified Kaggle runtime details** — the `Policy` base class and which libraries the image contains — which could invalidate a heavy dependency (§20.3). *Mitigation:* ship plain NumPy; test the assembled notebook on Kaggle early.
 
 ### 19.4 A staged roadmap
 1. **Instrument and understand.** Run the baselines (Appendix B), log per-step internals, reproduce `baseline_returns.json` for a few scenarios and map the observation fields to model variables.
@@ -995,9 +1002,11 @@ We evaluate on the **shipped 30 scenarios** at 8,640 steps — directly comparab
 5. **Wrapper 1.** Feed-forward, water reset and pre-conditioning; target beating `pid_water` on the shipped set.
 6. **Wrapper 2.** MPC with a safety fallback; ablate horizon, cost margins and solver.
 7. **Hold-out validation** on many generated buildings, with stress tests (a cold snap, a heat wave, larger K).
-8. **Package** into the policy class (§16.6, §17.6), verify runtime, submit.
+8. **Package** into the policy class (§4.1, §17.6), verify runtime, submit.
 
----
+# Part VI. Verification
+
+*What was checked by running code, and what remains open.*
 
 ## 20. What has been verified and what is still unknown
 
@@ -1009,8 +1018,8 @@ Most numbers come from reading configs and source and from computing over the sh
 
 **By instantiating the environments [R].**
 - The observation length equals `6V + 15K + 58` for all six buildings (352, 703, 472, 652, 334, 283), independent of climate; a docstring's 271 for the smallest building is stale.
-- The action lengths are `3K+2+2V` continuous and `K+1` discrete, with specs `Box(−1, 1, …, float32)` and `Box(0, 1, …, int32)`; the index layout and the K+1-entry `pressure_indices` follow §4.2; per-zone fields are grouped by field name rather than by zone.
-- The metadata contains the keys listed in §5.5, including `floor_plan` and `zone_map` but no materials; `holidays` is empty and `time_zone` is `US/Pacific` everywhere.
+- The action lengths are `3K+2+2V` continuous and `K+1` discrete, with specs `Box(−1, 1, …, float32)` and `Box(0, 1, …, int32)`; the index layout and the K+1-entry `pressure_indices` follow §5.2; per-zone fields are grouped by field name rather than by zone.
+- The metadata contains the keys listed in §6.5, including `floor_plan` and `zone_map` but no materials; `holidays` is empty and `time_zone` is `US/Pacific` everywhere.
 - A freshly reset building is finite and quiet: zones at 294 K, dampers at the 0.1 floor, reheat closed, airflow 0, hot-water loop at 340 K, no occupants (the strip starts on a Sunday), comfort flags 0. `env.step(action)` returns a tuple whose first two entries are the observation and the reward.
 - The smallest building simulates at roughly 100 steps per second, so a full episode takes about 90 seconds there; larger buildings are slower.
 - With a zero continuous action and every unit on, one simulated day gave a per-step reward of −0.130 to −0.116, worse than any tuned baseline mean, consistent with "zero is not off."
@@ -1051,7 +1060,7 @@ Caveats: the rollouts use one or two buildings, one weather strip each and non-t
 7. Whether **solver libraries** (CasADi, JAX, PySR with Julia) are available in the Kaggle runtime image. The notebook limit (9 h) is known; the exact `smart_buildings_inference_server.Policy` base class and the `kaggle_evaluation` files were not visible without accepting the rules, so whether the runtime passes the same metadata and observation as `evaluate.py` is unverified.
 8. Whether the **airflow and outside-air-flow signals have memory**, and whether the physical supply temperature `min(mixed air, setpoint)` is observable anywhere (the sensor reports the setpoint).
 9. Whether **room type predicts the response in all regimes** (§14.5) and whether the exterior-reach threshold of §14.2 is the right one; the all-off rollouts cover two buildings.
-10. Whether the **solver couples floors** (§8.4); the layout suggests not.
+10. Whether the **solver couples floors** (§9.4); the layout suggests not.
 
 Items 1, 2 and 5 can be closed with the repo's existing commands; Appendix B is a recipe for doing that on another machine.
 
@@ -1088,7 +1097,7 @@ Items 1, 2 and 5 can be closed with the repo's existing commands; Appendix B is 
 | `outputs/metadata_only_check.json`, `building_train_N_alloff_response.csv`, `alloff_response_summary.json` | results of §14.1 and §14.3 |
 | `code/` | `dump_vectors.py`, `annotate_vectors.py`, `explore_zone_map.py`, `plot_rooms.py`, `floors_and_ahus.py`, `rollout_checks.py`, `metadata_only_check.py`, `all_off_response.py`, `build_appendix.py` |
 
-The scripts are run from the starter-kit root (the gin configs use relative paths) with the environment in `.venv/` (Python 3.12, the dependencies pinned in the starter kit's `pyproject.toml`), for example `cd smart-buildings-starter-kit && PYTHONDONTWRITEBYTECODE=1 ../smart-buildings-analysis/.venv/bin/python ../smart-buildings-analysis/code/rollout_checks.py 600`.
+The scripts are run from the starter-kit root (the gin configs use relative paths) with the environment in `.venv/` (Python 3.12, the dependencies pinned in the starter kit's `pyproject.toml`), for example `cd smart-buildings-starter-kit && PYTHONDONTWRITEBYTECODE=1 ../working-code/.venv/bin/python ../working-code/code/rollout_checks.py 600`.
 
 ---
 
@@ -1097,7 +1106,7 @@ The scripts are run from the starter-kit root (the gin configs use relative path
 *Description only; nothing here has been run.* This is a recipe for pulling the repo onto another computer and producing the data that closes the unknowns of §20.3 (items 1, 2 and 5), using only commands and files already in the starter kit. **No GPU is required**: the simulator is CPU-bound (NumPy, SciPy sparse solves, Numba); a multi-core CPU helps because scenarios are independent and can run in parallel.
 
 1. **Set up (once).** Python ≥ 3.12. Any of: `pip install -e .`; the provided `environment.yml` (conda) or `uv.lock` (uv); or the `Dockerfile`.
-2. **Smoke test (about a minute).** `python -m smart_buildings.run_environment --building building_train_8 --weather atlanta_1` confirms the install and reproduces the dimensions of §5.
+2. **Smoke test (about a minute).** `python -m smart_buildings.run_environment --building building_train_8 --weather atlanta_1` confirms the install and reproduces the dimensions of §6.
 3. **Profiling runs.** Five scenarios that span the extremes of §11, each under the four baselines for the full 8,640 steps (the `--steps` default; shorter runs are not comparable):
 
    | Scenario | Why |
@@ -1190,12 +1199,12 @@ images/                     figures used in the README (and in this report)
 - **Thermal mass** — heat stored in slab, walls and furniture; it enables pre-conditioning and coasting.
 - **Hybrid action** — a mix of discrete (on/off) and continuous (setpoint) components.
 - **Control volume (CV)** — one cell of the finite-difference thermal grid.
-- **Policy, POMDP, MPC** — see §15. **RC model, SINDy, symbolic regression** — see §7.2 and §16.3.
+- **Policy, POMDP, MPC** — see §15. **RC model, SINDy, symbolic regression** — see §8.2 and §16.3.
 - **Held-out set** — evaluation buildings and weather not shipped, drawn from the same generator.
 
 ---
 
-*Provenance.* §1–§3 and §10 come from the repo's README, docstrings and files; §7 and parts of §15 come from reading the simulator source (`vav.py`, `air_handler.py`, `boiler.py`, `hot_water_system.py`, `pump.py`, `thermostat.py`, `simulator.py`). §8, §9, §11 and the appendices are computed from the shipped YAML and `config.gin` files, the `.npy` grids, the weather CSVs and `baseline_returns.json`; §4–§6 and §13–§14 come from the environment's own field names, the rollouts and the geometry experiments listed in §20.1. The control-theory framing in §15 and everything from §16 on are our synthesis and proposal; claims about the method are hypotheses, not results. Baseline per-step numbers, derived facade U-values and heat capacities are computed from the shipped files.
+*Provenance.* §1–§4 and §11 come from the repo's README, docstrings and files and the Kaggle pages; §8 and parts of §15 come from reading the simulator source (`vav.py`, `air_handler.py`, `boiler.py`, `hot_water_system.py`, `pump.py`, `thermostat.py`, `simulator.py`). §9–§12 and the appendices are computed from the shipped YAML and `config.gin` files, the `.npy` grids, the weather CSVs and `baseline_returns.json`; §5–§7 and §13–§14 come from the environment's own field names, the rollouts and the geometry experiments listed in §20.1. The control-theory framing in §15 and everything from §16 on are our synthesis and proposal; claims about the method are hypotheses, not results. Baseline per-step numbers, derived facade U-values and heat capacities are computed from the shipped files.
 
 ## Appendix E. Every entry of the train_8 vectors
 
