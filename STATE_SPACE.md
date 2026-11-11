@@ -77,7 +77,7 @@ But learned control is hard to deploy:
 The simulator builds on Google's open-source Smart Buildings control simulator (see `NOTICE`, Apache 2.0). The competition authors (Judah Goldfeder and Ayush Rai, per `pyproject.toml`) added procedural building generation, material sampling, per-room control, real recorded weather and a unified scoring setup.
 
 ### 1.3 Our angle
-Reinforcement learning would have to rediscover building physics from noisy reward signals and may be brittle on buildings unlike its training set. Hand-tuned PID cannot anticipate and ignores cost. We take a third path. Since every building obeys the same energy-balance structure and differs only in a few parameters, we can **learn the structure once, compactly and in a readable form, and estimate the parameters of each new building as it runs**. A controller that plans with that model can anticipate, price its actions exactly, and be audited — and it should transfer, because the part that has to transfer is physics.
+Reinforcement learning would have to rediscover building physics from noisy reward signals, and hand-tuned PID cannot anticipate or weigh cost. We take a third path: every building obeys the same energy-balance structure and differs in a few parameters, so we learn the structure once, in readable form, from simulator data, and estimate each new building's parameters as it runs. §16 develops the idea.
 
 ---
 
@@ -1016,35 +1016,12 @@ Most numbers come from reading configs and source and from computing over the sh
 
 ### 20.2 Confirmed
 
-**By instantiating the environments [R].**
-- The observation length equals `6V + 15K + 58` for all six buildings (352, 703, 472, 652, 334, 283), independent of climate; a docstring's 271 for the smallest building is stale.
-- The action lengths are `3K+2+2V` continuous and `K+1` discrete, with specs `Box(−1, 1, …, float32)` and `Box(0, 1, …, int32)`; the index layout and the K+1-entry `pressure_indices` follow §5.2; per-zone fields are grouped by field name rather than by zone.
-- The metadata contains the keys listed in §6.5, including `floor_plan` and `zone_map` but no materials; `holidays` is empty and `time_zone` is `US/Pacific` everywhere.
+**By instantiating the environments [R].** The vector lengths, specs, index layout and metadata keys of §5–§6 were read from all six buildings (a docstring's 271 for the smallest observation is stale; it is 283). Beyond those:
 - A freshly reset building is finite and quiet: zones at 294 K, dampers at the 0.1 floor, reheat closed, airflow 0, hot-water loop at 340 K, no occupants (the strip starts on a Sunday), comfort flags 0. `env.step(action)` returns a tuple whose first two entries are the observation and the reward.
+- With a zero continuous action and every unit on, one simulated day gave a per-step reward of −0.130 to −0.116, worse than any tuned baseline mean, consistent with "zero is not off" (§5.2).
 - The smallest building simulates at roughly 100 steps per second, so a full episode takes about 90 seconds there; larger buildings are slower.
-- With a zero continuous action and every unit on, one simulated day gave a per-step reward of −0.130 to −0.116, worse than any tuned baseline mean, consistent with "zero is not off."
 
-**By the 600-step rollout [X].** `rollout_checks.py` runs `train_8` / `atlanta_1` for about 50 simulated hours, crossing the Monday 06:00 switch to comfort mode, with piecewise-random actions resampled every 12 steps and each AHU and the hot-water loop switched off about 15 % of the time. Results are in `outputs/rollout_train_8_checks.json`.
-
-| Question | Result |
-|---|---|
-| Are `exhaust_fan_run`, `supply_fan_run` and `supervisor_run` the same? | yes, for all three AHUs |
-| Are `discharge_fan_speed` and `supply_fan_speed` the same? | yes |
-| Are the airflow sensor and airflow setpoint the same? | yes |
-| Is the outside temperature the same in every AHU block? | yes |
-| Does the supply-air temperature sensor differ from its setpoint? | no: it is the setpoint at every step |
-| Does the AHU static-pressure sensor lag its setpoint? | no: equal when running, 0 when off |
-| Does the hot-water differential-pressure sensor lag? | no: equal to the native setpoint when running, 0 when off |
-| Does the supply-water temperature lag? | yes: +2.5 K per step at most up, −0.5 K down; equal to the setpoint 41 % of the time |
-| Echo of recirculation, AHU pressure | `min(native action, 0.7)`; `max(native action, 200 Pa)` when running, 0 when off |
-| Echo of AHU temperature, water temperature | the native action exactly |
-| VAV damper realized | `max(action, 0.1)` (6e-8 once the floor is applied; 0.2 without it) |
-| VAV reheat realized, box maximum airflow | equals the action (6e-8); 2.0 at every step |
-| Request counts | `cooling_request_count` = 10 (zones per AHU), `heating_request_count` = 30 (all zones) at every step |
-| Hot-water run command and run status | identical, in {−1, +1} |
-| Hot-water differential-pressure setpoint echo | `(native − 10)/6`, so it is normalized |
-| Comfort bounds versus the mode flag | the bounds change one step after `comfort_mode_now` |
-| Zone temperatures, occupants | 283.0–304.0 K under random actions; 0–57 of 60 occupants, nonzero on 30 % of steps (comfort mode on 30.2 %) |
+**By the 600-step rollout [X].** `rollout_checks.py` runs `train_8` / `atlanta_1` for about 50 simulated hours, crossing the Monday 06:00 switch to comfort mode, with piecewise-random actions resampled every 12 steps and each AHU and the hot-water loop switched off about 15 % of the time. It is the source of every "relation found [X]" in §6.1–§6.3 (which fields are duplicates, mirrors or constants, which echoes are floored, which signals have memory); results are in `outputs/rollout_train_8_checks.json`. Under these random actions zone temperatures ranged over 283.0–304.0 K, and occupants were nonzero on 30 % of steps (0–57 of 60; comfort mode on 30.2 %).
 
 **Geometry and hidden-state checks [X].** §14.1 (room numbering, types and floors from metadata alone) and §14.3 (envelope coupling by type).
 
