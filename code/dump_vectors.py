@@ -8,7 +8,7 @@ import csv, json, sys
 from pathlib import Path
 import numpy as np
 
-KIT = Path("/Users/srivathsan/Desktop/smart-buildings-starter-kit")
+KIT = Path(__import__("os").environ.get("STARTER_KIT", Path(__file__).resolve().parent.parent.parent / "smart-buildings-starter-kit"))
 OUT = Path(__file__).resolve().parent.parent / "outputs"
 sys.path.insert(0, str(KIT))
 from smart_buildings import evaluate as ev  # noqa: E402

@@ -5,7 +5,7 @@ Run from the starter-kit root:  <venv>/python <this file> [n_steps]
 import json, sys
 from pathlib import Path
 import numpy as np
-KIT = Path("/Users/srivathsan/Desktop/smart-buildings-starter-kit"); OUT = Path(__file__).resolve().parent.parent / "outputs"
+KIT = Path(__import__("os").environ.get("STARTER_KIT", Path(__file__).resolve().parent.parent.parent / "smart-buildings-starter-kit")); OUT = Path(__file__).resolve().parent.parent / "outputs"
 sys.path.insert(0, str(KIT)); from smart_buildings import evaluate as ev
 N = int(sys.argv[1]) if len(sys.argv) > 1 else 600
 d = KIT / "smart_buildings/training_scenarios/building_train_8/atlanta_1"
