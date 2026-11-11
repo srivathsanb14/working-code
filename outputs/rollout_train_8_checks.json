@@ -1,0 +1,115 @@
+{
+ "n_steps": 600,
+ "ahu1_exhaust_vs_supervisor_run": 0.0,
+ "ahu1_supplyfan_vs_supervisor_run": 0.0,
+ "ahu1_discharge_vs_supply_fan_speed": 0.0,
+ "ahu1_flow_sensor_vs_setpoint": 0.0,
+ "ahu1_supervisor_run_vs_discrete_action": 0.0,
+ "ahu1_satemp_echo_vs_action_native": 0.0,
+ "ahu1_pressure_echo_vs_action_native": 1725.970703125,
+ "ahu1_pressure_echo_vs_floor200": 1725.970703125,
+ "ahu1_recirc_echo_vs_action": 0.2837899327278137,
+ "ahu1_recirc_echo_vs_cap0.7": 0.0,
+ "ahu1_oat_vs_ahu1_oat": 0.0,
+ "ahu2_exhaust_vs_supervisor_run": 0.0,
+ "ahu2_supplyfan_vs_supervisor_run": 0.0,
+ "ahu2_discharge_vs_supply_fan_speed": 0.0,
+ "ahu2_flow_sensor_vs_setpoint": 0.0,
+ "ahu2_supervisor_run_vs_discrete_action": 0.0,
+ "ahu2_satemp_echo_vs_action_native": 0.0,
+ "ahu2_pressure_echo_vs_action_native": 1876.8953857421875,
+ "ahu2_pressure_echo_vs_floor200": 1876.8953857421875,
+ "ahu2_recirc_echo_vs_action": 0.2790910601615906,
+ "ahu2_recirc_echo_vs_cap0.7": 0.0,
+ "ahu2_oat_vs_ahu1_oat": 0.0,
+ "ahu3_exhaust_vs_supervisor_run": 0.0,
+ "ahu3_supplyfan_vs_supervisor_run": 0.0,
+ "ahu3_discharge_vs_supply_fan_speed": 0.0,
+ "ahu3_flow_sensor_vs_setpoint": 0.0,
+ "ahu3_supervisor_run_vs_discrete_action": 0.0,
+ "ahu3_satemp_echo_vs_action_native": 0.0,
+ "ahu3_pressure_echo_vs_action_native": 1849.3375244140625,
+ "ahu3_pressure_echo_vs_floor200": 1849.3375244140625,
+ "ahu3_recirc_echo_vs_action": 0.23401886224746704,
+ "ahu3_recirc_echo_vs_cap0.7": 0.0,
+ "ahu3_oat_vs_ahu1_oat": 0.0,
+ "hws_water_setpoint_echo_vs_action_native": 0.0,
+ "hws_dp_echo_range": [
+  -1.6666666269302368,
+  1.5872936248779297
+ ],
+ "hws_dp_native_action_range": [
+  0.5725377798080444,
+  19.523761749267578
+ ],
+ "hws_dp_echo_linear_fit_slope_intercept": [
+  0.14114011753848485,
+  -1.6631631261571704
+ ],
+ "hws_dp_echo_resid_after_fit": 2.4073378541289707,
+ "hws_dp_echo_vs_(native-10)/6_resid": 2.8385908603668213,
+ "hws_run_status_unique": [
+  -1.0,
+  1.0
+ ],
+ "hws_supervisor_run_command_unique": [
+  -1.0,
+  1.0
+ ],
+ "hws_supervisor_vs_discrete_action": 1.0,
+ "hws_runstatus_vs_supervisor": 0.0,
+ "vav_damper_realized_vs_action_raw": 0.19955658912658691,
+ "vav_damper_realized_vs_action_with_floor0.1": 5.960464477539063e-08,
+ "vav_reheat_realized_vs_action": 5.960464477539063e-08,
+ "vav_box_max_airflow_unique": [
+  2.0
+ ],
+ "vav_heating_setpoint_unique": [
+  289.0,
+  294.0
+ ],
+ "vav_cooling_setpoint_unique": [
+  297.0,
+  298.0
+ ],
+ "ahs_ahu_1_cooling_request_count_range": [
+  10.0,
+  10.0
+ ],
+ "hws_heating_request_count_range": [
+  30.0,
+  30.0
+ ],
+ "zone_temp_K_range_after_denorm": [
+  282.9781799316406,
+  303.9938049316406
+ ],
+ "ahu1_supply_air_temperature_sensor_range": [
+  285.0576477050781,
+  303.5430908203125
+ ],
+ "ahu1_supply_air_static_pressure_sensor_range": [
+  0.0,
+  1992.372314453125
+ ],
+ "ahu1_supply_air_flowrate_sensor_range": [
+  0.0,
+  12.026949882507324
+ ],
+ "ahu1_outside_air_flowrate_sensor_range": [
+  2.9999999242136255e-05,
+  11.65974235534668
+ ],
+ "ahu1_supply_fan_speed_percentage_command_range": [
+  4.999999873689376e-06,
+  0.6013475060462952
+ ],
+ "hws_supply_water_temperature_sensor_range": [
+  323.2834167480469,
+  349.98004150390625
+ ],
+ "num_occupants_range": [
+  0.0,
+  57.0
+ ]
+}

@@ -1,0 +1,284 @@
+index,field_id,role,use_in_dynamics_model,units_as_delivered,meaning,initial_value
+0,VAV_1_reheat_valve_percentage_command,INPUT (realized),YES - input,"(x-0.5)/0.5 -> [0,1]",reheat valve position = the action exactly (rollout-confirmed),-1.0
+1,VAV_1_supply_air_damper_percentage_command,INPUT (realized),YES - input,"(x-0.5)/0.5 -> [0,1]","damper position the box actually took = max(action, 0.1) (rollout-confirmed)",-0.800000011920929
+2,VAV_1_supply_air_flowrate_setpoint,CONSTANT (box parameter),parameter only,raw m3/s,box max airflow; 2.0 at every step (rollout-confirmed),2.0
+3,VAV_1_zone_air_cooling_temperature_setpoint_sensor,CONTEXT (comfort band),NO - reward/policy only,raw K,upper comfort bound (297 K comfort / 298 K eco); reported one step AFTER the mode flag changes,297.0
+4,VAV_1_zone_air_heating_temperature_setpoint_sensor,CONTEXT (comfort band),NO - reward/policy only,raw K,lower comfort bound (294 K comfort / 289 K eco); reported one step AFTER the mode flag changes,294.0
+5,VAV_1_zone_air_temperature_sensor,OUTPUT / STATE,YES - target,(T-295)/5 -> K,zone-average air temperature,-0.20000000298023224
+6,VAV_10_reheat_valve_percentage_command,INPUT (realized),YES - input,"(x-0.5)/0.5 -> [0,1]",reheat valve position = the action exactly (rollout-confirmed),-1.0
+7,VAV_10_supply_air_damper_percentage_command,INPUT (realized),YES - input,"(x-0.5)/0.5 -> [0,1]","damper position the box actually took = max(action, 0.1) (rollout-confirmed)",-0.800000011920929
+8,VAV_10_supply_air_flowrate_setpoint,CONSTANT (box parameter),parameter only,raw m3/s,box max airflow; 2.0 at every step (rollout-confirmed),2.0
+9,VAV_10_zone_air_cooling_temperature_setpoint_sensor,CONTEXT (comfort band),NO - reward/policy only,raw K,upper comfort bound (297 K comfort / 298 K eco); reported one step AFTER the mode flag changes,297.0
+10,VAV_10_zone_air_heating_temperature_setpoint_sensor,CONTEXT (comfort band),NO - reward/policy only,raw K,lower comfort bound (294 K comfort / 289 K eco); reported one step AFTER the mode flag changes,294.0
+11,VAV_10_zone_air_temperature_sensor,OUTPUT / STATE,YES - target,(T-295)/5 -> K,zone-average air temperature,-0.20000000298023224
+12,VAV_11_reheat_valve_percentage_command,INPUT (realized),YES - input,"(x-0.5)/0.5 -> [0,1]",reheat valve position = the action exactly (rollout-confirmed),-1.0
+13,VAV_11_supply_air_damper_percentage_command,INPUT (realized),YES - input,"(x-0.5)/0.5 -> [0,1]","damper position the box actually took = max(action, 0.1) (rollout-confirmed)",-0.800000011920929
+14,VAV_11_supply_air_flowrate_setpoint,CONSTANT (box parameter),parameter only,raw m3/s,box max airflow; 2.0 at every step (rollout-confirmed),2.0
+15,VAV_11_zone_air_cooling_temperature_setpoint_sensor,CONTEXT (comfort band),NO - reward/policy only,raw K,upper comfort bound (297 K comfort / 298 K eco); reported one step AFTER the mode flag changes,297.0
+16,VAV_11_zone_air_heating_temperature_setpoint_sensor,CONTEXT (comfort band),NO - reward/policy only,raw K,lower comfort bound (294 K comfort / 289 K eco); reported one step AFTER the mode flag changes,294.0
+17,VAV_11_zone_air_temperature_sensor,OUTPUT / STATE,YES - target,(T-295)/5 -> K,zone-average air temperature,-0.20000000298023224
+18,VAV_12_reheat_valve_percentage_command,INPUT (realized),YES - input,"(x-0.5)/0.5 -> [0,1]",reheat valve position = the action exactly (rollout-confirmed),-1.0
+19,VAV_12_supply_air_damper_percentage_command,INPUT (realized),YES - input,"(x-0.5)/0.5 -> [0,1]","damper position the box actually took = max(action, 0.1) (rollout-confirmed)",-0.800000011920929
+20,VAV_12_supply_air_flowrate_setpoint,CONSTANT (box parameter),parameter only,raw m3/s,box max airflow; 2.0 at every step (rollout-confirmed),2.0
+21,VAV_12_zone_air_cooling_temperature_setpoint_sensor,CONTEXT (comfort band),NO - reward/policy only,raw K,upper comfort bound (297 K comfort / 298 K eco); reported one step AFTER the mode flag changes,297.0
+22,VAV_12_zone_air_heating_temperature_setpoint_sensor,CONTEXT (comfort band),NO - reward/policy only,raw K,lower comfort bound (294 K comfort / 289 K eco); reported one step AFTER the mode flag changes,294.0
+23,VAV_12_zone_air_temperature_sensor,OUTPUT / STATE,YES - target,(T-295)/5 -> K,zone-average air temperature,-0.20000000298023224
+24,VAV_13_reheat_valve_percentage_command,INPUT (realized),YES - input,"(x-0.5)/0.5 -> [0,1]",reheat valve position = the action exactly (rollout-confirmed),-1.0
+25,VAV_13_supply_air_damper_percentage_command,INPUT (realized),YES - input,"(x-0.5)/0.5 -> [0,1]","damper position the box actually took = max(action, 0.1) (rollout-confirmed)",-0.800000011920929
+26,VAV_13_supply_air_flowrate_setpoint,CONSTANT (box parameter),parameter only,raw m3/s,box max airflow; 2.0 at every step (rollout-confirmed),2.0
+27,VAV_13_zone_air_cooling_temperature_setpoint_sensor,CONTEXT (comfort band),NO - reward/policy only,raw K,upper comfort bound (297 K comfort / 298 K eco); reported one step AFTER the mode flag changes,297.0
+28,VAV_13_zone_air_heating_temperature_setpoint_sensor,CONTEXT (comfort band),NO - reward/policy only,raw K,lower comfort bound (294 K comfort / 289 K eco); reported one step AFTER the mode flag changes,294.0
+29,VAV_13_zone_air_temperature_sensor,OUTPUT / STATE,YES - target,(T-295)/5 -> K,zone-average air temperature,-0.20000000298023224
+30,VAV_14_reheat_valve_percentage_command,INPUT (realized),YES - input,"(x-0.5)/0.5 -> [0,1]",reheat valve position = the action exactly (rollout-confirmed),-1.0
+31,VAV_14_supply_air_damper_percentage_command,INPUT (realized),YES - input,"(x-0.5)/0.5 -> [0,1]","damper position the box actually took = max(action, 0.1) (rollout-confirmed)",-0.800000011920929
+32,VAV_14_supply_air_flowrate_setpoint,CONSTANT (box parameter),parameter only,raw m3/s,box max airflow; 2.0 at every step (rollout-confirmed),2.0
+33,VAV_14_zone_air_cooling_temperature_setpoint_sensor,CONTEXT (comfort band),NO - reward/policy only,raw K,upper comfort bound (297 K comfort / 298 K eco); reported one step AFTER the mode flag changes,297.0
+34,VAV_14_zone_air_heating_temperature_setpoint_sensor,CONTEXT (comfort band),NO - reward/policy only,raw K,lower comfort bound (294 K comfort / 289 K eco); reported one step AFTER the mode flag changes,294.0
+35,VAV_14_zone_air_temperature_sensor,OUTPUT / STATE,YES - target,(T-295)/5 -> K,zone-average air temperature,-0.20000000298023224
+36,VAV_15_reheat_valve_percentage_command,INPUT (realized),YES - input,"(x-0.5)/0.5 -> [0,1]",reheat valve position = the action exactly (rollout-confirmed),-1.0
+37,VAV_15_supply_air_damper_percentage_command,INPUT (realized),YES - input,"(x-0.5)/0.5 -> [0,1]","damper position the box actually took = max(action, 0.1) (rollout-confirmed)",-0.800000011920929
+38,VAV_15_supply_air_flowrate_setpoint,CONSTANT (box parameter),parameter only,raw m3/s,box max airflow; 2.0 at every step (rollout-confirmed),2.0
+39,VAV_15_zone_air_cooling_temperature_setpoint_sensor,CONTEXT (comfort band),NO - reward/policy only,raw K,upper comfort bound (297 K comfort / 298 K eco); reported one step AFTER the mode flag changes,297.0
+40,VAV_15_zone_air_heating_temperature_setpoint_sensor,CONTEXT (comfort band),NO - reward/policy only,raw K,lower comfort bound (294 K comfort / 289 K eco); reported one step AFTER the mode flag changes,294.0
+41,VAV_15_zone_air_temperature_sensor,OUTPUT / STATE,YES - target,(T-295)/5 -> K,zone-average air temperature,-0.20000000298023224
+42,VAV_16_reheat_valve_percentage_command,INPUT (realized),YES - input,"(x-0.5)/0.5 -> [0,1]",reheat valve position = the action exactly (rollout-confirmed),-1.0
+43,VAV_16_supply_air_damper_percentage_command,INPUT (realized),YES - input,"(x-0.5)/0.5 -> [0,1]","damper position the box actually took = max(action, 0.1) (rollout-confirmed)",-0.800000011920929
+44,VAV_16_supply_air_flowrate_setpoint,CONSTANT (box parameter),parameter only,raw m3/s,box max airflow; 2.0 at every step (rollout-confirmed),2.0
+45,VAV_16_zone_air_cooling_temperature_setpoint_sensor,CONTEXT (comfort band),NO - reward/policy only,raw K,upper comfort bound (297 K comfort / 298 K eco); reported one step AFTER the mode flag changes,297.0
+46,VAV_16_zone_air_heating_temperature_setpoint_sensor,CONTEXT (comfort band),NO - reward/policy only,raw K,lower comfort bound (294 K comfort / 289 K eco); reported one step AFTER the mode flag changes,294.0
+47,VAV_16_zone_air_temperature_sensor,OUTPUT / STATE,YES - target,(T-295)/5 -> K,zone-average air temperature,-0.20000000298023224
+48,VAV_17_reheat_valve_percentage_command,INPUT (realized),YES - input,"(x-0.5)/0.5 -> [0,1]",reheat valve position = the action exactly (rollout-confirmed),-1.0
+49,VAV_17_supply_air_damper_percentage_command,INPUT (realized),YES - input,"(x-0.5)/0.5 -> [0,1]","damper position the box actually took = max(action, 0.1) (rollout-confirmed)",-0.800000011920929
+50,VAV_17_supply_air_flowrate_setpoint,CONSTANT (box parameter),parameter only,raw m3/s,box max airflow; 2.0 at every step (rollout-confirmed),2.0
+51,VAV_17_zone_air_cooling_temperature_setpoint_sensor,CONTEXT (comfort band),NO - reward/policy only,raw K,upper comfort bound (297 K comfort / 298 K eco); reported one step AFTER the mode flag changes,297.0
+52,VAV_17_zone_air_heating_temperature_setpoint_sensor,CONTEXT (comfort band),NO - reward/policy only,raw K,lower comfort bound (294 K comfort / 289 K eco); reported one step AFTER the mode flag changes,294.0
+53,VAV_17_zone_air_temperature_sensor,OUTPUT / STATE,YES - target,(T-295)/5 -> K,zone-average air temperature,-0.20000000298023224
+54,VAV_18_reheat_valve_percentage_command,INPUT (realized),YES - input,"(x-0.5)/0.5 -> [0,1]",reheat valve position = the action exactly (rollout-confirmed),-1.0
+55,VAV_18_supply_air_damper_percentage_command,INPUT (realized),YES - input,"(x-0.5)/0.5 -> [0,1]","damper position the box actually took = max(action, 0.1) (rollout-confirmed)",-0.800000011920929
+56,VAV_18_supply_air_flowrate_setpoint,CONSTANT (box parameter),parameter only,raw m3/s,box max airflow; 2.0 at every step (rollout-confirmed),2.0
+57,VAV_18_zone_air_cooling_temperature_setpoint_sensor,CONTEXT (comfort band),NO - reward/policy only,raw K,upper comfort bound (297 K comfort / 298 K eco); reported one step AFTER the mode flag changes,297.0
+58,VAV_18_zone_air_heating_temperature_setpoint_sensor,CONTEXT (comfort band),NO - reward/policy only,raw K,lower comfort bound (294 K comfort / 289 K eco); reported one step AFTER the mode flag changes,294.0
+59,VAV_18_zone_air_temperature_sensor,OUTPUT / STATE,YES - target,(T-295)/5 -> K,zone-average air temperature,-0.20000000298023224
+60,VAV_19_reheat_valve_percentage_command,INPUT (realized),YES - input,"(x-0.5)/0.5 -> [0,1]",reheat valve position = the action exactly (rollout-confirmed),-1.0
+61,VAV_19_supply_air_damper_percentage_command,INPUT (realized),YES - input,"(x-0.5)/0.5 -> [0,1]","damper position the box actually took = max(action, 0.1) (rollout-confirmed)",-0.800000011920929
+62,VAV_19_supply_air_flowrate_setpoint,CONSTANT (box parameter),parameter only,raw m3/s,box max airflow; 2.0 at every step (rollout-confirmed),2.0
+63,VAV_19_zone_air_cooling_temperature_setpoint_sensor,CONTEXT (comfort band),NO - reward/policy only,raw K,upper comfort bound (297 K comfort / 298 K eco); reported one step AFTER the mode flag changes,297.0
+64,VAV_19_zone_air_heating_temperature_setpoint_sensor,CONTEXT (comfort band),NO - reward/policy only,raw K,lower comfort bound (294 K comfort / 289 K eco); reported one step AFTER the mode flag changes,294.0
+65,VAV_19_zone_air_temperature_sensor,OUTPUT / STATE,YES - target,(T-295)/5 -> K,zone-average air temperature,-0.20000000298023224
+66,VAV_2_reheat_valve_percentage_command,INPUT (realized),YES - input,"(x-0.5)/0.5 -> [0,1]",reheat valve position = the action exactly (rollout-confirmed),-1.0
+67,VAV_2_supply_air_damper_percentage_command,INPUT (realized),YES - input,"(x-0.5)/0.5 -> [0,1]","damper position the box actually took = max(action, 0.1) (rollout-confirmed)",-0.800000011920929
+68,VAV_2_supply_air_flowrate_setpoint,CONSTANT (box parameter),parameter only,raw m3/s,box max airflow; 2.0 at every step (rollout-confirmed),2.0
+69,VAV_2_zone_air_cooling_temperature_setpoint_sensor,CONTEXT (comfort band),NO - reward/policy only,raw K,upper comfort bound (297 K comfort / 298 K eco); reported one step AFTER the mode flag changes,297.0
+70,VAV_2_zone_air_heating_temperature_setpoint_sensor,CONTEXT (comfort band),NO - reward/policy only,raw K,lower comfort bound (294 K comfort / 289 K eco); reported one step AFTER the mode flag changes,294.0
+71,VAV_2_zone_air_temperature_sensor,OUTPUT / STATE,YES - target,(T-295)/5 -> K,zone-average air temperature,-0.20000000298023224
+72,VAV_20_reheat_valve_percentage_command,INPUT (realized),YES - input,"(x-0.5)/0.5 -> [0,1]",reheat valve position = the action exactly (rollout-confirmed),-1.0
+73,VAV_20_supply_air_damper_percentage_command,INPUT (realized),YES - input,"(x-0.5)/0.5 -> [0,1]","damper position the box actually took = max(action, 0.1) (rollout-confirmed)",-0.800000011920929
+74,VAV_20_supply_air_flowrate_setpoint,CONSTANT (box parameter),parameter only,raw m3/s,box max airflow; 2.0 at every step (rollout-confirmed),2.0
+75,VAV_20_zone_air_cooling_temperature_setpoint_sensor,CONTEXT (comfort band),NO - reward/policy only,raw K,upper comfort bound (297 K comfort / 298 K eco); reported one step AFTER the mode flag changes,297.0
+76,VAV_20_zone_air_heating_temperature_setpoint_sensor,CONTEXT (comfort band),NO - reward/policy only,raw K,lower comfort bound (294 K comfort / 289 K eco); reported one step AFTER the mode flag changes,294.0
+77,VAV_20_zone_air_temperature_sensor,OUTPUT / STATE,YES - target,(T-295)/5 -> K,zone-average air temperature,-0.20000000298023224
+78,VAV_21_reheat_valve_percentage_command,INPUT (realized),YES - input,"(x-0.5)/0.5 -> [0,1]",reheat valve position = the action exactly (rollout-confirmed),-1.0
+79,VAV_21_supply_air_damper_percentage_command,INPUT (realized),YES - input,"(x-0.5)/0.5 -> [0,1]","damper position the box actually took = max(action, 0.1) (rollout-confirmed)",-0.800000011920929
+80,VAV_21_supply_air_flowrate_setpoint,CONSTANT (box parameter),parameter only,raw m3/s,box max airflow; 2.0 at every step (rollout-confirmed),2.0
+81,VAV_21_zone_air_cooling_temperature_setpoint_sensor,CONTEXT (comfort band),NO - reward/policy only,raw K,upper comfort bound (297 K comfort / 298 K eco); reported one step AFTER the mode flag changes,297.0
+82,VAV_21_zone_air_heating_temperature_setpoint_sensor,CONTEXT (comfort band),NO - reward/policy only,raw K,lower comfort bound (294 K comfort / 289 K eco); reported one step AFTER the mode flag changes,294.0
+83,VAV_21_zone_air_temperature_sensor,OUTPUT / STATE,YES - target,(T-295)/5 -> K,zone-average air temperature,-0.20000000298023224
+84,VAV_22_reheat_valve_percentage_command,INPUT (realized),YES - input,"(x-0.5)/0.5 -> [0,1]",reheat valve position = the action exactly (rollout-confirmed),-1.0
+85,VAV_22_supply_air_damper_percentage_command,INPUT (realized),YES - input,"(x-0.5)/0.5 -> [0,1]","damper position the box actually took = max(action, 0.1) (rollout-confirmed)",-0.800000011920929
+86,VAV_22_supply_air_flowrate_setpoint,CONSTANT (box parameter),parameter only,raw m3/s,box max airflow; 2.0 at every step (rollout-confirmed),2.0
+87,VAV_22_zone_air_cooling_temperature_setpoint_sensor,CONTEXT (comfort band),NO - reward/policy only,raw K,upper comfort bound (297 K comfort / 298 K eco); reported one step AFTER the mode flag changes,297.0
+88,VAV_22_zone_air_heating_temperature_setpoint_sensor,CONTEXT (comfort band),NO - reward/policy only,raw K,lower comfort bound (294 K comfort / 289 K eco); reported one step AFTER the mode flag changes,294.0
+89,VAV_22_zone_air_temperature_sensor,OUTPUT / STATE,YES - target,(T-295)/5 -> K,zone-average air temperature,-0.20000000298023224
+90,VAV_23_reheat_valve_percentage_command,INPUT (realized),YES - input,"(x-0.5)/0.5 -> [0,1]",reheat valve position = the action exactly (rollout-confirmed),-1.0
+91,VAV_23_supply_air_damper_percentage_command,INPUT (realized),YES - input,"(x-0.5)/0.5 -> [0,1]","damper position the box actually took = max(action, 0.1) (rollout-confirmed)",-0.800000011920929
+92,VAV_23_supply_air_flowrate_setpoint,CONSTANT (box parameter),parameter only,raw m3/s,box max airflow; 2.0 at every step (rollout-confirmed),2.0
+93,VAV_23_zone_air_cooling_temperature_setpoint_sensor,CONTEXT (comfort band),NO - reward/policy only,raw K,upper comfort bound (297 K comfort / 298 K eco); reported one step AFTER the mode flag changes,297.0
+94,VAV_23_zone_air_heating_temperature_setpoint_sensor,CONTEXT (comfort band),NO - reward/policy only,raw K,lower comfort bound (294 K comfort / 289 K eco); reported one step AFTER the mode flag changes,294.0
+95,VAV_23_zone_air_temperature_sensor,OUTPUT / STATE,YES - target,(T-295)/5 -> K,zone-average air temperature,-0.20000000298023224
+96,VAV_24_reheat_valve_percentage_command,INPUT (realized),YES - input,"(x-0.5)/0.5 -> [0,1]",reheat valve position = the action exactly (rollout-confirmed),-1.0
+97,VAV_24_supply_air_damper_percentage_command,INPUT (realized),YES - input,"(x-0.5)/0.5 -> [0,1]","damper position the box actually took = max(action, 0.1) (rollout-confirmed)",-0.800000011920929
+98,VAV_24_supply_air_flowrate_setpoint,CONSTANT (box parameter),parameter only,raw m3/s,box max airflow; 2.0 at every step (rollout-confirmed),2.0
+99,VAV_24_zone_air_cooling_temperature_setpoint_sensor,CONTEXT (comfort band),NO - reward/policy only,raw K,upper comfort bound (297 K comfort / 298 K eco); reported one step AFTER the mode flag changes,297.0
+100,VAV_24_zone_air_heating_temperature_setpoint_sensor,CONTEXT (comfort band),NO - reward/policy only,raw K,lower comfort bound (294 K comfort / 289 K eco); reported one step AFTER the mode flag changes,294.0
+101,VAV_24_zone_air_temperature_sensor,OUTPUT / STATE,YES - target,(T-295)/5 -> K,zone-average air temperature,-0.20000000298023224
+102,VAV_25_reheat_valve_percentage_command,INPUT (realized),YES - input,"(x-0.5)/0.5 -> [0,1]",reheat valve position = the action exactly (rollout-confirmed),-1.0
+103,VAV_25_supply_air_damper_percentage_command,INPUT (realized),YES - input,"(x-0.5)/0.5 -> [0,1]","damper position the box actually took = max(action, 0.1) (rollout-confirmed)",-0.800000011920929
+104,VAV_25_supply_air_flowrate_setpoint,CONSTANT (box parameter),parameter only,raw m3/s,box max airflow; 2.0 at every step (rollout-confirmed),2.0
+105,VAV_25_zone_air_cooling_temperature_setpoint_sensor,CONTEXT (comfort band),NO - reward/policy only,raw K,upper comfort bound (297 K comfort / 298 K eco); reported one step AFTER the mode flag changes,297.0
+106,VAV_25_zone_air_heating_temperature_setpoint_sensor,CONTEXT (comfort band),NO - reward/policy only,raw K,lower comfort bound (294 K comfort / 289 K eco); reported one step AFTER the mode flag changes,294.0
+107,VAV_25_zone_air_temperature_sensor,OUTPUT / STATE,YES - target,(T-295)/5 -> K,zone-average air temperature,-0.20000000298023224
+108,VAV_26_reheat_valve_percentage_command,INPUT (realized),YES - input,"(x-0.5)/0.5 -> [0,1]",reheat valve position = the action exactly (rollout-confirmed),-1.0
+109,VAV_26_supply_air_damper_percentage_command,INPUT (realized),YES - input,"(x-0.5)/0.5 -> [0,1]","damper position the box actually took = max(action, 0.1) (rollout-confirmed)",-0.800000011920929
+110,VAV_26_supply_air_flowrate_setpoint,CONSTANT (box parameter),parameter only,raw m3/s,box max airflow; 2.0 at every step (rollout-confirmed),2.0
+111,VAV_26_zone_air_cooling_temperature_setpoint_sensor,CONTEXT (comfort band),NO - reward/policy only,raw K,upper comfort bound (297 K comfort / 298 K eco); reported one step AFTER the mode flag changes,297.0
+112,VAV_26_zone_air_heating_temperature_setpoint_sensor,CONTEXT (comfort band),NO - reward/policy only,raw K,lower comfort bound (294 K comfort / 289 K eco); reported one step AFTER the mode flag changes,294.0
+113,VAV_26_zone_air_temperature_sensor,OUTPUT / STATE,YES - target,(T-295)/5 -> K,zone-average air temperature,-0.20000000298023224
+114,VAV_27_reheat_valve_percentage_command,INPUT (realized),YES - input,"(x-0.5)/0.5 -> [0,1]",reheat valve position = the action exactly (rollout-confirmed),-1.0
+115,VAV_27_supply_air_damper_percentage_command,INPUT (realized),YES - input,"(x-0.5)/0.5 -> [0,1]","damper position the box actually took = max(action, 0.1) (rollout-confirmed)",-0.800000011920929
+116,VAV_27_supply_air_flowrate_setpoint,CONSTANT (box parameter),parameter only,raw m3/s,box max airflow; 2.0 at every step (rollout-confirmed),2.0
+117,VAV_27_zone_air_cooling_temperature_setpoint_sensor,CONTEXT (comfort band),NO - reward/policy only,raw K,upper comfort bound (297 K comfort / 298 K eco); reported one step AFTER the mode flag changes,297.0
+118,VAV_27_zone_air_heating_temperature_setpoint_sensor,CONTEXT (comfort band),NO - reward/policy only,raw K,lower comfort bound (294 K comfort / 289 K eco); reported one step AFTER the mode flag changes,294.0
+119,VAV_27_zone_air_temperature_sensor,OUTPUT / STATE,YES - target,(T-295)/5 -> K,zone-average air temperature,-0.20000000298023224
+120,VAV_28_reheat_valve_percentage_command,INPUT (realized),YES - input,"(x-0.5)/0.5 -> [0,1]",reheat valve position = the action exactly (rollout-confirmed),-1.0
+121,VAV_28_supply_air_damper_percentage_command,INPUT (realized),YES - input,"(x-0.5)/0.5 -> [0,1]","damper position the box actually took = max(action, 0.1) (rollout-confirmed)",-0.800000011920929
+122,VAV_28_supply_air_flowrate_setpoint,CONSTANT (box parameter),parameter only,raw m3/s,box max airflow; 2.0 at every step (rollout-confirmed),2.0
+123,VAV_28_zone_air_cooling_temperature_setpoint_sensor,CONTEXT (comfort band),NO - reward/policy only,raw K,upper comfort bound (297 K comfort / 298 K eco); reported one step AFTER the mode flag changes,297.0
+124,VAV_28_zone_air_heating_temperature_setpoint_sensor,CONTEXT (comfort band),NO - reward/policy only,raw K,lower comfort bound (294 K comfort / 289 K eco); reported one step AFTER the mode flag changes,294.0
+125,VAV_28_zone_air_temperature_sensor,OUTPUT / STATE,YES - target,(T-295)/5 -> K,zone-average air temperature,-0.20000000298023224
+126,VAV_29_reheat_valve_percentage_command,INPUT (realized),YES - input,"(x-0.5)/0.5 -> [0,1]",reheat valve position = the action exactly (rollout-confirmed),-1.0
+127,VAV_29_supply_air_damper_percentage_command,INPUT (realized),YES - input,"(x-0.5)/0.5 -> [0,1]","damper position the box actually took = max(action, 0.1) (rollout-confirmed)",-0.800000011920929
+128,VAV_29_supply_air_flowrate_setpoint,CONSTANT (box parameter),parameter only,raw m3/s,box max airflow; 2.0 at every step (rollout-confirmed),2.0
+129,VAV_29_zone_air_cooling_temperature_setpoint_sensor,CONTEXT (comfort band),NO - reward/policy only,raw K,upper comfort bound (297 K comfort / 298 K eco); reported one step AFTER the mode flag changes,297.0
+130,VAV_29_zone_air_heating_temperature_setpoint_sensor,CONTEXT (comfort band),NO - reward/policy only,raw K,lower comfort bound (294 K comfort / 289 K eco); reported one step AFTER the mode flag changes,294.0
+131,VAV_29_zone_air_temperature_sensor,OUTPUT / STATE,YES - target,(T-295)/5 -> K,zone-average air temperature,-0.20000000298023224
+132,VAV_3_reheat_valve_percentage_command,INPUT (realized),YES - input,"(x-0.5)/0.5 -> [0,1]",reheat valve position = the action exactly (rollout-confirmed),-1.0
+133,VAV_3_supply_air_damper_percentage_command,INPUT (realized),YES - input,"(x-0.5)/0.5 -> [0,1]","damper position the box actually took = max(action, 0.1) (rollout-confirmed)",-0.800000011920929
+134,VAV_3_supply_air_flowrate_setpoint,CONSTANT (box parameter),parameter only,raw m3/s,box max airflow; 2.0 at every step (rollout-confirmed),2.0
+135,VAV_3_zone_air_cooling_temperature_setpoint_sensor,CONTEXT (comfort band),NO - reward/policy only,raw K,upper comfort bound (297 K comfort / 298 K eco); reported one step AFTER the mode flag changes,297.0
+136,VAV_3_zone_air_heating_temperature_setpoint_sensor,CONTEXT (comfort band),NO - reward/policy only,raw K,lower comfort bound (294 K comfort / 289 K eco); reported one step AFTER the mode flag changes,294.0
+137,VAV_3_zone_air_temperature_sensor,OUTPUT / STATE,YES - target,(T-295)/5 -> K,zone-average air temperature,-0.20000000298023224
+138,VAV_30_reheat_valve_percentage_command,INPUT (realized),YES - input,"(x-0.5)/0.5 -> [0,1]",reheat valve position = the action exactly (rollout-confirmed),-1.0
+139,VAV_30_supply_air_damper_percentage_command,INPUT (realized),YES - input,"(x-0.5)/0.5 -> [0,1]","damper position the box actually took = max(action, 0.1) (rollout-confirmed)",-0.800000011920929
+140,VAV_30_supply_air_flowrate_setpoint,CONSTANT (box parameter),parameter only,raw m3/s,box max airflow; 2.0 at every step (rollout-confirmed),2.0
+141,VAV_30_zone_air_cooling_temperature_setpoint_sensor,CONTEXT (comfort band),NO - reward/policy only,raw K,upper comfort bound (297 K comfort / 298 K eco); reported one step AFTER the mode flag changes,297.0
+142,VAV_30_zone_air_heating_temperature_setpoint_sensor,CONTEXT (comfort band),NO - reward/policy only,raw K,lower comfort bound (294 K comfort / 289 K eco); reported one step AFTER the mode flag changes,294.0
+143,VAV_30_zone_air_temperature_sensor,OUTPUT / STATE,YES - target,(T-295)/5 -> K,zone-average air temperature,-0.20000000298023224
+144,VAV_4_reheat_valve_percentage_command,INPUT (realized),YES - input,"(x-0.5)/0.5 -> [0,1]",reheat valve position = the action exactly (rollout-confirmed),-1.0
+145,VAV_4_supply_air_damper_percentage_command,INPUT (realized),YES - input,"(x-0.5)/0.5 -> [0,1]","damper position the box actually took = max(action, 0.1) (rollout-confirmed)",-0.800000011920929
+146,VAV_4_supply_air_flowrate_setpoint,CONSTANT (box parameter),parameter only,raw m3/s,box max airflow; 2.0 at every step (rollout-confirmed),2.0
+147,VAV_4_zone_air_cooling_temperature_setpoint_sensor,CONTEXT (comfort band),NO - reward/policy only,raw K,upper comfort bound (297 K comfort / 298 K eco); reported one step AFTER the mode flag changes,297.0
+148,VAV_4_zone_air_heating_temperature_setpoint_sensor,CONTEXT (comfort band),NO - reward/policy only,raw K,lower comfort bound (294 K comfort / 289 K eco); reported one step AFTER the mode flag changes,294.0
+149,VAV_4_zone_air_temperature_sensor,OUTPUT / STATE,YES - target,(T-295)/5 -> K,zone-average air temperature,-0.20000000298023224
+150,VAV_5_reheat_valve_percentage_command,INPUT (realized),YES - input,"(x-0.5)/0.5 -> [0,1]",reheat valve position = the action exactly (rollout-confirmed),-1.0
+151,VAV_5_supply_air_damper_percentage_command,INPUT (realized),YES - input,"(x-0.5)/0.5 -> [0,1]","damper position the box actually took = max(action, 0.1) (rollout-confirmed)",-0.800000011920929
+152,VAV_5_supply_air_flowrate_setpoint,CONSTANT (box parameter),parameter only,raw m3/s,box max airflow; 2.0 at every step (rollout-confirmed),2.0
+153,VAV_5_zone_air_cooling_temperature_setpoint_sensor,CONTEXT (comfort band),NO - reward/policy only,raw K,upper comfort bound (297 K comfort / 298 K eco); reported one step AFTER the mode flag changes,297.0
+154,VAV_5_zone_air_heating_temperature_setpoint_sensor,CONTEXT (comfort band),NO - reward/policy only,raw K,lower comfort bound (294 K comfort / 289 K eco); reported one step AFTER the mode flag changes,294.0
+155,VAV_5_zone_air_temperature_sensor,OUTPUT / STATE,YES - target,(T-295)/5 -> K,zone-average air temperature,-0.20000000298023224
+156,VAV_6_reheat_valve_percentage_command,INPUT (realized),YES - input,"(x-0.5)/0.5 -> [0,1]",reheat valve position = the action exactly (rollout-confirmed),-1.0
+157,VAV_6_supply_air_damper_percentage_command,INPUT (realized),YES - input,"(x-0.5)/0.5 -> [0,1]","damper position the box actually took = max(action, 0.1) (rollout-confirmed)",-0.800000011920929
+158,VAV_6_supply_air_flowrate_setpoint,CONSTANT (box parameter),parameter only,raw m3/s,box max airflow; 2.0 at every step (rollout-confirmed),2.0
+159,VAV_6_zone_air_cooling_temperature_setpoint_sensor,CONTEXT (comfort band),NO - reward/policy only,raw K,upper comfort bound (297 K comfort / 298 K eco); reported one step AFTER the mode flag changes,297.0
+160,VAV_6_zone_air_heating_temperature_setpoint_sensor,CONTEXT (comfort band),NO - reward/policy only,raw K,lower comfort bound (294 K comfort / 289 K eco); reported one step AFTER the mode flag changes,294.0
+161,VAV_6_zone_air_temperature_sensor,OUTPUT / STATE,YES - target,(T-295)/5 -> K,zone-average air temperature,-0.20000000298023224
+162,VAV_7_reheat_valve_percentage_command,INPUT (realized),YES - input,"(x-0.5)/0.5 -> [0,1]",reheat valve position = the action exactly (rollout-confirmed),-1.0
+163,VAV_7_supply_air_damper_percentage_command,INPUT (realized),YES - input,"(x-0.5)/0.5 -> [0,1]","damper position the box actually took = max(action, 0.1) (rollout-confirmed)",-0.800000011920929
+164,VAV_7_supply_air_flowrate_setpoint,CONSTANT (box parameter),parameter only,raw m3/s,box max airflow; 2.0 at every step (rollout-confirmed),2.0
+165,VAV_7_zone_air_cooling_temperature_setpoint_sensor,CONTEXT (comfort band),NO - reward/policy only,raw K,upper comfort bound (297 K comfort / 298 K eco); reported one step AFTER the mode flag changes,297.0
+166,VAV_7_zone_air_heating_temperature_setpoint_sensor,CONTEXT (comfort band),NO - reward/policy only,raw K,lower comfort bound (294 K comfort / 289 K eco); reported one step AFTER the mode flag changes,294.0
+167,VAV_7_zone_air_temperature_sensor,OUTPUT / STATE,YES - target,(T-295)/5 -> K,zone-average air temperature,-0.20000000298023224
+168,VAV_8_reheat_valve_percentage_command,INPUT (realized),YES - input,"(x-0.5)/0.5 -> [0,1]",reheat valve position = the action exactly (rollout-confirmed),-1.0
+169,VAV_8_supply_air_damper_percentage_command,INPUT (realized),YES - input,"(x-0.5)/0.5 -> [0,1]","damper position the box actually took = max(action, 0.1) (rollout-confirmed)",-0.800000011920929
+170,VAV_8_supply_air_flowrate_setpoint,CONSTANT (box parameter),parameter only,raw m3/s,box max airflow; 2.0 at every step (rollout-confirmed),2.0
+171,VAV_8_zone_air_cooling_temperature_setpoint_sensor,CONTEXT (comfort band),NO - reward/policy only,raw K,upper comfort bound (297 K comfort / 298 K eco); reported one step AFTER the mode flag changes,297.0
+172,VAV_8_zone_air_heating_temperature_setpoint_sensor,CONTEXT (comfort band),NO - reward/policy only,raw K,lower comfort bound (294 K comfort / 289 K eco); reported one step AFTER the mode flag changes,294.0
+173,VAV_8_zone_air_temperature_sensor,OUTPUT / STATE,YES - target,(T-295)/5 -> K,zone-average air temperature,-0.20000000298023224
+174,VAV_9_reheat_valve_percentage_command,INPUT (realized),YES - input,"(x-0.5)/0.5 -> [0,1]",reheat valve position = the action exactly (rollout-confirmed),-1.0
+175,VAV_9_supply_air_damper_percentage_command,INPUT (realized),YES - input,"(x-0.5)/0.5 -> [0,1]","damper position the box actually took = max(action, 0.1) (rollout-confirmed)",-0.800000011920929
+176,VAV_9_supply_air_flowrate_setpoint,CONSTANT (box parameter),parameter only,raw m3/s,box max airflow; 2.0 at every step (rollout-confirmed),2.0
+177,VAV_9_zone_air_cooling_temperature_setpoint_sensor,CONTEXT (comfort band),NO - reward/policy only,raw K,upper comfort bound (297 K comfort / 298 K eco); reported one step AFTER the mode flag changes,297.0
+178,VAV_9_zone_air_heating_temperature_setpoint_sensor,CONTEXT (comfort band),NO - reward/policy only,raw K,lower comfort bound (294 K comfort / 289 K eco); reported one step AFTER the mode flag changes,294.0
+179,VAV_9_zone_air_temperature_sensor,OUTPUT / STATE,YES - target,(T-295)/5 -> K,zone-average air temperature,-0.20000000298023224
+180,ahs_ahu_1_cooling_request_count,CONSTANT (rollout-confirmed),NO,raw count,= number of zones the AHU serves (10 for train_8) at every step of a 600-step random-action rollout,0.0
+181,ahs_ahu_1_discharge_fan_speed_percentage_command,DUPLICATE (rollout-confirmed),NO (redundant),"raw [0,1]",identical to supply_fan_speed_percentage_command at every step,0.0
+182,ahs_ahu_1_exhaust_fan_run_command,DUPLICATE (rollout-confirmed),NO (redundant),"raw {0,1}",identical to supervisor_run_command at every step,1.0
+183,ahs_ahu_1_outside_air_flowrate_sensor,ALGEBRAIC (derived),optional,raw m3/s,"outside-air (ventilation) flow, follows total flow and recirculation",0.0
+184,ahs_ahu_1_outside_air_temperature_sensor,EXOGENOUS (disturbance),YES - disturbance,raw K,outside air temperature; same number in every AHU block,271.45001220703125
+185,ahs_ahu_1_recirculation_percentage_command,INPUT (echo),NO - use the action,"raw [0,0.7]","= min(native action, 0.7) (rollout-confirmed)",0.30000001192092896
+186,ahs_ahu_1_supervisor_run_command,INPUT (echo),NO - use the action,"raw {0,1}",AHU on/off; equals the discrete action exactly,1.0
+187,ahs_ahu_1_supply_air_flowrate_sensor,ALGEBRAIC (derived from dampers + pressure),YES - intermediate signal,raw m3/s,total supply airflow; 0 when the unit is off,0.0
+188,ahs_ahu_1_supply_air_flowrate_setpoint,DUPLICATE (rollout-confirmed),NO (redundant),raw m3/s,identical to supply_air_flowrate_sensor at every step,0.0
+189,ahs_ahu_1_supply_air_static_pressure_sensor,ALGEBRAIC (= setpoint),NO - function of the action,raw Pa,"equals max(action, 200 Pa) when running and 0 when off, with no lag",1000.0
+190,ahs_ahu_1_supply_air_static_pressure_setpoint,INPUT (echo),NO - use the action,raw Pa,"= max(native action, 200 Pa) when running, 0 when off (rollout-confirmed)",1000.0
+191,ahs_ahu_1_supply_air_temperature_sensor,ALGEBRAIC (= setpoint),NO - function of the action,raw K,"mirrors the setpoint exactly in every step; the physical min(mixed air, setpoint) is NOT what is reported",298.0
+192,ahs_ahu_1_supply_air_temperature_setpoint,INPUT (echo),NO - use the action,raw K,equals the native action exactly (rollout-confirmed),298.0
+193,ahs_ahu_1_supply_fan_run_command,DUPLICATE (rollout-confirmed),NO (redundant),"raw {0,1}",identical to supervisor_run_command at every step,1.0
+194,ahs_ahu_1_supply_fan_speed_percentage_command,ALGEBRAIC (tracks flow),optional,"raw [0,1]",fan speed fraction; correlation 1.000 with supply airflow,0.0
+195,ahs_ahu_2_cooling_request_count,CONSTANT (rollout-confirmed),NO,raw count,= number of zones the AHU serves (10 for train_8) at every step of a 600-step random-action rollout,0.0
+196,ahs_ahu_2_discharge_fan_speed_percentage_command,DUPLICATE (rollout-confirmed),NO (redundant),"raw [0,1]",identical to supply_fan_speed_percentage_command at every step,0.0
+197,ahs_ahu_2_exhaust_fan_run_command,DUPLICATE (rollout-confirmed),NO (redundant),"raw {0,1}",identical to supervisor_run_command at every step,1.0
+198,ahs_ahu_2_outside_air_flowrate_sensor,ALGEBRAIC (derived),optional,raw m3/s,"outside-air (ventilation) flow, follows total flow and recirculation",0.0
+199,ahs_ahu_2_outside_air_temperature_sensor,EXOGENOUS (disturbance),YES - disturbance,raw K,outside air temperature; same number in every AHU block,271.45001220703125
+200,ahs_ahu_2_recirculation_percentage_command,INPUT (echo),NO - use the action,"raw [0,0.7]","= min(native action, 0.7) (rollout-confirmed)",0.30000001192092896
+201,ahs_ahu_2_supervisor_run_command,INPUT (echo),NO - use the action,"raw {0,1}",AHU on/off; equals the discrete action exactly,1.0
+202,ahs_ahu_2_supply_air_flowrate_sensor,ALGEBRAIC (derived from dampers + pressure),YES - intermediate signal,raw m3/s,total supply airflow; 0 when the unit is off,0.0
+203,ahs_ahu_2_supply_air_flowrate_setpoint,DUPLICATE (rollout-confirmed),NO (redundant),raw m3/s,identical to supply_air_flowrate_sensor at every step,0.0
+204,ahs_ahu_2_supply_air_static_pressure_sensor,ALGEBRAIC (= setpoint),NO - function of the action,raw Pa,"equals max(action, 200 Pa) when running and 0 when off, with no lag",1000.0
+205,ahs_ahu_2_supply_air_static_pressure_setpoint,INPUT (echo),NO - use the action,raw Pa,"= max(native action, 200 Pa) when running, 0 when off (rollout-confirmed)",1000.0
+206,ahs_ahu_2_supply_air_temperature_sensor,ALGEBRAIC (= setpoint),NO - function of the action,raw K,"mirrors the setpoint exactly in every step; the physical min(mixed air, setpoint) is NOT what is reported",298.0
+207,ahs_ahu_2_supply_air_temperature_setpoint,INPUT (echo),NO - use the action,raw K,equals the native action exactly (rollout-confirmed),298.0
+208,ahs_ahu_2_supply_fan_run_command,DUPLICATE (rollout-confirmed),NO (redundant),"raw {0,1}",identical to supervisor_run_command at every step,1.0
+209,ahs_ahu_2_supply_fan_speed_percentage_command,ALGEBRAIC (tracks flow),optional,"raw [0,1]",fan speed fraction; correlation 1.000 with supply airflow,0.0
+210,ahs_ahu_3_cooling_request_count,CONSTANT (rollout-confirmed),NO,raw count,= number of zones the AHU serves (10 for train_8) at every step of a 600-step random-action rollout,0.0
+211,ahs_ahu_3_discharge_fan_speed_percentage_command,DUPLICATE (rollout-confirmed),NO (redundant),"raw [0,1]",identical to supply_fan_speed_percentage_command at every step,0.0
+212,ahs_ahu_3_exhaust_fan_run_command,DUPLICATE (rollout-confirmed),NO (redundant),"raw {0,1}",identical to supervisor_run_command at every step,1.0
+213,ahs_ahu_3_outside_air_flowrate_sensor,ALGEBRAIC (derived),optional,raw m3/s,"outside-air (ventilation) flow, follows total flow and recirculation",0.0
+214,ahs_ahu_3_outside_air_temperature_sensor,EXOGENOUS (disturbance),YES - disturbance,raw K,outside air temperature; same number in every AHU block,271.45001220703125
+215,ahs_ahu_3_recirculation_percentage_command,INPUT (echo),NO - use the action,"raw [0,0.7]","= min(native action, 0.7) (rollout-confirmed)",0.30000001192092896
+216,ahs_ahu_3_supervisor_run_command,INPUT (echo),NO - use the action,"raw {0,1}",AHU on/off; equals the discrete action exactly,1.0
+217,ahs_ahu_3_supply_air_flowrate_sensor,ALGEBRAIC (derived from dampers + pressure),YES - intermediate signal,raw m3/s,total supply airflow; 0 when the unit is off,0.0
+218,ahs_ahu_3_supply_air_flowrate_setpoint,DUPLICATE (rollout-confirmed),NO (redundant),raw m3/s,identical to supply_air_flowrate_sensor at every step,0.0
+219,ahs_ahu_3_supply_air_static_pressure_sensor,ALGEBRAIC (= setpoint),NO - function of the action,raw Pa,"equals max(action, 200 Pa) when running and 0 when off, with no lag",1000.0
+220,ahs_ahu_3_supply_air_static_pressure_setpoint,INPUT (echo),NO - use the action,raw Pa,"= max(native action, 200 Pa) when running, 0 when off (rollout-confirmed)",1000.0
+221,ahs_ahu_3_supply_air_temperature_sensor,ALGEBRAIC (= setpoint),NO - function of the action,raw K,"mirrors the setpoint exactly in every step; the physical min(mixed air, setpoint) is NOT what is reported",298.0
+222,ahs_ahu_3_supply_air_temperature_setpoint,INPUT (echo),NO - use the action,raw K,equals the native action exactly (rollout-confirmed),298.0
+223,ahs_ahu_3_supply_fan_run_command,DUPLICATE (rollout-confirmed),NO (redundant),"raw {0,1}",identical to supervisor_run_command at every step,1.0
+224,ahs_ahu_3_supply_fan_speed_percentage_command,ALGEBRAIC (tracks flow),optional,"raw [0,1]",fan speed fraction; correlation 1.000 with supply airflow,0.0
+225,hws_differential_pressure_sensor,ALGEBRAIC (= setpoint),NO - function of the action,raw,"= native pump setpoint when running, 0 when off, no lag (rollout-confirmed)",0.5879999995231628
+226,hws_differential_pressure_setpoint,INPUT (echo),NO - use the action,normalized (x-10)/6,native pump setpoint when running; reads 0 (-1.667 normalized) when off (rollout-confirmed),-1.568666696548462
+227,hws_heating_request_count,CONSTANT (rollout-confirmed),NO,raw count,= total zone count (30 for train_8) at every step,0.0
+228,hws_run_status,INPUT (echo),NO (equals the hot-water run action),"{-1,+1} normalized",identical to hws_supervisor_run_command at every step,1.0
+229,hws_supervisor_run_command,INPUT (echo),NO - use the action,"{-1,+1} normalized","hot-water on/off: -1 = off, +1 = on",1.0
+230,hws_supply_water_temperature_sensor,PLANT STATE (true memory),YES - the one observed plant state,raw K,"ramp-limited: +2.5 K/step max up, -0.5 K/step max down; equals the setpoint only 41% of the time",340.0
+231,hws_supply_water_temperature_setpoint,INPUT (echo),NO - use the action,raw K,equals the native action exactly (rollout-confirmed),340.0
+232,hod_cos_000,EXOGENOUS (clock),YES - as 2 phases,"[-1,1]","phase-shifted cos/sin of hour-of-day or day-of-week (12 copies, redundant)",6.123234262925839e-17
+233,hod_cos_001,EXOGENOUS (clock),YES - as 2 phases,"[-1,1]","phase-shifted cos/sin of hour-of-day or day-of-week (12 copies, redundant)",-0.5
+234,hod_cos_002,EXOGENOUS (clock),YES - as 2 phases,"[-1,1]","phase-shifted cos/sin of hour-of-day or day-of-week (12 copies, redundant)",-0.8660253882408142
+235,hod_cos_003,EXOGENOUS (clock),YES - as 2 phases,"[-1,1]","phase-shifted cos/sin of hour-of-day or day-of-week (12 copies, redundant)",-1.0
+236,hod_cos_004,EXOGENOUS (clock),YES - as 2 phases,"[-1,1]","phase-shifted cos/sin of hour-of-day or day-of-week (12 copies, redundant)",-0.8660253882408142
+237,hod_cos_005,EXOGENOUS (clock),YES - as 2 phases,"[-1,1]","phase-shifted cos/sin of hour-of-day or day-of-week (12 copies, redundant)",-0.5
+238,hod_cos_006,EXOGENOUS (clock),YES - as 2 phases,"[-1,1]","phase-shifted cos/sin of hour-of-day or day-of-week (12 copies, redundant)",-1.8369701465288538e-16
+239,hod_cos_007,EXOGENOUS (clock),YES - as 2 phases,"[-1,1]","phase-shifted cos/sin of hour-of-day or day-of-week (12 copies, redundant)",0.5
+240,hod_cos_008,EXOGENOUS (clock),YES - as 2 phases,"[-1,1]","phase-shifted cos/sin of hour-of-day or day-of-week (12 copies, redundant)",0.8660253882408142
+241,hod_cos_009,EXOGENOUS (clock),YES - as 2 phases,"[-1,1]","phase-shifted cos/sin of hour-of-day or day-of-week (12 copies, redundant)",1.0
+242,hod_cos_010,EXOGENOUS (clock),YES - as 2 phases,"[-1,1]","phase-shifted cos/sin of hour-of-day or day-of-week (12 copies, redundant)",0.8660253882408142
+243,hod_cos_011,EXOGENOUS (clock),YES - as 2 phases,"[-1,1]","phase-shifted cos/sin of hour-of-day or day-of-week (12 copies, redundant)",0.5
+244,hod_sin_000,EXOGENOUS (clock),YES - as 2 phases,"[-1,1]","phase-shifted cos/sin of hour-of-day or day-of-week (12 copies, redundant)",1.0
+245,hod_sin_001,EXOGENOUS (clock),YES - as 2 phases,"[-1,1]","phase-shifted cos/sin of hour-of-day or day-of-week (12 copies, redundant)",0.8660253882408142
+246,hod_sin_002,EXOGENOUS (clock),YES - as 2 phases,"[-1,1]","phase-shifted cos/sin of hour-of-day or day-of-week (12 copies, redundant)",0.5
+247,hod_sin_003,EXOGENOUS (clock),YES - as 2 phases,"[-1,1]","phase-shifted cos/sin of hour-of-day or day-of-week (12 copies, redundant)",1.2246468525851679e-16
+248,hod_sin_004,EXOGENOUS (clock),YES - as 2 phases,"[-1,1]","phase-shifted cos/sin of hour-of-day or day-of-week (12 copies, redundant)",-0.5
+249,hod_sin_005,EXOGENOUS (clock),YES - as 2 phases,"[-1,1]","phase-shifted cos/sin of hour-of-day or day-of-week (12 copies, redundant)",-0.8660253882408142
+250,hod_sin_006,EXOGENOUS (clock),YES - as 2 phases,"[-1,1]","phase-shifted cos/sin of hour-of-day or day-of-week (12 copies, redundant)",-1.0
+251,hod_sin_007,EXOGENOUS (clock),YES - as 2 phases,"[-1,1]","phase-shifted cos/sin of hour-of-day or day-of-week (12 copies, redundant)",-0.8660253882408142
+252,hod_sin_008,EXOGENOUS (clock),YES - as 2 phases,"[-1,1]","phase-shifted cos/sin of hour-of-day or day-of-week (12 copies, redundant)",-0.5
+253,hod_sin_009,EXOGENOUS (clock),YES - as 2 phases,"[-1,1]","phase-shifted cos/sin of hour-of-day or day-of-week (12 copies, redundant)",-2.4492937051703357e-16
+254,hod_sin_010,EXOGENOUS (clock),YES - as 2 phases,"[-1,1]","phase-shifted cos/sin of hour-of-day or day-of-week (12 copies, redundant)",0.5
+255,hod_sin_011,EXOGENOUS (clock),YES - as 2 phases,"[-1,1]","phase-shifted cos/sin of hour-of-day or day-of-week (12 copies, redundant)",0.8660253882408142
+256,dow_cos_000,EXOGENOUS (clock),YES - as 2 phases,"[-1,1]","phase-shifted cos/sin of hour-of-day or day-of-week (12 copies, redundant)",0.6234897971153259
+257,dow_cos_001,EXOGENOUS (clock),YES - as 2 phases,"[-1,1]","phase-shifted cos/sin of hour-of-day or day-of-week (12 copies, redundant)",0.9308737516403198
+258,dow_cos_002,EXOGENOUS (clock),YES - as 2 phases,"[-1,1]","phase-shifted cos/sin of hour-of-day or day-of-week (12 copies, redundant)",0.9888308048248291
+259,dow_cos_003,EXOGENOUS (clock),YES - as 2 phases,"[-1,1]","phase-shifted cos/sin of hour-of-day or day-of-week (12 copies, redundant)",0.7818315029144287
+260,dow_cos_004,EXOGENOUS (clock),YES - as 2 phases,"[-1,1]","phase-shifted cos/sin of hour-of-day or day-of-week (12 copies, redundant)",0.36534103751182556
+261,dow_cos_005,EXOGENOUS (clock),YES - as 2 phases,"[-1,1]","phase-shifted cos/sin of hour-of-day or day-of-week (12 copies, redundant)",-0.1490422636270523
+262,dow_cos_006,EXOGENOUS (clock),YES - as 2 phases,"[-1,1]","phase-shifted cos/sin of hour-of-day or day-of-week (12 copies, redundant)",-0.6234897971153259
+263,dow_cos_007,EXOGENOUS (clock),YES - as 2 phases,"[-1,1]","phase-shifted cos/sin of hour-of-day or day-of-week (12 copies, redundant)",-0.9308737516403198
+264,dow_cos_008,EXOGENOUS (clock),YES - as 2 phases,"[-1,1]","phase-shifted cos/sin of hour-of-day or day-of-week (12 copies, redundant)",-0.9888308048248291
+265,dow_cos_009,EXOGENOUS (clock),YES - as 2 phases,"[-1,1]","phase-shifted cos/sin of hour-of-day or day-of-week (12 copies, redundant)",-0.7818315029144287
+266,dow_cos_010,EXOGENOUS (clock),YES - as 2 phases,"[-1,1]","phase-shifted cos/sin of hour-of-day or day-of-week (12 copies, redundant)",-0.36534103751182556
+267,dow_cos_011,EXOGENOUS (clock),YES - as 2 phases,"[-1,1]","phase-shifted cos/sin of hour-of-day or day-of-week (12 copies, redundant)",0.1490422636270523
+268,dow_sin_000,EXOGENOUS (clock),YES - as 2 phases,"[-1,1]","phase-shifted cos/sin of hour-of-day or day-of-week (12 copies, redundant)",-0.7818315029144287
+269,dow_sin_001,EXOGENOUS (clock),YES - as 2 phases,"[-1,1]","phase-shifted cos/sin of hour-of-day or day-of-week (12 copies, redundant)",-0.36534103751182556
+270,dow_sin_002,EXOGENOUS (clock),YES - as 2 phases,"[-1,1]","phase-shifted cos/sin of hour-of-day or day-of-week (12 copies, redundant)",0.1490422636270523
+271,dow_sin_003,EXOGENOUS (clock),YES - as 2 phases,"[-1,1]","phase-shifted cos/sin of hour-of-day or day-of-week (12 copies, redundant)",0.6234897971153259
+272,dow_sin_004,EXOGENOUS (clock),YES - as 2 phases,"[-1,1]","phase-shifted cos/sin of hour-of-day or day-of-week (12 copies, redundant)",0.9308737516403198
+273,dow_sin_005,EXOGENOUS (clock),YES - as 2 phases,"[-1,1]","phase-shifted cos/sin of hour-of-day or day-of-week (12 copies, redundant)",0.9888308048248291
+274,dow_sin_006,EXOGENOUS (clock),YES - as 2 phases,"[-1,1]","phase-shifted cos/sin of hour-of-day or day-of-week (12 copies, redundant)",0.7818315029144287
+275,dow_sin_007,EXOGENOUS (clock),YES - as 2 phases,"[-1,1]","phase-shifted cos/sin of hour-of-day or day-of-week (12 copies, redundant)",0.36534103751182556
+276,dow_sin_008,EXOGENOUS (clock),YES - as 2 phases,"[-1,1]","phase-shifted cos/sin of hour-of-day or day-of-week (12 copies, redundant)",-0.1490422636270523
+277,dow_sin_009,EXOGENOUS (clock),YES - as 2 phases,"[-1,1]","phase-shifted cos/sin of hour-of-day or day-of-week (12 copies, redundant)",-0.6234897971153259
+278,dow_sin_010,EXOGENOUS (clock),YES - as 2 phases,"[-1,1]","phase-shifted cos/sin of hour-of-day or day-of-week (12 copies, redundant)",-0.9308737516403198
+279,dow_sin_011,EXOGENOUS (clock),YES - as 2 phases,"[-1,1]","phase-shifted cos/sin of hour-of-day or day-of-week (12 copies, redundant)",-0.9888308048248291
+280,comfort_mode_now,CONTEXT (schedule),YES - cheap known disturbance proxy,"{0,1}",building in comfort mode now,0.0
+281,comfort_mode_soon,CONTEXT (schedule lookahead),NO - policy only,"{0,1}",comfort mode 60 min ahead,0.0
+282,num_occupants,EXOGENOUS (disturbance),YES - disturbance,raw count (normalization constant is 0),"building-total occupant count, not per zone (0-57 of 60 seen in the rollout)",0.0

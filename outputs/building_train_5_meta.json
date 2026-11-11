@@ -1,0 +1,460 @@
+{
+ "scenario": "atlanta_6",
+ "n_obs": 652,
+ "n_action_tuples": 193,
+ "action_spec_keys": [
+  "continuous_action",
+  "discrete_action"
+ ],
+ "action_indices": {
+  "temp_indices": [
+   0,
+   3,
+   6,
+   9,
+   12,
+   15,
+   18,
+   21
+  ],
+  "pressure_indices": [
+   1,
+   4,
+   7,
+   10,
+   13,
+   16,
+   19,
+   22,
+   25
+  ],
+  "water_indices": [
+   24
+  ],
+  "recirculation_indices": [
+   2,
+   5,
+   8,
+   11,
+   14,
+   17,
+   20,
+   23
+  ],
+  "zone_action_indices": {
+   "VAV_1": {
+    "supply_air_damper_percentage_command": 26,
+    "reheat_valve_percentage_command": 27
+   },
+   "VAV_10": {
+    "supply_air_damper_percentage_command": 28,
+    "reheat_valve_percentage_command": 29
+   },
+   "VAV_11": {
+    "supply_air_damper_percentage_command": 30,
+    "reheat_valve_percentage_command": 31
+   },
+   "VAV_12": {
+    "supply_air_damper_percentage_command": 32,
+    "reheat_valve_percentage_command": 33
+   },
+   "VAV_13": {
+    "supply_air_damper_percentage_command": 34,
+    "reheat_valve_percentage_command": 35
+   },
+   "VAV_14": {
+    "supply_air_damper_percentage_command": 36,
+    "reheat_valve_percentage_command": 37
+   },
+   "VAV_15": {
+    "supply_air_damper_percentage_command": 38,
+    "reheat_valve_percentage_command": 39
+   },
+   "VAV_16": {
+    "supply_air_damper_percentage_command": 40,
+    "reheat_valve_percentage_command": 41
+   },
+   "VAV_17": {
+    "supply_air_damper_percentage_command": 42,
+    "reheat_valve_percentage_command": 43
+   },
+   "VAV_18": {
+    "supply_air_damper_percentage_command": 44,
+    "reheat_valve_percentage_command": 45
+   },
+   "VAV_19": {
+    "supply_air_damper_percentage_command": 46,
+    "reheat_valve_percentage_command": 47
+   },
+   "VAV_2": {
+    "supply_air_damper_percentage_command": 48,
+    "reheat_valve_percentage_command": 49
+   },
+   "VAV_20": {
+    "supply_air_damper_percentage_command": 50,
+    "reheat_valve_percentage_command": 51
+   },
+   "VAV_21": {
+    "supply_air_damper_percentage_command": 52,
+    "reheat_valve_percentage_command": 53
+   },
+   "VAV_22": {
+    "supply_air_damper_percentage_command": 54,
+    "reheat_valve_percentage_command": 55
+   },
+   "VAV_23": {
+    "supply_air_damper_percentage_command": 56,
+    "reheat_valve_percentage_command": 57
+   },
+   "VAV_24": {
+    "supply_air_damper_percentage_command": 58,
+    "reheat_valve_percentage_command": 59
+   },
+   "VAV_25": {
+    "supply_air_damper_percentage_command": 60,
+    "reheat_valve_percentage_command": 61
+   },
+   "VAV_26": {
+    "supply_air_damper_percentage_command": 62,
+    "reheat_valve_percentage_command": 63
+   },
+   "VAV_27": {
+    "supply_air_damper_percentage_command": 64,
+    "reheat_valve_percentage_command": 65
+   },
+   "VAV_28": {
+    "supply_air_damper_percentage_command": 66,
+    "reheat_valve_percentage_command": 67
+   },
+   "VAV_29": {
+    "supply_air_damper_percentage_command": 68,
+    "reheat_valve_percentage_command": 69
+   },
+   "VAV_3": {
+    "supply_air_damper_percentage_command": 70,
+    "reheat_valve_percentage_command": 71
+   },
+   "VAV_30": {
+    "supply_air_damper_percentage_command": 72,
+    "reheat_valve_percentage_command": 73
+   },
+   "VAV_31": {
+    "supply_air_damper_percentage_command": 74,
+    "reheat_valve_percentage_command": 75
+   },
+   "VAV_32": {
+    "supply_air_damper_percentage_command": 76,
+    "reheat_valve_percentage_command": 77
+   },
+   "VAV_33": {
+    "supply_air_damper_percentage_command": 78,
+    "reheat_valve_percentage_command": 79
+   },
+   "VAV_34": {
+    "supply_air_damper_percentage_command": 80,
+    "reheat_valve_percentage_command": 81
+   },
+   "VAV_35": {
+    "supply_air_damper_percentage_command": 82,
+    "reheat_valve_percentage_command": 83
+   },
+   "VAV_36": {
+    "supply_air_damper_percentage_command": 84,
+    "reheat_valve_percentage_command": 85
+   },
+   "VAV_37": {
+    "supply_air_damper_percentage_command": 86,
+    "reheat_valve_percentage_command": 87
+   },
+   "VAV_38": {
+    "supply_air_damper_percentage_command": 88,
+    "reheat_valve_percentage_command": 89
+   },
+   "VAV_39": {
+    "supply_air_damper_percentage_command": 90,
+    "reheat_valve_percentage_command": 91
+   },
+   "VAV_4": {
+    "supply_air_damper_percentage_command": 92,
+    "reheat_valve_percentage_command": 93
+   },
+   "VAV_40": {
+    "supply_air_damper_percentage_command": 94,
+    "reheat_valve_percentage_command": 95
+   },
+   "VAV_41": {
+    "supply_air_damper_percentage_command": 96,
+    "reheat_valve_percentage_command": 97
+   },
+   "VAV_42": {
+    "supply_air_damper_percentage_command": 98,
+    "reheat_valve_percentage_command": 99
+   },
+   "VAV_43": {
+    "supply_air_damper_percentage_command": 100,
+    "reheat_valve_percentage_command": 101
+   },
+   "VAV_44": {
+    "supply_air_damper_percentage_command": 102,
+    "reheat_valve_percentage_command": 103
+   },
+   "VAV_45": {
+    "supply_air_damper_percentage_command": 104,
+    "reheat_valve_percentage_command": 105
+   },
+   "VAV_46": {
+    "supply_air_damper_percentage_command": 106,
+    "reheat_valve_percentage_command": 107
+   },
+   "VAV_47": {
+    "supply_air_damper_percentage_command": 108,
+    "reheat_valve_percentage_command": 109
+   },
+   "VAV_48": {
+    "supply_air_damper_percentage_command": 110,
+    "reheat_valve_percentage_command": 111
+   },
+   "VAV_49": {
+    "supply_air_damper_percentage_command": 112,
+    "reheat_valve_percentage_command": 113
+   },
+   "VAV_5": {
+    "supply_air_damper_percentage_command": 114,
+    "reheat_valve_percentage_command": 115
+   },
+   "VAV_50": {
+    "supply_air_damper_percentage_command": 116,
+    "reheat_valve_percentage_command": 117
+   },
+   "VAV_51": {
+    "supply_air_damper_percentage_command": 118,
+    "reheat_valve_percentage_command": 119
+   },
+   "VAV_52": {
+    "supply_air_damper_percentage_command": 120,
+    "reheat_valve_percentage_command": 121
+   },
+   "VAV_53": {
+    "supply_air_damper_percentage_command": 122,
+    "reheat_valve_percentage_command": 123
+   },
+   "VAV_54": {
+    "supply_air_damper_percentage_command": 124,
+    "reheat_valve_percentage_command": 125
+   },
+   "VAV_55": {
+    "supply_air_damper_percentage_command": 126,
+    "reheat_valve_percentage_command": 127
+   },
+   "VAV_56": {
+    "supply_air_damper_percentage_command": 128,
+    "reheat_valve_percentage_command": 129
+   },
+   "VAV_57": {
+    "supply_air_damper_percentage_command": 130,
+    "reheat_valve_percentage_command": 131
+   },
+   "VAV_58": {
+    "supply_air_damper_percentage_command": 132,
+    "reheat_valve_percentage_command": 133
+   },
+   "VAV_59": {
+    "supply_air_damper_percentage_command": 134,
+    "reheat_valve_percentage_command": 135
+   },
+   "VAV_6": {
+    "supply_air_damper_percentage_command": 136,
+    "reheat_valve_percentage_command": 137
+   },
+   "VAV_60": {
+    "supply_air_damper_percentage_command": 138,
+    "reheat_valve_percentage_command": 139
+   },
+   "VAV_61": {
+    "supply_air_damper_percentage_command": 140,
+    "reheat_valve_percentage_command": 141
+   },
+   "VAV_62": {
+    "supply_air_damper_percentage_command": 142,
+    "reheat_valve_percentage_command": 143
+   },
+   "VAV_63": {
+    "supply_air_damper_percentage_command": 144,
+    "reheat_valve_percentage_command": 145
+   },
+   "VAV_64": {
+    "supply_air_damper_percentage_command": 146,
+    "reheat_valve_percentage_command": 147
+   },
+   "VAV_65": {
+    "supply_air_damper_percentage_command": 148,
+    "reheat_valve_percentage_command": 149
+   },
+   "VAV_66": {
+    "supply_air_damper_percentage_command": 150,
+    "reheat_valve_percentage_command": 151
+   },
+   "VAV_67": {
+    "supply_air_damper_percentage_command": 152,
+    "reheat_valve_percentage_command": 153
+   },
+   "VAV_68": {
+    "supply_air_damper_percentage_command": 154,
+    "reheat_valve_percentage_command": 155
+   },
+   "VAV_69": {
+    "supply_air_damper_percentage_command": 156,
+    "reheat_valve_percentage_command": 157
+   },
+   "VAV_7": {
+    "supply_air_damper_percentage_command": 158,
+    "reheat_valve_percentage_command": 159
+   },
+   "VAV_70": {
+    "supply_air_damper_percentage_command": 160,
+    "reheat_valve_percentage_command": 161
+   },
+   "VAV_71": {
+    "supply_air_damper_percentage_command": 162,
+    "reheat_valve_percentage_command": 163
+   },
+   "VAV_72": {
+    "supply_air_damper_percentage_command": 164,
+    "reheat_valve_percentage_command": 165
+   },
+   "VAV_73": {
+    "supply_air_damper_percentage_command": 166,
+    "reheat_valve_percentage_command": 167
+   },
+   "VAV_74": {
+    "supply_air_damper_percentage_command": 168,
+    "reheat_valve_percentage_command": 169
+   },
+   "VAV_75": {
+    "supply_air_damper_percentage_command": 170,
+    "reheat_valve_percentage_command": 171
+   },
+   "VAV_76": {
+    "supply_air_damper_percentage_command": 172,
+    "reheat_valve_percentage_command": 173
+   },
+   "VAV_77": {
+    "supply_air_damper_percentage_command": 174,
+    "reheat_valve_percentage_command": 175
+   },
+   "VAV_78": {
+    "supply_air_damper_percentage_command": 176,
+    "reheat_valve_percentage_command": 177
+   },
+   "VAV_79": {
+    "supply_air_damper_percentage_command": 178,
+    "reheat_valve_percentage_command": 179
+   },
+   "VAV_8": {
+    "supply_air_damper_percentage_command": 180,
+    "reheat_valve_percentage_command": 181
+   },
+   "VAV_9": {
+    "supply_air_damper_percentage_command": 182,
+    "reheat_valve_percentage_command": 183
+   }
+  }
+ },
+ "ahu_zone_assignments": {
+  "ahu_1": [
+   "room_1",
+   "room_2",
+   "room_3",
+   "room_4",
+   "room_5",
+   "room_6",
+   "room_7",
+   "room_8",
+   "room_9"
+  ],
+  "ahu_2": [
+   "room_10",
+   "room_11",
+   "room_12",
+   "room_13",
+   "room_14",
+   "room_15",
+   "room_16",
+   "room_17",
+   "room_18",
+   "room_19"
+  ],
+  "ahu_3": [
+   "room_20",
+   "room_21",
+   "room_22",
+   "room_23",
+   "room_24",
+   "room_25",
+   "room_26",
+   "room_27",
+   "room_28",
+   "room_29"
+  ],
+  "ahu_4": [
+   "room_30",
+   "room_31",
+   "room_32",
+   "room_33",
+   "room_34",
+   "room_35",
+   "room_36",
+   "room_37",
+   "room_38",
+   "room_39"
+  ],
+  "ahu_5": [
+   "room_40",
+   "room_41",
+   "room_42",
+   "room_43",
+   "room_44",
+   "room_45",
+   "room_46",
+   "room_47",
+   "room_48",
+   "room_49"
+  ],
+  "ahu_6": [
+   "room_50",
+   "room_51",
+   "room_52",
+   "room_53",
+   "room_54",
+   "room_55",
+   "room_56",
+   "room_57",
+   "room_58",
+   "room_59"
+  ],
+  "ahu_7": [
+   "room_60",
+   "room_61",
+   "room_62",
+   "room_63",
+   "room_64",
+   "room_65",
+   "room_66",
+   "room_67",
+   "room_68",
+   "room_69"
+  ],
+  "ahu_8": [
+   "room_70",
+   "room_71",
+   "room_72",
+   "room_73",
+   "room_74",
+   "room_75",
+   "room_76",
+   "room_77",
+   "room_78",
+   "room_79"
+  ]
+ }
+}

@@ -1,0 +1,194 @@
+tuple_index,kind_index,kind,device_id,setpoint_name,role,use_in_dynamics_model,units,meaning
+0,0,discrete,ahs,ahu_1_supervisor_run_command,DISCRETE INPUT,YES - input,"{0,1}",on/off for AHU
+1,0,continuous,ahs,ahu_1_supply_air_temperature_setpoint,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",supply-air temperature target 285-305 K
+2,1,continuous,ahs,ahu_1_supply_air_static_pressure_setpoint,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",fan static-pressure target 0-2000 Pa (floor 200 Pa)
+3,2,continuous,ahs,ahu_1_recirculation_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",return-air share 0-1 (cap 0.7)
+4,1,discrete,ahs,ahu_2_supervisor_run_command,DISCRETE INPUT,YES - input,"{0,1}",on/off for AHU
+5,3,continuous,ahs,ahu_2_supply_air_temperature_setpoint,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",supply-air temperature target 285-305 K
+6,4,continuous,ahs,ahu_2_supply_air_static_pressure_setpoint,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",fan static-pressure target 0-2000 Pa (floor 200 Pa)
+7,5,continuous,ahs,ahu_2_recirculation_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",return-air share 0-1 (cap 0.7)
+8,2,discrete,ahs,ahu_3_supervisor_run_command,DISCRETE INPUT,YES - input,"{0,1}",on/off for AHU
+9,6,continuous,ahs,ahu_3_supply_air_temperature_setpoint,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",supply-air temperature target 285-305 K
+10,7,continuous,ahs,ahu_3_supply_air_static_pressure_setpoint,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",fan static-pressure target 0-2000 Pa (floor 200 Pa)
+11,8,continuous,ahs,ahu_3_recirculation_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",return-air share 0-1 (cap 0.7)
+12,3,discrete,ahs,ahu_4_supervisor_run_command,DISCRETE INPUT,YES - input,"{0,1}",on/off for AHU
+13,9,continuous,ahs,ahu_4_supply_air_temperature_setpoint,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",supply-air temperature target 285-305 K
+14,10,continuous,ahs,ahu_4_supply_air_static_pressure_setpoint,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",fan static-pressure target 0-2000 Pa (floor 200 Pa)
+15,11,continuous,ahs,ahu_4_recirculation_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",return-air share 0-1 (cap 0.7)
+16,4,discrete,ahs,ahu_5_supervisor_run_command,DISCRETE INPUT,YES - input,"{0,1}",on/off for AHU
+17,12,continuous,ahs,ahu_5_supply_air_temperature_setpoint,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",supply-air temperature target 285-305 K
+18,13,continuous,ahs,ahu_5_supply_air_static_pressure_setpoint,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",fan static-pressure target 0-2000 Pa (floor 200 Pa)
+19,14,continuous,ahs,ahu_5_recirculation_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",return-air share 0-1 (cap 0.7)
+20,5,discrete,ahs,ahu_6_supervisor_run_command,DISCRETE INPUT,YES - input,"{0,1}",on/off for AHU
+21,15,continuous,ahs,ahu_6_supply_air_temperature_setpoint,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",supply-air temperature target 285-305 K
+22,16,continuous,ahs,ahu_6_supply_air_static_pressure_setpoint,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",fan static-pressure target 0-2000 Pa (floor 200 Pa)
+23,17,continuous,ahs,ahu_6_recirculation_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",return-air share 0-1 (cap 0.7)
+24,6,discrete,ahs,ahu_7_supervisor_run_command,DISCRETE INPUT,YES - input,"{0,1}",on/off for AHU
+25,18,continuous,ahs,ahu_7_supply_air_temperature_setpoint,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",supply-air temperature target 285-305 K
+26,19,continuous,ahs,ahu_7_supply_air_static_pressure_setpoint,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",fan static-pressure target 0-2000 Pa (floor 200 Pa)
+27,20,continuous,ahs,ahu_7_recirculation_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",return-air share 0-1 (cap 0.7)
+28,7,discrete,ahs,ahu_8_supervisor_run_command,DISCRETE INPUT,YES - input,"{0,1}",on/off for AHU
+29,21,continuous,ahs,ahu_8_supply_air_temperature_setpoint,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",supply-air temperature target 285-305 K
+30,22,continuous,ahs,ahu_8_supply_air_static_pressure_setpoint,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",fan static-pressure target 0-2000 Pa (floor 200 Pa)
+31,23,continuous,ahs,ahu_8_recirculation_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",return-air share 0-1 (cap 0.7)
+32,8,discrete,hws,supervisor_run_command,DISCRETE INPUT,YES - input,"{0,1}",on/off for hot-water loop
+33,24,continuous,hws,supply_water_temperature_setpoint,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",loop water temperature target 310-350 K
+34,25,continuous,hws,differential_pressure_setpoint,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",pump head target 0-20
+35,26,continuous,VAV_1,supply_air_damper_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV damper 0-1 (floor 0.1)
+36,27,continuous,VAV_1,reheat_valve_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV reheat valve 0-1
+37,28,continuous,VAV_10,supply_air_damper_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV damper 0-1 (floor 0.1)
+38,29,continuous,VAV_10,reheat_valve_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV reheat valve 0-1
+39,30,continuous,VAV_11,supply_air_damper_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV damper 0-1 (floor 0.1)
+40,31,continuous,VAV_11,reheat_valve_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV reheat valve 0-1
+41,32,continuous,VAV_12,supply_air_damper_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV damper 0-1 (floor 0.1)
+42,33,continuous,VAV_12,reheat_valve_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV reheat valve 0-1
+43,34,continuous,VAV_13,supply_air_damper_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV damper 0-1 (floor 0.1)
+44,35,continuous,VAV_13,reheat_valve_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV reheat valve 0-1
+45,36,continuous,VAV_14,supply_air_damper_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV damper 0-1 (floor 0.1)
+46,37,continuous,VAV_14,reheat_valve_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV reheat valve 0-1
+47,38,continuous,VAV_15,supply_air_damper_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV damper 0-1 (floor 0.1)
+48,39,continuous,VAV_15,reheat_valve_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV reheat valve 0-1
+49,40,continuous,VAV_16,supply_air_damper_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV damper 0-1 (floor 0.1)
+50,41,continuous,VAV_16,reheat_valve_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV reheat valve 0-1
+51,42,continuous,VAV_17,supply_air_damper_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV damper 0-1 (floor 0.1)
+52,43,continuous,VAV_17,reheat_valve_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV reheat valve 0-1
+53,44,continuous,VAV_18,supply_air_damper_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV damper 0-1 (floor 0.1)
+54,45,continuous,VAV_18,reheat_valve_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV reheat valve 0-1
+55,46,continuous,VAV_19,supply_air_damper_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV damper 0-1 (floor 0.1)
+56,47,continuous,VAV_19,reheat_valve_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV reheat valve 0-1
+57,48,continuous,VAV_2,supply_air_damper_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV damper 0-1 (floor 0.1)
+58,49,continuous,VAV_2,reheat_valve_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV reheat valve 0-1
+59,50,continuous,VAV_20,supply_air_damper_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV damper 0-1 (floor 0.1)
+60,51,continuous,VAV_20,reheat_valve_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV reheat valve 0-1
+61,52,continuous,VAV_21,supply_air_damper_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV damper 0-1 (floor 0.1)
+62,53,continuous,VAV_21,reheat_valve_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV reheat valve 0-1
+63,54,continuous,VAV_22,supply_air_damper_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV damper 0-1 (floor 0.1)
+64,55,continuous,VAV_22,reheat_valve_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV reheat valve 0-1
+65,56,continuous,VAV_23,supply_air_damper_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV damper 0-1 (floor 0.1)
+66,57,continuous,VAV_23,reheat_valve_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV reheat valve 0-1
+67,58,continuous,VAV_24,supply_air_damper_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV damper 0-1 (floor 0.1)
+68,59,continuous,VAV_24,reheat_valve_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV reheat valve 0-1
+69,60,continuous,VAV_25,supply_air_damper_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV damper 0-1 (floor 0.1)
+70,61,continuous,VAV_25,reheat_valve_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV reheat valve 0-1
+71,62,continuous,VAV_26,supply_air_damper_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV damper 0-1 (floor 0.1)
+72,63,continuous,VAV_26,reheat_valve_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV reheat valve 0-1
+73,64,continuous,VAV_27,supply_air_damper_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV damper 0-1 (floor 0.1)
+74,65,continuous,VAV_27,reheat_valve_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV reheat valve 0-1
+75,66,continuous,VAV_28,supply_air_damper_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV damper 0-1 (floor 0.1)
+76,67,continuous,VAV_28,reheat_valve_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV reheat valve 0-1
+77,68,continuous,VAV_29,supply_air_damper_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV damper 0-1 (floor 0.1)
+78,69,continuous,VAV_29,reheat_valve_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV reheat valve 0-1
+79,70,continuous,VAV_3,supply_air_damper_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV damper 0-1 (floor 0.1)
+80,71,continuous,VAV_3,reheat_valve_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV reheat valve 0-1
+81,72,continuous,VAV_30,supply_air_damper_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV damper 0-1 (floor 0.1)
+82,73,continuous,VAV_30,reheat_valve_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV reheat valve 0-1
+83,74,continuous,VAV_31,supply_air_damper_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV damper 0-1 (floor 0.1)
+84,75,continuous,VAV_31,reheat_valve_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV reheat valve 0-1
+85,76,continuous,VAV_32,supply_air_damper_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV damper 0-1 (floor 0.1)
+86,77,continuous,VAV_32,reheat_valve_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV reheat valve 0-1
+87,78,continuous,VAV_33,supply_air_damper_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV damper 0-1 (floor 0.1)
+88,79,continuous,VAV_33,reheat_valve_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV reheat valve 0-1
+89,80,continuous,VAV_34,supply_air_damper_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV damper 0-1 (floor 0.1)
+90,81,continuous,VAV_34,reheat_valve_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV reheat valve 0-1
+91,82,continuous,VAV_35,supply_air_damper_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV damper 0-1 (floor 0.1)
+92,83,continuous,VAV_35,reheat_valve_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV reheat valve 0-1
+93,84,continuous,VAV_36,supply_air_damper_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV damper 0-1 (floor 0.1)
+94,85,continuous,VAV_36,reheat_valve_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV reheat valve 0-1
+95,86,continuous,VAV_37,supply_air_damper_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV damper 0-1 (floor 0.1)
+96,87,continuous,VAV_37,reheat_valve_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV reheat valve 0-1
+97,88,continuous,VAV_38,supply_air_damper_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV damper 0-1 (floor 0.1)
+98,89,continuous,VAV_38,reheat_valve_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV reheat valve 0-1
+99,90,continuous,VAV_39,supply_air_damper_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV damper 0-1 (floor 0.1)
+100,91,continuous,VAV_39,reheat_valve_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV reheat valve 0-1
+101,92,continuous,VAV_4,supply_air_damper_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV damper 0-1 (floor 0.1)
+102,93,continuous,VAV_4,reheat_valve_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV reheat valve 0-1
+103,94,continuous,VAV_40,supply_air_damper_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV damper 0-1 (floor 0.1)
+104,95,continuous,VAV_40,reheat_valve_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV reheat valve 0-1
+105,96,continuous,VAV_41,supply_air_damper_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV damper 0-1 (floor 0.1)
+106,97,continuous,VAV_41,reheat_valve_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV reheat valve 0-1
+107,98,continuous,VAV_42,supply_air_damper_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV damper 0-1 (floor 0.1)
+108,99,continuous,VAV_42,reheat_valve_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV reheat valve 0-1
+109,100,continuous,VAV_43,supply_air_damper_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV damper 0-1 (floor 0.1)
+110,101,continuous,VAV_43,reheat_valve_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV reheat valve 0-1
+111,102,continuous,VAV_44,supply_air_damper_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV damper 0-1 (floor 0.1)
+112,103,continuous,VAV_44,reheat_valve_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV reheat valve 0-1
+113,104,continuous,VAV_45,supply_air_damper_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV damper 0-1 (floor 0.1)
+114,105,continuous,VAV_45,reheat_valve_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV reheat valve 0-1
+115,106,continuous,VAV_46,supply_air_damper_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV damper 0-1 (floor 0.1)
+116,107,continuous,VAV_46,reheat_valve_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV reheat valve 0-1
+117,108,continuous,VAV_47,supply_air_damper_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV damper 0-1 (floor 0.1)
+118,109,continuous,VAV_47,reheat_valve_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV reheat valve 0-1
+119,110,continuous,VAV_48,supply_air_damper_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV damper 0-1 (floor 0.1)
+120,111,continuous,VAV_48,reheat_valve_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV reheat valve 0-1
+121,112,continuous,VAV_49,supply_air_damper_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV damper 0-1 (floor 0.1)
+122,113,continuous,VAV_49,reheat_valve_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV reheat valve 0-1
+123,114,continuous,VAV_5,supply_air_damper_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV damper 0-1 (floor 0.1)
+124,115,continuous,VAV_5,reheat_valve_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV reheat valve 0-1
+125,116,continuous,VAV_50,supply_air_damper_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV damper 0-1 (floor 0.1)
+126,117,continuous,VAV_50,reheat_valve_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV reheat valve 0-1
+127,118,continuous,VAV_51,supply_air_damper_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV damper 0-1 (floor 0.1)
+128,119,continuous,VAV_51,reheat_valve_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV reheat valve 0-1
+129,120,continuous,VAV_52,supply_air_damper_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV damper 0-1 (floor 0.1)
+130,121,continuous,VAV_52,reheat_valve_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV reheat valve 0-1
+131,122,continuous,VAV_53,supply_air_damper_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV damper 0-1 (floor 0.1)
+132,123,continuous,VAV_53,reheat_valve_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV reheat valve 0-1
+133,124,continuous,VAV_54,supply_air_damper_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV damper 0-1 (floor 0.1)
+134,125,continuous,VAV_54,reheat_valve_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV reheat valve 0-1
+135,126,continuous,VAV_55,supply_air_damper_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV damper 0-1 (floor 0.1)
+136,127,continuous,VAV_55,reheat_valve_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV reheat valve 0-1
+137,128,continuous,VAV_56,supply_air_damper_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV damper 0-1 (floor 0.1)
+138,129,continuous,VAV_56,reheat_valve_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV reheat valve 0-1
+139,130,continuous,VAV_57,supply_air_damper_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV damper 0-1 (floor 0.1)
+140,131,continuous,VAV_57,reheat_valve_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV reheat valve 0-1
+141,132,continuous,VAV_58,supply_air_damper_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV damper 0-1 (floor 0.1)
+142,133,continuous,VAV_58,reheat_valve_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV reheat valve 0-1
+143,134,continuous,VAV_59,supply_air_damper_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV damper 0-1 (floor 0.1)
+144,135,continuous,VAV_59,reheat_valve_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV reheat valve 0-1
+145,136,continuous,VAV_6,supply_air_damper_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV damper 0-1 (floor 0.1)
+146,137,continuous,VAV_6,reheat_valve_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV reheat valve 0-1
+147,138,continuous,VAV_60,supply_air_damper_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV damper 0-1 (floor 0.1)
+148,139,continuous,VAV_60,reheat_valve_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV reheat valve 0-1
+149,140,continuous,VAV_61,supply_air_damper_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV damper 0-1 (floor 0.1)
+150,141,continuous,VAV_61,reheat_valve_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV reheat valve 0-1
+151,142,continuous,VAV_62,supply_air_damper_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV damper 0-1 (floor 0.1)
+152,143,continuous,VAV_62,reheat_valve_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV reheat valve 0-1
+153,144,continuous,VAV_63,supply_air_damper_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV damper 0-1 (floor 0.1)
+154,145,continuous,VAV_63,reheat_valve_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV reheat valve 0-1
+155,146,continuous,VAV_64,supply_air_damper_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV damper 0-1 (floor 0.1)
+156,147,continuous,VAV_64,reheat_valve_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV reheat valve 0-1
+157,148,continuous,VAV_65,supply_air_damper_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV damper 0-1 (floor 0.1)
+158,149,continuous,VAV_65,reheat_valve_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV reheat valve 0-1
+159,150,continuous,VAV_66,supply_air_damper_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV damper 0-1 (floor 0.1)
+160,151,continuous,VAV_66,reheat_valve_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV reheat valve 0-1
+161,152,continuous,VAV_67,supply_air_damper_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV damper 0-1 (floor 0.1)
+162,153,continuous,VAV_67,reheat_valve_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV reheat valve 0-1
+163,154,continuous,VAV_68,supply_air_damper_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV damper 0-1 (floor 0.1)
+164,155,continuous,VAV_68,reheat_valve_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV reheat valve 0-1
+165,156,continuous,VAV_69,supply_air_damper_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV damper 0-1 (floor 0.1)
+166,157,continuous,VAV_69,reheat_valve_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV reheat valve 0-1
+167,158,continuous,VAV_7,supply_air_damper_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV damper 0-1 (floor 0.1)
+168,159,continuous,VAV_7,reheat_valve_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV reheat valve 0-1
+169,160,continuous,VAV_70,supply_air_damper_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV damper 0-1 (floor 0.1)
+170,161,continuous,VAV_70,reheat_valve_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV reheat valve 0-1
+171,162,continuous,VAV_71,supply_air_damper_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV damper 0-1 (floor 0.1)
+172,163,continuous,VAV_71,reheat_valve_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV reheat valve 0-1
+173,164,continuous,VAV_72,supply_air_damper_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV damper 0-1 (floor 0.1)
+174,165,continuous,VAV_72,reheat_valve_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV reheat valve 0-1
+175,166,continuous,VAV_73,supply_air_damper_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV damper 0-1 (floor 0.1)
+176,167,continuous,VAV_73,reheat_valve_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV reheat valve 0-1
+177,168,continuous,VAV_74,supply_air_damper_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV damper 0-1 (floor 0.1)
+178,169,continuous,VAV_74,reheat_valve_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV reheat valve 0-1
+179,170,continuous,VAV_75,supply_air_damper_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV damper 0-1 (floor 0.1)
+180,171,continuous,VAV_75,reheat_valve_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV reheat valve 0-1
+181,172,continuous,VAV_76,supply_air_damper_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV damper 0-1 (floor 0.1)
+182,173,continuous,VAV_76,reheat_valve_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV reheat valve 0-1
+183,174,continuous,VAV_77,supply_air_damper_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV damper 0-1 (floor 0.1)
+184,175,continuous,VAV_77,reheat_valve_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV reheat valve 0-1
+185,176,continuous,VAV_78,supply_air_damper_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV damper 0-1 (floor 0.1)
+186,177,continuous,VAV_78,reheat_valve_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV reheat valve 0-1
+187,178,continuous,VAV_79,supply_air_damper_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV damper 0-1 (floor 0.1)
+188,179,continuous,VAV_79,reheat_valve_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV reheat valve 0-1
+189,180,continuous,VAV_8,supply_air_damper_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV damper 0-1 (floor 0.1)
+190,181,continuous,VAV_8,reheat_valve_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV reheat valve 0-1
+191,182,continuous,VAV_9,supply_air_damper_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV damper 0-1 (floor 0.1)
+192,183,continuous,VAV_9,reheat_valve_percentage_command,CONTINUOUS INPUT,YES - input,"[-1,1] normalized",VAV reheat valve 0-1

@@ -1,0 +1,190 @@
+{
+ "scenario": "atlanta_1",
+ "n_obs": 283,
+ "n_action_tuples": 75,
+ "action_spec_keys": [
+  "continuous_action",
+  "discrete_action"
+ ],
+ "action_indices": {
+  "temp_indices": [
+   0,
+   3,
+   6
+  ],
+  "pressure_indices": [
+   1,
+   4,
+   7,
+   10
+  ],
+  "water_indices": [
+   9
+  ],
+  "recirculation_indices": [
+   2,
+   5,
+   8
+  ],
+  "zone_action_indices": {
+   "VAV_1": {
+    "supply_air_damper_percentage_command": 11,
+    "reheat_valve_percentage_command": 12
+   },
+   "VAV_10": {
+    "supply_air_damper_percentage_command": 13,
+    "reheat_valve_percentage_command": 14
+   },
+   "VAV_11": {
+    "supply_air_damper_percentage_command": 15,
+    "reheat_valve_percentage_command": 16
+   },
+   "VAV_12": {
+    "supply_air_damper_percentage_command": 17,
+    "reheat_valve_percentage_command": 18
+   },
+   "VAV_13": {
+    "supply_air_damper_percentage_command": 19,
+    "reheat_valve_percentage_command": 20
+   },
+   "VAV_14": {
+    "supply_air_damper_percentage_command": 21,
+    "reheat_valve_percentage_command": 22
+   },
+   "VAV_15": {
+    "supply_air_damper_percentage_command": 23,
+    "reheat_valve_percentage_command": 24
+   },
+   "VAV_16": {
+    "supply_air_damper_percentage_command": 25,
+    "reheat_valve_percentage_command": 26
+   },
+   "VAV_17": {
+    "supply_air_damper_percentage_command": 27,
+    "reheat_valve_percentage_command": 28
+   },
+   "VAV_18": {
+    "supply_air_damper_percentage_command": 29,
+    "reheat_valve_percentage_command": 30
+   },
+   "VAV_19": {
+    "supply_air_damper_percentage_command": 31,
+    "reheat_valve_percentage_command": 32
+   },
+   "VAV_2": {
+    "supply_air_damper_percentage_command": 33,
+    "reheat_valve_percentage_command": 34
+   },
+   "VAV_20": {
+    "supply_air_damper_percentage_command": 35,
+    "reheat_valve_percentage_command": 36
+   },
+   "VAV_21": {
+    "supply_air_damper_percentage_command": 37,
+    "reheat_valve_percentage_command": 38
+   },
+   "VAV_22": {
+    "supply_air_damper_percentage_command": 39,
+    "reheat_valve_percentage_command": 40
+   },
+   "VAV_23": {
+    "supply_air_damper_percentage_command": 41,
+    "reheat_valve_percentage_command": 42
+   },
+   "VAV_24": {
+    "supply_air_damper_percentage_command": 43,
+    "reheat_valve_percentage_command": 44
+   },
+   "VAV_25": {
+    "supply_air_damper_percentage_command": 45,
+    "reheat_valve_percentage_command": 46
+   },
+   "VAV_26": {
+    "supply_air_damper_percentage_command": 47,
+    "reheat_valve_percentage_command": 48
+   },
+   "VAV_27": {
+    "supply_air_damper_percentage_command": 49,
+    "reheat_valve_percentage_command": 50
+   },
+   "VAV_28": {
+    "supply_air_damper_percentage_command": 51,
+    "reheat_valve_percentage_command": 52
+   },
+   "VAV_29": {
+    "supply_air_damper_percentage_command": 53,
+    "reheat_valve_percentage_command": 54
+   },
+   "VAV_3": {
+    "supply_air_damper_percentage_command": 55,
+    "reheat_valve_percentage_command": 56
+   },
+   "VAV_30": {
+    "supply_air_damper_percentage_command": 57,
+    "reheat_valve_percentage_command": 58
+   },
+   "VAV_4": {
+    "supply_air_damper_percentage_command": 59,
+    "reheat_valve_percentage_command": 60
+   },
+   "VAV_5": {
+    "supply_air_damper_percentage_command": 61,
+    "reheat_valve_percentage_command": 62
+   },
+   "VAV_6": {
+    "supply_air_damper_percentage_command": 63,
+    "reheat_valve_percentage_command": 64
+   },
+   "VAV_7": {
+    "supply_air_damper_percentage_command": 65,
+    "reheat_valve_percentage_command": 66
+   },
+   "VAV_8": {
+    "supply_air_damper_percentage_command": 67,
+    "reheat_valve_percentage_command": 68
+   },
+   "VAV_9": {
+    "supply_air_damper_percentage_command": 69,
+    "reheat_valve_percentage_command": 70
+   }
+  }
+ },
+ "ahu_zone_assignments": {
+  "ahu_1": [
+   "room_1",
+   "room_2",
+   "room_3",
+   "room_4",
+   "room_5",
+   "room_6",
+   "room_7",
+   "room_8",
+   "room_9",
+   "room_10"
+  ],
+  "ahu_2": [
+   "room_11",
+   "room_12",
+   "room_13",
+   "room_14",
+   "room_15",
+   "room_16",
+   "room_17",
+   "room_18",
+   "room_19",
+   "room_20"
+  ],
+  "ahu_3": [
+   "room_21",
+   "room_22",
+   "room_23",
+   "room_24",
+   "room_25",
+   "room_26",
+   "room_27",
+   "room_28",
+   "room_29",
+   "room_30"
+  ]
+ }
+}

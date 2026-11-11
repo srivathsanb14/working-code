@@ -1,0 +1,110 @@
+{
+ "building_train_1": {
+  "scenario": "atlanta_2",
+  "grid": [
+   606,
+   339
+  ],
+  "rooms": 39,
+  "cv_m": 0.2,
+  "types": {
+   "corner": 25,
+   "edge": 9,
+   "interior": 5
+  },
+  "area_min": 59.6,
+  "area_max": 345.8,
+  "doors": 36,
+  "zone_map_vs_floor_plan_differing_cells": 72
+ },
+ "building_train_2": {
+  "scenario": "atlanta_3",
+  "grid": [
+   624,
+   422
+  ],
+  "rooms": 85,
+  "cv_m": 0.2,
+  "types": {
+   "corner": 8,
+   "edge": 37,
+   "interior": 40
+  },
+  "area_min": 52.0,
+  "area_max": 328.0,
+  "doors": 83,
+  "zone_map_vs_floor_plan_differing_cells": 166
+ },
+ "building_train_4": {
+  "scenario": "atlanta_5",
+  "grid": [
+   664,
+   432
+  ],
+  "rooms": 54,
+  "cv_m": 0.2,
+  "types": {
+   "corner": 26,
+   "edge": 20,
+   "interior": 8
+  },
+  "area_min": 39.0,
+  "area_max": 361.8,
+  "doors": 51,
+  "zone_map_vs_floor_plan_differing_cells": 102
+ },
+ "building_train_5": {
+  "scenario": "atlanta_6",
+  "grid": [
+   858,
+   342
+  ],
+  "rooms": 79,
+  "cv_m": 0.2,
+  "types": {
+   "corner": 40,
+   "edge": 23,
+   "interior": 16
+  },
+  "area_min": 34.6,
+  "area_max": 207.5,
+  "doors": 59,
+  "zone_map_vs_floor_plan_differing_cells": 118
+ },
+ "building_train_7": {
+  "scenario": "atlanta_8",
+  "grid": [
+   458,
+   279
+  ],
+  "rooms": 36,
+  "cv_m": 0.2,
+  "types": {
+   "corner": 14,
+   "edge": 11,
+   "interior": 11
+  },
+  "area_min": 50.9,
+  "area_max": 176.4,
+  "doors": 20,
+  "zone_map_vs_floor_plan_differing_cells": 40
+ },
+ "building_train_8": {
+  "scenario": "atlanta_1",
+  "grid": [
+   386,
+   320
+  ],
+  "rooms": 30,
+  "cv_m": 0.2,
+  "types": {
+   "corner": 13,
+   "edge": 12,
+   "interior": 5
+  },
+  "area_min": 23.6,
+  "area_max": 203.0,
+  "doors": 20,
+  "zone_map_vs_floor_plan_differing_cells": 40
+ }
+}

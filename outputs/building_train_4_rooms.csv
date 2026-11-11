@@ -1,0 +1,55 @@
+room,vav,ahu,cells,area_m2,row_min,row_max,col_min,col_max,cy,cx,ext_N,ext_S,ext_W,ext_E,n_ext_faces,type,n_wall_neighbours,n_door_neighbours,wall_neighbours,door_neighbours,floor
+room_1,VAV_1,ahu_1,4823,192.9,6,52,6,151,26.2,96.7,146,62,47,2,3,corner,3,1,room_2 room_7 room_8,room_7,1
+room_2,VAV_2,ahu_1,3944,157.8,6,73,153,210,39.5,181.5,58,0,2,2,1,edge,5,2,room_1 room_3 room_8 room_11 room_12,room_3 room_12,1
+room_3,VAV_3,ahu_1,3060,122.4,6,73,212,256,39.5,234.0,45,0,2,2,1,edge,4,1,room_2 room_4 room_9 room_12,room_2,1
+room_4,VAV_4,ahu_1,3657,146.3,6,58,258,326,32.0,292.0,69,0,2,2,1,edge,4,1,room_3 room_5 room_6 room_9,room_9,1
+room_5,VAV_5,ahu_1,2377,95.1,6,47,328,425,21.7,362.6,98,62,2,42,3,corner,2,1,room_4 room_6,room_6,1
+room_6,VAV_6,ahu_1,6545,261.8,49,116,328,425,83.1,376.2,62,2,0,68,2,corner,5,3,room_4 room_5 room_9 room_13 room_14,room_5 room_9 room_14,1
+room_7,VAV_7,ahu_2,3496,139.8,54,123,61,111,89.1,86.5,7,0,17,0,2,corner,5,5,room_1 room_8 room_10 room_16 room_17,room_1 room_8 room_10 room_16 room_17,1
+room_8,VAV_8,ahu_2,2730,109.2,54,123,113,151,88.5,132.0,0,0,0,0,0,interior,5,2,room_1 room_2 room_7 room_11 room_17,room_7 room_11,1
+room_9,VAV_9,ahu_2,4347,173.9,60,122,258,326,91.0,292.0,0,0,0,0,0,interior,6,4,room_3 room_4 room_6 room_12 room_13 room_15,room_4 room_6 room_12 room_15,1
+room_10,VAV_10,ahu_2,4428,177.1,69,150,6,59,109.5,32.5,54,54,82,4,3,corner,2,1,room_7 room_16,room_7,1
+room_11,VAV_11,ahu_2,5203,208.1,75,195,153,195,135.0,174.0,0,43,2,2,1,edge,4,2,room_2 room_8 room_12 room_17,room_8 room_12,1
+room_12,VAV_12,ahu_2,7260,290.4,75,195,197,256,135.0,226.5,0,60,2,2,1,edge,5,3,room_2 room_3 room_9 room_11 room_15,room_2 room_9 room_11,1
+room_13,VAV_13,ahu_2,2472,98.9,118,195,328,371,147.0,347.1,0,44,2,41,2,corner,4,1,room_6 room_9 room_14 room_15,room_14,1
+room_14,VAV_14,ahu_2,2067,82.7,118,156,373,425,137.0,399.0,2,53,2,39,2,corner,2,2,room_6 room_13,room_6 room_13,1
+room_15,VAV_15,ahu_2,4968,198.7,124,195,258,326,159.5,292.0,0,69,2,2,1,edge,3,1,room_9 room_12 room_13,room_9,1
+room_16,VAV_16,ahu_2,1976,79.0,125,169,61,106,146.4,84.5,0,46,21,2,2,corner,3,2,room_7 room_10 room_17,room_7 room_17,1
+room_17,VAV_17,ahu_3,2579,103.2,125,195,108,151,155.2,131.9,0,44,28,2,2,corner,4,2,room_7 room_8 room_11 room_16,room_7 room_16,1
+room_18,VAV_18,ahu_3,2575,103.0,237,275,6,111,252.1,72.4,106,62,39,2,3,corner,2,1,room_19 room_26,room_26,2
+room_19,VAV_19,ahu_3,5056,202.2,237,315,113,176,276.0,144.5,64,0,2,2,1,edge,6,1,room_18 room_20 room_25 room_26 room_29 room_30,room_25,2
+room_20,VAV_20,ahu_3,2376,95.0,237,269,178,249,253.0,213.5,72,0,2,2,1,edge,3,1,room_19 room_21 room_25,room_25,2
+room_21,VAV_21,ahu_3,2576,103.0,237,292,251,296,264.5,273.5,46,0,2,2,1,edge,4,2,room_20 room_22 room_25 room_27,room_22 room_27,2
+room_22,VAV_22,ahu_3,2296,91.8,237,292,298,338,264.5,318.0,41,0,2,2,1,edge,4,1,room_21 room_23 room_24 room_27,room_21,2
+room_23,VAV_23,ahu_3,1587,63.5,237,267,340,425,247.6,373.6,86,62,2,31,3,corner,2,1,room_22 room_24,room_24,2
+room_24,VAV_24,ahu_3,3091,123.6,269,313,340,425,295.0,379.2,62,2,0,45,2,corner,4,2,room_22 room_23 room_27 room_28,room_23 room_28,2
+room_25,VAV_25,ahu_3,3240,129.6,271,315,178,249,293.0,213.5,0,0,0,0,0,interior,5,3,room_19 room_20 room_21 room_27 room_30,room_19 room_20 room_30,2
+room_26,VAV_26,ahu_4,4769,190.8,277,334,6,111,310.6,65.2,62,2,58,0,2,corner,5,3,room_18 room_19 room_29 room_31 room_32,room_18 room_29 room_32,2
+room_27,VAV_27,ahu_4,4488,179.5,294,344,251,338,319.0,294.5,0,0,0,0,0,interior,8,5,room_21 room_22 room_24 room_25 room_28 room_30 room_33 room_34,room_21 room_28 room_30 room_33 room_34,2
+room_28,VAV_28,ahu_4,4042,161.7,315,361,340,425,338.0,382.5,2,2,0,47,1,edge,5,3,room_24 room_27 room_34 room_35 room_36,room_24 room_27 room_35,2
+room_29,VAV_29,ahu_4,5525,221.0,317,426,113,166,368.3,140.9,0,54,28,2,2,corner,5,2,room_19 room_26 room_30 room_32 room_37,room_26 room_37,2
+room_30,VAV_30,ahu_4,4018,160.7,317,365,168,249,341.0,208.5,0,0,0,0,0,interior,6,3,room_19 room_25 room_27 room_29 room_33 room_37,room_25 room_27 room_37,2
+room_31,VAV_31,ahu_4,1978,79.1,336,381,6,48,358.5,27.0,2,43,46,2,2,corner,2,1,room_26 room_32,room_32,2
+room_32,VAV_32,ahu_4,3727,149.1,336,400,50,111,366.1,82.4,0,62,21,2,2,corner,3,2,room_26 room_29 room_31,room_26 room_31,2
+room_33,VAV_33,ahu_4,3483,139.3,346,426,251,293,386.0,272.0,0,43,2,2,1,edge,4,2,room_27 room_30 room_34 room_37,room_27 room_34,2
+room_34,VAV_34,ahu_4,3539,141.6,346,426,295,338,385.8,316.3,0,44,2,28,2,corner,4,2,room_27 room_28 room_33 room_35,room_27 room_33,2
+room_35,VAV_35,ahu_5,1489,59.6,363,400,340,385,379.3,360.2,0,46,2,15,2,corner,3,2,room_28 room_34 room_36,room_28 room_36,2
+room_36,VAV_36,ahu_5,975,39.0,363,387,387,425,375.0,406.0,2,39,2,25,2,corner,2,1,room_28 room_35,room_35,2
+room_37,VAV_37,ahu_5,4920,196.8,367,426,168,249,396.5,208.5,0,82,2,2,1,edge,3,2,room_29 room_30 room_33,room_29 room_30,2
+room_38,VAV_38,ahu_5,4688,187.5,468,589,6,68,543.2,38.0,123,62,122,2,3,corner,2,2,room_39 room_54,room_39 room_54,3
+room_39,VAV_39,ahu_5,5612,224.5,468,589,70,115,528.5,92.5,46,0,52,2,2,corner,5,2,room_38 room_40 room_43 room_46 room_54,room_38 room_46,3
+room_40,VAV_40,ahu_5,2744,109.8,468,495,117,214,481.5,165.5,98,0,2,2,1,edge,3,1,room_39 room_41 room_43,room_43,3
+room_41,VAV_41,ahu_5,3420,136.8,468,512,216,291,490.0,253.5,76,0,2,2,1,edge,4,1,room_40 room_42 room_43 room_44,room_44,3
+room_42,VAV_42,ahu_5,4865,194.6,468,518,293,425,491.6,344.6,193,62,2,51,3,corner,3,1,room_41 room_44 room_45,room_45,3
+room_43,VAV_43,ahu_5,4998,199.9,497,547,117,214,522.0,165.5,0,0,0,0,0,interior,7,2,room_39 room_40 room_41 room_44 room_46 room_47 room_48,room_40 room_47,3
+room_44,VAV_44,ahu_5,2660,106.4,514,548,216,291,531.0,253.5,0,0,0,0,0,interior,6,2,room_41 room_42 room_43 room_45 room_47 room_48,room_41 room_48,3
+room_45,VAV_45,ahu_6,9044,361.8,520,587,293,425,553.5,359.0,2,2,0,68,1,edge,7,3,room_42 room_44 room_48 room_50 room_51 room_52 room_53,room_42 room_48 room_52,3
+room_46,VAV_46,ahu_6,4485,179.4,549,657,117,160,600.1,139.6,0,44,28,2,2,corner,4,2,room_39 room_43 room_47 room_54,room_39 room_47,3
+room_47,VAV_47,ahu_6,5777,231.1,549,657,162,214,603.0,188.0,0,53,2,2,1,edge,5,3,room_43 room_44 room_46 room_48 room_49,room_43 room_46 room_48,3
+room_48,VAV_48,ahu_6,2888,115.5,550,587,216,291,568.5,253.5,0,0,0,0,0,interior,7,4,room_43 room_44 room_45 room_47 room_49 room_50 room_51,room_44 room_45 room_47 room_50,3
+room_49,VAV_49,ahu_6,2415,96.6,589,657,216,250,623.0,233.0,0,35,2,2,1,edge,3,1,room_47 room_48 room_50,room_50,3
+room_50,VAV_50,ahu_6,2760,110.4,589,657,252,291,623.0,271.5,0,40,2,2,1,edge,4,2,room_45 room_48 room_49 room_51,room_48 room_49,3
+room_51,VAV_51,ahu_6,2484,99.4,589,657,293,328,623.0,310.5,0,36,2,2,1,edge,4,1,room_45 room_48 room_50 room_52,room_52,3
+room_52,VAV_52,ahu_6,1788,71.5,589,657,330,366,613.9,346.2,0,37,2,41,2,corner,3,3,room_45 room_51 room_53,room_45 room_51 room_53,3
+room_53,VAV_53,ahu_6,1740,69.6,589,618,368,425,603.5,396.5,2,58,2,30,2,corner,2,1,room_45 room_52,room_52,3
+room_54,VAV_54,ahu_6,3371,134.8,591,631,6,115,607.3,69.0,2,110,41,2,2,corner,3,1,room_38 room_39 room_46,room_38,3
