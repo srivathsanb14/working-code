@@ -817,20 +817,71 @@ Six stages take us from simulator data to a scored policy:
 
 Stages 1–3 are the subject of §17, stages 4–5 of §18, and stage 6 of §19.
 
+### 16.6 What a submission is
+
+**The artifact.** A submission is a **Kaggle Notebook** and nothing else. A working example (the "TransferPolicy Notebook") is on the competition's Code tab. The notebook defines one policy class; when it is run on the Kaggle side, the same notebook is re-run unchanged against the hidden test scenarios, and the leaderboard number is computed server-side (§3). The competition's Data page describes the class as subclassing `smart_buildings_inference_server.Policy`, implementing two methods, and the starter kit's local template agrees on the two methods:
+
+```python
+__init__(self, building_meta_data, action_spec)   # called once per scenario (per building)
+get_action(self, obs) -> {"continuous_action": float32[3K+2+2V],
+                          "discrete_action":   int32[K+1]}   # called once per 5-minute step
+```
+
+**Local versus Kaggle contract.** The local harness (`evaluate.py`) needs no base class: `initialize_policy` tries `Policy(meta, action_spec)`, then `Policy(meta)`, then `Policy()`, and `get_policy_action` calls `get_action(obs)`. The Kaggle runtime imports `smart_buildings_inference_server`, which is not in the starter kit (it ships with the competition's `kaggle_evaluation` folder, viewable only after accepting the rules). So we develop against the local two-method contract, keep the class free of local-only imports, and make the final class inherit from `Policy` when the notebook is assembled. The exact base-class behaviour (extra hooks, how metadata is delivered) is unverified (§20.3).
+
+**What the harness does with the policy.** For each scenario, `run_policy` resets the environment, then loops 8,640 times: `get_action(obs)` → `validate_action` (exact shapes; continuous cast to float32, discrete to int32; a wrong shape raises) → `tracker.step(action)`. The policy sees only the observation vector and the metadata; it never sees reward, weather labels, month, station or building id. **Hardcoding a reference to a held-out building or weather seed is disqualifying** (template docstring).
+
+| Property | Value | Source |
+|---|---|---|
+| Notebook runtime | CPU ≤ 9 h or GPU ≤ 9 h per run | Overview page |
+| Internet during the run | disabled | Overview page |
+| External data and pre-trained models | allowed if free and public; a reasonableness test applies to cost | Overview page, Rules §2.6 |
+| Open-source code | only OSI-approved, commercially unrestricted licences | Rules §3.6c |
+| Daily submissions | 5; 2 final submissions selected | Rules §2.2 |
+| Team size | ≤ 5; mergers allowed | Rules §2.1 |
+| Winners | must license the winning code CC-BY 4.0 and deliver training and inference code | Rules §2.5, §2.8 |
+| Dates | entry and merger deadline 3 Jan 2027; final submission 15 Jan 2027 | Overview page |
+| Compute budget per step | not stated; a 9 h budget over 30 scenarios × 8,640 steps ≈ 1.25 s per step, minus simulator time | derived, [I] |
+
+**Consequences for our design.**
+- **Everything the policy needs at run time must be in the notebook or an attached Kaggle dataset.** No downloads, no `pip install` from the internet, no Julia package installs at run time. The discovered equations, the fitted constants, the per-type parameter priors and any lookup tables are therefore frozen into the notebook source or into a small attached dataset, with versions pinned.
+- **The policy is stateful and built once per building.** `__init__` is where per-building setup happens (index tables, parameter priors from the floor plan and zone map, §14); the policy object then carries the estimator state and its previous action between calls (§13.2 relies on this to drop the setpoints from the model's inputs).
+- **The notebook is deterministic and re-run on unseen buildings**, so all adaptation has to happen online inside `get_action` (§18.3) with no per-building offline fit.
+- **The 8,640 × 30 evaluation must finish inside the notebook limit.** The simulator's own time counts; at about 100 steps per second on the smallest building (§20.2) that is roughly 90 s per scenario before any policy cost, but larger buildings are slower and unmeasured.
+
 ---
 
 ## 17. Stage one: discovering the dynamics
 
 ### 17.1 Generating the data
-There is no logged dataset (Appendix A), so the simulator is the data source, and the repo can generate arbitrarily many buildings and scenarios (Appendix C). Identification needs **persistent excitation**: the inputs must vary enough to reveal the dynamics. We plan to:
+There is no logged dataset (Appendix A), so the simulator is the data source, and the repo can generate arbitrarily many buildings and scenarios. Our angle is to **generate as much data as possible, then fit one symbolic state-space model on all of it, then put a controller on top.** Identification needs **persistent excitation**: the inputs must vary enough to reveal the dynamics.
 
-- **Diversify contexts.** Sample many buildings — geometry, K, V and independently drawn materials — across the five climates *and seasons*. This is what lets the discovered *structure* generalize.
-- **Excite deliberately.** Run behaviour policies that vary the actuators: random-step or pseudo-random sequences on damper and reheat, ramps on hot-water temperature and fan pressure, air-handler on/off cycling — together with the shipped baselines, for realistic operating regimes. Both are needed: pure excitation visits unrealistic corners, while baseline data alone is poorly excited, since the baselines often sit on floors.
-- **Cover the regimes**: occupied and eco, heating-, cooling-dominated and mixed, with floors active and inactive and coils saturated.
-- **Log generously.** Zone temperatures, realized damper and valve positions, air-handler and water measurements, outside temperature, occupancy and time features — and, for the grey-box approach, the simulator's *internal* quantities from the reward-info structures (heat applied to each zone, fan and gas power). Those privileged signals let us identify blocks B–D in isolation with near-noise-free data and then compose them. At submission time the policy won't have them, so the final model must only *need* observable inputs.
-- **Use the 300-second step** with finite differences `(T_{t+1} − T_t)/Δt` as derivative targets, or fit a discrete-time one-step model directly, which avoids differentiating noise.
+**How data is produced, using only the shipped commands.**
+
+| Step | Command (run from the starter-kit root) | Produces |
+|---|---|---|
+| New buildings | `python -m smart_buildings.run_floor_generator --start-seed 500 --count N --shape composite` | `building_XXXX.yaml` configs; materials are stratified across the batch and reproducible from the seed list |
+| Scenarios | `python -m smart_buildings.run_scenario_generator --buildings <yaml…> --weathers <presets…>` | `training_scenarios/<building>/<weather>/config.gin`; naming either axis takes the cross product, no arguments rebuilds the shipped 30 pairs |
+| Smoke test | `python -m smart_buildings.run_environment --building … --weather …` | prints the action spec, metadata and a short rollout |
+| Rollout | `evaluate.py` machinery: `load_hybrid_environment`, `create_building_meta_data`, `SimulationTracker`, `run_policy` | a stepped environment whose observation we can log |
+
+The shipped manifest pairs each building with one strip per station (30 scenarios, no strip reused); everything else is available too, since the generator inputs for other stations and buildings are shipped ("nothing here limits what you may generate"). Seeds from 500 upward are the documented range for new buildings. Our own collection loop lives outside the starter kit and drives the environment through `reset`/`step` as `code/rollout_checks.py` already does, with a behaviour policy in place of random actions.
+
+**What to vary.**
+- **Buildings.** Many seeds, so geometry, K, V and independently drawn materials span the generator's range. This is what lets the discovered *structure* generalize to hidden buildings; the number of distinct buildings, not the number of steps, limits transfer.
+- **Weather.** All five climates and as many strips of each as exist (`list_recorded_weather_presets()`), covering heating-, cooling- and mixed seasons.
+- **Behaviour policies (excitation).** Random-step or pseudo-random sequences on dampers and reheat valves, ramps on hot-water temperature and fan pressure, air-handler and pump on/off cycling, with the actions held for 6–24 steps so the thermal response shows through the 5-minute step; plus the four shipped baselines (`bang_bang`, `fixed_setpoint`, `pid`, `pid_water`) for realistic operating regimes, and `all_off` for pure envelope response (§14.3). Pure excitation visits unrealistic corners; baseline data alone is poorly excited because the baselines often sit on actuator floors, so both are needed. Later rounds add data collected under the fitted controller itself (DAgger-style), to cover the states it will actually visit.
+- **Regimes.** Occupied and eco periods, coils saturated and idle, floors active and inactive, full 30-day episodes (shorter runs skip the eco-setback periods and flatter schedule-aware behaviour).
+
+**What to log per step.** The full observation vector and the action actually sent; the realized damper and reheat values (already in the observation, §5.1); and, for the grey-box route, the simulator's *internal* quantities from the reward-info structures (heat applied to each zone, fan and gas power, electricity and carbon terms). The internal quantities identify blocks B–D in isolation with near-noise-free data, then compose them; the policy will not see them at submission time, so the final model may only *need* observable inputs. Store the metadata JSON beside every trajectory, so room types, floors and AHU assignments (§14) can be rebuilt for each building.
+
+**Data budget.** One 8,640-step episode on the smallest building takes about 90 s [X] (≈100 steps/s); larger buildings are slower and unmeasured (§20.3), so the numbers below are for the smallest building and scale up by the measured slowdown for the others. One episode logs 8,640 rows of `V+8` to `6V+15K+58` values; for the 30 shipped scenarios that is 259,200 rows, about 45 minutes of simulation. Episodes are independent, so generation parallelizes across CPU processes with no coordination. The practical limits are the number of CPU cores and disk, not the method.
+
+**Fitting-side rules.**
+- **Targets.** Use the 300-second step with finite differences `(T_{t+1} − T_t)/Δt` as derivative targets, or fit a discrete-time one-step map directly, which avoids differentiating noise (the simulator is noise-free, §20.3).
 - **Split by building**, never by time within a building, otherwise we measure interpolation rather than transfer.
 - **Mind the scales.** The observation is mixed-scale (§5.5); undo the normalization before fitting physical equations.
+- **Use the lean model inputs.** The model's inputs and outputs are the ones in §13.2–13.3 (zone temperatures, water temperature, outside air, occupants, time and comfort-mode features, plus the previous action), not the full 6V+15K+58 vector.
 
 ### 17.2 Designing the library
 Whether we use SINDy or genetic-programming regression, we choose the *inputs, operators and constraints* — this is where physical knowledge is injected. The variables include the zone temperature, the outside temperature, neighbouring zone temperatures (or their mean), supply-air and water temperatures, the damper, valve, pressure and recirculation settings, occupancy, schedule flags, and sine/cosine of time. The **derived physical features** do much of the work: airflow `V̇ ∝ d·√P`, the air capacity rate `c_a ρ_a V̇`, the temperature differences `(T_sa − T_z)`, `(T_w − T_z)`, `(T_out − T_z)`, and the mixed-air temperature `r·T_ret + (1−r)·T_out`. The operators are `+ − × ÷ √ min max clip`, possibly `tanh` for smooth saturation, with `sin/cos` allowed only for time and `exp` avoided for equipment maps. The **constraints** enforce dimensional consistency, non-negative gains, sign and monotonicity (more reheat means more heat into the zone; higher outside temperature means more heat gain), and conservation — the coil's heat to the air must equal the heat charged to the boiler, a property the simulator's own regression tests check. A complexity penalty is tuned so the final model is read from the *elbow* of the Pareto front, not from its most accurate end.
@@ -857,6 +908,14 @@ Several difficulties are predictable:
 ### 17.5 When is a model good enough to control with?
 One-step accuracy is misleading — nearly any model predicts `T_{t+1} ≈ T_t`. We will judge models by **multi-step rollout error** at 1, 3 and 6 hours *under the actions the controller would actually pick*; by performance on **held-out buildings and climates**, stratified by climate, season and occupied versus eco; and, ultimately, by **closed-loop value** — plug the model into the controller and measure the leaderboard-style score, since a less accurate but better-conditioned model often wins. We also require **physical sanity** (heat balance closes, no heat from nothing, correct signs, bounded extrapolation), **robustness** (a ±20 % parameter perturbation should not wreck the policy) and low **cost per evaluation**, since the model is called many times inside MPC.
 
+### 17.6 Shipping the fitted model
+
+No internet at run time means the fitted model has to travel inside the notebook.
+- **Symbolic output is naturally portable.** Equations, coefficients and per-type priors can be written as plain Python/NumPy expressions in the notebook source, or as a small JSON or `.npz` file in an attached dataset. Prefer plain NumPy at run time over a symbolic-regression toolchain: PySR needs Julia, and SINDy and CasADi availability in the Kaggle image is unverified (§20.3). Do the discovery off-line; ship only the result.
+- **Size and speed.** A closed-form model with tens of terms per zone and per type is evaluated in microseconds, so even a sampling MPC that rolls the model forward over hundreds of candidate action sequences is far inside the per-step budget; the simulator, not the policy, dominates the runtime.
+- **Reproducibility.** Winners must deliver training and inference code (Rules §2.8), so the data-generation scripts, seeds, the discovery configuration and the notebook builder are versioned together, and the generated trajectories are regenerable from seeds rather than stored.
+- **Fallbacks.** The notebook includes the PID-like fallback of §18.4 in the same file, so a bad model cannot take the policy off the leaderboard.
+
 ---
 
 ## 18. Stage two: wrapping the model in a controller
@@ -880,7 +939,7 @@ The controller needs the hidden states and the building parameters. In rough ord
 Models are wrong, and the comfort penalty is unforgiving, so safety is layered: an **integral-like correction** on the one-step prediction error (offset-free MPC) cancels persistent bias; **uncertainty-aware margins** widen the comfort buffer when parameter variance is high or the regime is poorly covered by training data; a **fallback controller** takes over if an occupied zone leaves a safe inner band or recent prediction error exceeds a threshold, handing control to a robust baseline-like policy (for instance `pid_water` logic) until the model recovers; the known **floors** (200 Pa, 0.7 recirculation, 10 % damper) are enforced inside the optimizer so planned actions are realizable; and **rate limits** protect against the thermostat's hysteretic inner loop and equipment transients.
 
 ### 18.5 What the submitted policy looks like
-It conforms to the two-method contract. This is a design sketch, not code in the repo:
+It conforms to the two-method contract of §16.6 and, in the assembled notebook, inherits from `Policy`. This is a design sketch, not code in the repo:
 
 ```python
 class SymbolicMPCPolicy:
@@ -900,7 +959,7 @@ class SymbolicMPCPolicy:
         # return {"continuous_action": ..., "discrete_action": ...}
 ```
 
-`get_action` runs 8,640 times per scenario, so model evaluation and any optimization must be budgeted. Compute and wall-clock limits are set on the Kaggle competition page and have not been verified.
+`get_action` runs 8,640 times per scenario and 30 times over on the leaderboard, so model evaluation and any optimization must be budgeted against the 9-hour notebook limit (§16.6). The workflow around it: develop and score locally with `python -m smart_buildings.evaluate --policies <key>` and `score_leaderboard.py` (register the class in `POLICY_MAP`, or keep it outside the starter kit and call `run_policy` directly), then paste the same class into the Kaggle notebook.
 
 ---
 
@@ -936,7 +995,7 @@ We evaluate on the **shipped 30 scenarios** at 8,640 steps — directly comparab
 5. **Wrapper 1.** Feed-forward, water reset and pre-conditioning; target beating `pid_water` on the shipped set.
 6. **Wrapper 2.** MPC with a safety fallback; ablate horizon, cost margins and solver.
 7. **Hold-out validation** on many generated buildings, with stress tests (a cold snap, a heat wave, larger K).
-8. **Package** into the two-method policy class, verify runtime, submit.
+8. **Package** into the policy class (§16.6, §17.6), verify runtime, submit.
 
 ---
 
@@ -989,7 +1048,7 @@ Caveats: the rollouts use one or two buildings, one weather strip each and non-t
 4. **Sensor noise or delay**, if any; initial readings and the rollouts look noise-free.
 5. **Simulation speed across all building sizes**, which bounds how much data generation and in-simulation MPC is affordable.
 6. The exact **internal-gain parameters** in the scenario configs and whether they vary by building.
-7. Whether **solver libraries** (CasADi, JAX, PySR with Julia) are available in the Kaggle runtime, and the per-submission **time limit**.
+7. Whether **solver libraries** (CasADi, JAX, PySR with Julia) are available in the Kaggle runtime image. The notebook limit (9 h) is known; the exact `smart_buildings_inference_server.Policy` base class and the `kaggle_evaluation` files were not visible without accepting the rules, so whether the runtime passes the same metadata and observation as `evaluate.py` is unverified.
 8. Whether the **airflow and outside-air-flow signals have memory**, and whether the physical supply temperature `min(mixed air, setpoint)` is observable anywhere (the sensor reports the setpoint).
 9. Whether **room type predicts the response in all regimes** (§14.5) and whether the exterior-reach threshold of §14.2 is the right one; the all-off rollouts cover two buildings.
 10. Whether the **solver couples floors** (§8.4); the layout suggests not.
