@@ -646,6 +646,28 @@ The identifiable reduced form per zone is the resistor–capacitor balance of §
 
 Per zone the observed quantities are `T_z`, the realized damper and reheat, and the schedule bounds; the AHU contributes `T_sa` and `P` (from the actions), the loop `T_water`, and `T_out` is the disturbance. Hidden per zone: `M_z`, `q_z` and the parameters `(C_z, R_env,z, R_m, R_zj)`.
 
+### 13.4 The regression problems for symbolic discovery
+
+The state-space map `x_{t+1} = f(x_t, u_t, d_t)` of §13.3 is not one regression. It splits into small problems, most of them algebraic, which suits symbolic regression far better than one large fit. Every row below uses one 5-minute step as a sample; "from the lean observation" means the `V+8` values of §13.2, and "previous action" is the policy's stored command.
+
+| # | Target (output) | Inputs | Form | Source of the inputs |
+|---|---|---|---|---|
+| 1 | Zone temperature change `T_z[t+1] − T_z[t]`, one row per zone and step | `T_z`; mean of neighbouring zone temperatures; `T_out`; building occupants; per-zone static features (§14.2); the heat `Q_z` of rows 3–5; slab state (hidden) | the RC balance of §8.2 (block A), linear in its coefficients | lean observation; `Q_z` composed from rows 3–5; static features from the metadata arrays |
+| 2 | Supply-water temperature `T_w[t+1]` | `T_w[t]`; water setpoint; hot-water run command | ramp toward the setpoint, `T_w + clip(setpoint − T_w, −0.5, +2.5)` K per step [X] | lean observation; previous action |
+| 3 | Zone airflow `V̇_z` | realized damper; AHU static pressure (the `max(a, 200 Pa)` echo, 0 when off); AHU run state; the ratio by which the AHU caps total flow | `damper · V̇_max · √(P / P_design) · ratio` [S: `vav.py`] | realized damper from the observation; pressure from the previous action; the cap ratio needs the AHU's maximum flow, which is not observed and becomes a parameter |
+| 4 | Supply-air temperature at the coil inlet `T_sa` | `T_out`; recirculation; return temperature (taken as the mean of the served zones [I]); supply-air setpoint; run state | `min(r·T_ret + (1−r)·T_out, setpoint)` [S: `air_handler.py`] | lean observation; previous action; the sensor itself only echoes the setpoint (§6.2) |
+| 5 | Heat delivered to the zone `Q_z` | `V̇_z`, `T_sa`, `T_z`, `T_w`, reheat valve, `V̇_z` | `V̇ ρ c_p (T_sa − T_z) + ε ρ c_p V̇ (T_w − T_sa)`, with `ε = min(1, water capacity rate ÷ air capacity rate)` and discharge air capped at 308.15 K [S: `vav.py`] | rows 3–4; realized reheat; water temperature |
+| 6 | Occupants `n[t]` | hour and weekday phase; comfort-mode flag | a daily and weekly profile plus noise (the disturbance model) | lean observation |
+| 7 | Outside temperature `T_out[t+k]` | `T_out` history; hour phase | persistence plus a diurnal term (the forecast the controller needs) | lean observation, stored history |
+| 8 | Fan, pump, boiler and cooling power (the energy terms of the reward) | `V̇_total`, `P`, recirculation, `T_w`, water flow, head | `flow · pressure ÷ efficiency`, `thermal load ÷ 3.5`, `heat carried by the water` (§8.2 blocks C–D) | **not observed**: targets come from the simulator's internal reward quantities (§17.1), then the equation is expressed in observable inputs |
+
+Three points follow.
+- **Rows 3, 4, 5 and 8 are known physics.** They are the unit test of the toolchain (§16.4): if the search recovers `√P` and the `min()` form from simulator data, it can be trusted on row 1. Their targets (`V̇_z`, `T_sa`, `Q_z`, powers) are internal to the simulator, so fitting them needs the logging of §17.1 rather than the observation alone.
+- **Row 1 is the hard one** and the only one with a hidden state. Fit it two ways: directly on observable inputs, and with `Q_z` from rows 3–5 as a derived feature; the second is far better conditioned, because the heat input is then a smooth function of quantities the model already knows.
+- **Rows 6–7 are disturbance models, not building physics.** They are fitted on pooled data and shared by all buildings.
+
+The model input vector at run time is therefore: per zone `T_z`, realized damper, realized reheat; per AHU the previous pressure, supply-temperature and recirculation commands and run state; the loop's water temperature, setpoint, head and run state; and `T_out`, occupants, the hour and weekday phase and the comfort flag. The outputs it must reproduce are `T_z[t+1]` for every zone and `T_w[t+1]`; the energy terms are computed from the same inputs by rows 3–8.
+
 ---
 
 ## 14. A hidden state indexed by room type
