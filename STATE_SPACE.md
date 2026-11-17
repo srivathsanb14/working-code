@@ -13,7 +13,7 @@ Heating, cooling and ventilating an office building is one of the largest energy
 
 **Part IV** is the state-space model. Only a minority of the observation vector carries information a dynamics model needs; the rest echoes the policy's own commands, mirrors setpoints, duplicates other fields or is constant (§13). Room identity and room type (corner, edge, interior) can be rebuilt exactly from the metadata a policy receives, and the type predicts how strongly a room is coupled to the weather, so a fixed-size hidden state indexed by room type is feasible (§14).
 
-**Part V** is our proposed method. Every building obeys the same kind of physics, an energy balance between the air in each room, the walls and slab around it, the weather and the heat from the HVAC plant, and differs only in a handful of numbers. We **generate as much data as possible from the simulator, discover the structure of those equations by symbolic regression, identify each new building's few parameters while the policy runs, and plan with the discovered model inside a control policy** (§15–§19). **Part VI** closes with what has been verified and what has not (§20).
+**Part V** is our proposed method. Every building obeys the same kind of physics, an energy balance between the air in each room, the walls and slab around it, the weather and the heat from the HVAC plant, and differs only in a handful of numbers. We **generate as much data as possible from the simulator, discover the structure of those equations by symbolic regression, identify each new building's few parameters while the policy runs, and plan with the discovered model inside a control policy** (§15–§19). The plan is staged and gated: a safe baseline notebook first, then a model-based feed-forward controller, then a sampling MPC sized to the roughly 0.125 s per step that the 9-hour session allows, all on a dated roadmap to the 15 January 2027 deadline (§19.4). **Part VI** closes with what has been verified and what has not (§20).
 
 **Reading guide.** Reference tables sit beside the text they support. Statements are tagged where it matters: **[S]** read from source or config; **[D]** computed from the shipped data files (`floor_plan.npy`, `zone_map.npy`, weather, `baseline_returns.json`); **[R]** read from the instantiated environments; **[X]** measured in a rollout (§20.2); **[I]** inferred and still to be checked. §16 onward is proposal and hypothesis, not result. Nothing in this analysis modifies the starter-kit repository; the scripts live in `code/` and write only to `outputs/`.
 
@@ -893,32 +893,37 @@ Six stages take us from simulator data to a scored policy:
                                                     └──────────────────────┘
 ```
 
-Stages 1–3 are the subject of §17, stages 4–5 of §18, and stage 6 of §19.
+Stages 1–3 are the subject of §17, stages 4–5 of §18, and stage 6 of §19. Two facts from §4.3 fix the shape of the plan: the whole evaluation must fit in one 9-hour session, which leaves about **0.125 s per step** including the simulator, and the held-out set contains **unseen weather stations** as well as unseen buildings. So everything expensive (search, fitting, data generation) happens off-line, the policy carries only small closed-form models, and validation must hold out stations as well as buildings.
 
 ---
 
 ## 17. Stage one: data and discovering the dynamics
 
-### 17.1 Generating the data
-There is no logged dataset (Appendix A), so the simulator is the data source, and the repo can generate arbitrarily many buildings and scenarios. Our angle is to **generate as much data as possible, then fit one symbolic state-space model on all of it, then put a controller on top.** Identification needs **persistent excitation**: the inputs must vary enough to reveal the dynamics.
+### 17.1 The data plan
+There is no logged dataset (Appendix A), so the simulator is the data source, and the repo can generate arbitrarily many buildings and scenarios. Our angle is to **generate as much data as possible, fit one symbolic state-space model on all of it, and put a controller on top.** Identification needs **persistent excitation**: the inputs must vary enough to reveal the dynamics, and the data must span the buildings and climates the held-out set will draw from.
 
-**How data is produced.** Buildings come from `run_floor_generator` (seeds from 500 upward; materials are stratified across a batch and reproducible from the seed list), scenarios from `run_scenario_generator` (cross product of the buildings and weathers named; Appendix C has the commands and the default behaviour). The shipped manifest pairs each building with one strip per station, but the generator inputs for the other stations and buildings are shipped too ("nothing here limits what you may generate"). Our collection loop lives outside the starter kit and drives the environment through `reset` and `step` using the `evaluate.py` helpers (`load_hybrid_environment`, `create_building_meta_data`, `SimulationTracker`), as `code/rollout_checks.py` already does, with a behaviour policy in place of random actions.
+**Tooling.** Buildings come from `run_floor_generator` (seeds from 500 upward; materials stratified across a batch and reproducible from the seed list), scenarios from `run_scenario_generator` (cross product of the buildings and weathers named; Appendix C has the commands), and rollouts through the `evaluate.py` helpers (`load_hybrid_environment`, `create_building_meta_data`, `SimulationTracker`), as `code/rollout_checks.py` already does. Our collection loop lives outside the starter kit and runs a behaviour policy in place of random actions. Episodes are independent, so generation parallelizes across CPU processes with no coordination.
 
-**What to vary.**
-- **Buildings.** Many seeds, so geometry, K, V and independently drawn materials span the generator's range. This is what lets the discovered *structure* generalize to hidden buildings; the number of distinct buildings, not the number of steps, limits transfer.
-- **Weather.** All five climates and as many strips of each as exist (`list_recorded_weather_presets()`), covering heating-, cooling- and mixed seasons.
-- **Behaviour policies (excitation).** Random-step or pseudo-random sequences on dampers and reheat valves, ramps on hot-water temperature and fan pressure, air-handler and pump on/off cycling, with the actions held for 6–24 steps so the thermal response shows through the 5-minute step; plus the four shipped baselines (`bang_bang`, `fixed_setpoint`, `pid`, `pid_water`) for realistic operating regimes, and `all_off` for pure envelope response (§14.3). Pure excitation visits unrealistic corners; baseline data alone is poorly excited because the baselines often sit on actuator floors, so both are needed. Later rounds add data collected under the fitted controller itself (DAgger-style), to cover the states it will actually visit.
-- **Regimes.** Occupied and eco periods, coils saturated and idle, floors active and inactive, full 30-day episodes.
+**Three tiers of data.**
 
-**What to log per step.** The full observation vector and the action actually sent; the realized damper and reheat values (already in the observation, §6.1); and, for the grey-box route, the simulator's *internal* quantities from the reward-info structures (heat applied to each zone, fan and gas power, electricity and carbon terms). The internal quantities identify blocks B–D in isolation with near-noise-free data, then compose them; the policy will not see them at submission time, so the final model may only *need* observable inputs. Store the metadata JSON beside every trajectory, so room types, floors and AHU assignments (§14) can be rebuilt for each building.
+| Tier | Content | Purpose | Rough size [I] |
+|---|---|---|---|
+| A. Shipped | the 30 scenarios, full 8,640-step episodes, under each behaviour policy below | reproduce the baselines; first fits; the final local score | 30 × 6 policies ≈ 180 episodes; about 90 s each on the smallest building and slower on larger ones, so roughly an hour on 16 cores |
+| B. Generated buildings | 100 or more new buildings (seeds from 500), each paired with strips from every available station, 10-day windows that cross a Monday-morning comfort switch (2,880 steps) | the pooled fit; the unit that matters is the building, not the step | 100 buildings × 15 strips × 3 policies × 2,880 steps ≈ 13 million rows; tens of core-hours |
+| C. On-policy | rollouts under our own controller, new seeds | cover the states the controller actually visits (DAgger-style), find where the model fails | added in later rounds |
 
-**Data budget.** One 8,640-step episode on the smallest building takes about 90 s [R] (≈100 steps/s); larger buildings are slower and unmeasured (§20.3), so the numbers below are for the smallest building and scale up by the measured slowdown for the others. One episode logs 8,640 rows of `V+8` to `6V+15K+58` values; for the 30 shipped scenarios that is 259,200 rows, about 45 minutes of simulation. Episodes are independent, so generation parallelizes across CPU processes with no coordination. The practical limits are the number of CPU cores and disk, not the method.
+**Behaviour policies (excitation).** Random-step or pseudo-random sequences on dampers and reheat valves, ramps on hot-water temperature and fan pressure, air-handler and pump on/off cycling, with each action held for 6–24 steps so the thermal response shows through the 5-minute step; the four shipped baselines (`bang_bang`, `fixed_setpoint`, `pid`, `pid_water`) for realistic operating regimes; and `all_off` for the pure envelope response of §14.3. Pure excitation visits unrealistic corners, while baseline data alone is poorly excited because the baselines often sit on actuator floors, so both are needed. Coverage targets: occupied and eco periods, coils saturated and idle, every season of every station.
+
+**What to log per step.** The full observation vector and the action actually sent; and, for the grey-box route, the simulator's *internal* quantities from the reward-info structures (heat applied to each zone, airflow per zone, supply-air temperature, fan, pump and gas power, electricity and carbon terms). The internal quantities are the targets of the algebraic rows of §13.4, identified near-noise-free and then composed; the policy will not see them at submission time, so the final model may only *need* observable inputs. Store the metadata JSON beside every trajectory so room types, floors and AHU assignments (§14) can be rebuilt for each building.
+
+**Splits.** The held-out set contains unseen buildings *and* unseen stations, so we validate on both axes: split by building, never by time within a building, and hold out whole stations in turn (leave-one-station-out over the six station files in the repo, `list_recorded_weather_presets()`). A model that only generalizes across buildings within the shipped climates would still fail the leaderboard.
 
 **Fitting-side rules.**
 - **Targets.** Use the 300-second step with finite differences `(T_{t+1} − T_t)/Δt` as derivative targets, or fit a discrete-time one-step map directly, which avoids differentiating noise (the simulator is noise-free, §20.3).
-- **Split by building**, never by time within a building, otherwise we measure interpolation rather than transfer.
 - **Mind the scales.** The observation is mixed-scale (§6.5); undo the normalization before fitting physical equations.
-- **Use the lean model inputs.** The model's inputs and outputs are the ones in §13.2–13.3 (zone temperatures, water temperature, outside air, occupants, time and comfort-mode features, plus the previous action), not the full 6V+15K+58 vector.
+- **Use the lean model inputs** of §13.2–13.4 (zone temperatures, water temperature, outside air, occupants, time and comfort-mode features, plus the previous action), not the full 6V+15K+58 vector.
+
+**Speed.** One 8,640-step episode on the smallest building takes about 90 s [R] (≈100 steps/s); larger buildings are slower and unmeasured (§20.3). Measuring the speed on all six buildings is the first task of the plan (§19.4), because it fixes the real size of Tier B.
 
 ### 17.2 Designing the library
 Whether we use SINDy or genetic-programming regression, we choose the *inputs, operators and constraints* — this is where physical knowledge is injected. The variables include the zone temperature, the outside temperature, neighbouring zone temperatures (or their mean), supply-air and water temperatures, the damper, valve, pressure and recirculation settings, occupancy, schedule flags, and sine/cosine of time. The **derived physical features** do much of the work: airflow `V̇ ∝ d·√P`, the air capacity rate `c_a ρ_a V̇`, the temperature differences `(T_sa − T_z)`, `(T_w − T_z)`, `(T_out − T_z)`, and the mixed-air temperature `r·T_ret + (1−r)·T_out`. The operators are `+ − × ÷ √ min max clip`, possibly `tanh` for smooth saturation, with `sin/cos` allowed only for time and `exp` avoided for equipment maps. The **constraints** enforce dimensional consistency, non-negative gains, sign and monotonicity (more reheat means more heat into the zone; higher outside temperature means more heat gain), and conservation — the coil's heat to the air must equal the heat charged to the boiler, a property the simulator's own regression tests check. A complexity penalty is tuned so the final model is read from the *elbow* of the Pareto front, not from its most accurate end.
@@ -957,20 +962,25 @@ The constraints of §4.3 shape what can be submitted.
 
 ## 18. Stage two: wrapping the model in a controller
 
-### 18.1 Three wrappers, built incrementally
-The same model can power three increasingly ambitious controllers.
+### 18.1 Three controllers, built incrementally
 
-**Wrapper 1 — model-based feed-forward on the existing structure (lowest risk).** Keep a `pid_water`-like architecture but replace hand-set choices with model outputs: required heat per zone from the discovered balance becomes the damper and reheat commands; hot-water temperature is set to the minimum that satisfies the *largest* zone demand; fan pressure to the minimum that delivers the required airflow; and the pre-heat start time follows from the identified time constant. Feedback trims what is left. This can only be modestly worse than the baseline if the model is wrong, because the model computes setpoints rather than being trusted blindly.
+The same model powers three increasingly ambitious controllers. Each must fit the budget of §4.3 (about 0.125 s per step, simulator included) and each is a complete submission on its own, so the plan always has a working fallback.
 
-**Wrapper 2 — model predictive control (the main target).** At each step: (1) **estimate** the state and update θ; (2) **forecast** disturbances — outside temperature over the horizon (persistence plus a diurnal pattern fitted from the day so far, or the last 24 hours) and occupancy from the schedule flags and time-of-day profile; (3) **optimize** the action sequence over a horizon of 2–6 hours, with coarser 15–30-minute blocks beyond the first hour to keep it cheap; (4) **apply** the first action. Solver choice depends on the model's smoothness: gradient-based methods (CasADi/IPOPT, or JAX with L-BFGS) if it is smooth; **sampling-based MPC** (MPPI, CEM, random shooting) if it has `min/max`, thresholds or hysteresis — robust, easily parallel with NumPy/Numba, and able to handle discrete on/off directly; or a hierarchy with continuous optimization for setpoints and enumeration or rules for equipment on/off per time block. The cost is the competition reward evaluated on predicted trajectories, plus small regularizers for action smoothness and terminal terms (the slab should end the horizon in a good state). Because the comfort term is unbounded, we add a **chance margin**: aim at the band centre plus a buffer proportional to predicted uncertainty.
+**Controller 0 — the safe baseline (day one).** A standalone `pid_water`-like policy with no model, written to the contract of §4.1 and inheriting nothing from the starter kit. It scores about −0.054 on the shipped set, is the fallback inside every later controller (§18.4), and tests the Kaggle packaging end to end before any research exists.
 
-**Wrapper 3 — distillation or a learned residual (optional, later).** Use MPC as a teacher to train a small, fast policy network, or learn an RL residual on top of the MPC action. Useful if solve time is a constraint or systematic model bias can be corrected from reward feedback.
+**Controller 1 — model-based feed-forward (lowest risk, first real target).** Keep the `pid_water` structure and replace the hand-set choices with model outputs: the required heat per zone from the discovered balance becomes the damper and reheat commands; hot-water temperature is set to the minimum that satisfies the *largest* zone demand; fan pressure to the minimum that delivers the required airflow; and the pre-heat start time follows from the identified time constant. Feedback trims what is left. Cost per step is a few vectorized NumPy operations, well under 10 ms, and a wrong model can only be modestly worse than the baseline because it computes setpoints rather than being trusted blindly.
+
+**Controller 2 — sampling-based MPC over a reduced action (main target).** The full action has up to 209 entries, which is too many to search. The decision is reduced to a handful of numbers per step: per AHU, a pressure, a supply temperature and a recirculation setpoint and an on/off bit; for the loop, a water temperature, a head and an on/off bit; and, instead of free per-zone dampers and reheat, a **per-zone allocation rule** (deliver each zone's predicted need at minimum airflow) with one shared aggressiveness parameter per type. Candidates are sampled around the previous plan (CEM or MPPI), rolled forward with the **fixed-size model of §14.4** (about 15 states per building, evaluated as a vectorized batch), and scored with the competition reward on the predicted trajectory plus a comfort margin. Sizing [I]: 128–256 candidates over a 12–24 step horizon in coarse 15–30-minute blocks is on the order of 10–40 ms in NumPy, inside the budget; Numba is an optional speed-up (its compile time goes into the 15-minute first-step allowance). At each step: (1) **estimate** the state and update θ; (2) **forecast** disturbances (outside temperature by persistence plus a diurnal pattern fitted from the day so far, occupancy from the schedule flags and time-of-day profile); (3) **optimize**; (4) **apply** the first action, expand it to every zone, and enforce the floors. Because the comfort term is unbounded, aim at the band centre plus a buffer proportional to predicted uncertainty. Equipment on/off is decided by rule from the model's coast-time prediction rather than searched.
+
+**Controller 3 — distillation or a learned residual (optional, last).** Use Controller 2 as a teacher to train a small, fast network, or learn a residual on top of its action, only if the time budget or a systematic model bias demands it.
+
+**Ordering.** Controller 0 is built first and submitted early; Controller 1 follows as soon as the zone model (§17) passes its gate; Controller 2 is attempted only after Controller 1 beats the baselines locally. A later stage replaces an earlier one only if it wins on the shipped set *and* on the generated hold-out (§19.2).
 
 ### 18.2 The decisions it has to make
 Layer by layer (§15.3): for **equipment on/off**, run an air handler only when its zones need conditioning *or* ventilation is required during occupied hours, switch off in eco mode when the building can coast (the model predicts the coast time before the eco band is violated), and avoid short cycling. For **per-zone dampers and reheat**, deliver each zone's need at minimum airflow, using the damper floor for satisfied zones and avoiding cooling at the air handler while reheating at the VAV unless required. For the **air-handler supply temperature**, treat it as a lever only when the mixed air is above the setpoint; when the model predicts the mixed air below the coldest commandable setpoint (cold climates), hold a nominal value and use the water side — the model makes the inert regime explicit instead of letting it be discovered by ablation. Set **static pressure** to the lowest value that meets the served zones' flow demand; use **recirculation** for free cooling when `T_out` is below return temperature and cooling is needed, limit it in cold weather, and respect the 70 % cap; set the **hot-water temperature and pump head** to the lowest values that satisfy the most demanding coil; and time **pre-conditioning and setback** so the building reaches the comfort band at `morning_start_hour` and drifts to the eco band at `evening_start_hour`.
 
 ### 18.3 Making an unobserved model usable
-The controller needs the hidden states and the building parameters. In rough order of simplicity: **recursive least squares** on the linear-in-parameter form, with a simple observer for hidden states; an **augmented-state Kalman filter** over zone temperatures, slab temperatures and parameters, with the symbolic model as the process model; **moving-horizon estimation**, which fits state and parameters to the last N steps and is more robust to nonlinearity at higher cost; and a **warm-start phase** in which the first hours run safe baseline-like behaviour with small deliberate dithering to learn θ before switching to MPC. There is no warm-up exemption — every step is scored — so the dithering must stay gentle and band-respecting.
+The controller needs the hidden states and the building parameters. In rough order of simplicity: **recursive least squares** on the linear-in-parameter form, with a simple observer for hidden states; an **augmented-state Kalman filter** over zone temperatures, slab temperatures and parameters, with the symbolic model as the process model; **moving-horizon estimation**, which fits state and parameters to the last N steps and is more robust to nonlinearity at higher cost; and a **warm-start phase** in which the first hours run safe baseline-like behaviour with small deliberate dithering to learn θ before switching to MPC. There is no warm-up exemption — every step is scored — so the dithering must stay gentle and band-respecting. The 15-minute allowance for the first step of each scenario (§4.3) is free time for one-off work: loading weights, compiling, building the room-type descriptor from the floor plan, and fitting the metadata priors on θ.
 
 ### 18.4 Handling model error safely
 Models are wrong, and the comfort penalty is unforgiving, so safety is layered: an **integral-like correction** on the one-step prediction error (offset-free MPC) cancels persistent bias; **uncertainty-aware margins** widen the comfort buffer when parameter variance is high or the regime is poorly covered by training data; a **fallback controller** takes over if an occupied zone leaves a safe inner band or recent prediction error exceeds a threshold, handing control to a robust baseline-like policy (for instance `pid_water` logic) until the model recovers; the known **floors** (200 Pa, 0.7 recirculation, 10 % damper) are enforced inside the optimizer so planned actions are realizable; and **rate limits** protect against the thermostat's hysteretic inner loop and equipment transients.
@@ -986,11 +996,15 @@ class SymbolicMPCPolicy:
         # 2. Instantiate the discovered symbolic model structure with per-zone / per-unit
         #    parameters initialised from priors derived from the floor plan and zone map.
         # 3. Initialise the estimator (state + parameters) and the safety fallback policy.
+        #    Load the fitted equations from the attached Kaggle Dataset; do any one-off
+        #    compilation here (the first step has a 15-minute allowance, later steps 60 s).
     def get_action(self, obs):
         # a. Parse obs -> measurements (undo normalization); update estimator (state, theta).
         # b. Forecast disturbances (outside temp, occupancy, schedule flags).
-        # c. Solve the receding-horizon problem with the symbolic model -> action sequence.
-        # d. Safety layer: floors, rate limits, fallback if in danger.
+        # c. Sample candidates over a reduced action (§18.1), roll the fixed-size model
+        #    forward as one vectorized batch, score with the reward -> best first action.
+        # d. Expand to every zone; safety layer: floors, bounds and finiteness check,
+        #    rate limits, fallback if in danger.
         # e. Scatter into continuous_action[3K+2+2V] and discrete_action[K+1] via the index
         #    tables; write every slot explicitly (zero is not off).
         # return {"continuous_action": ..., "discrete_action": ...}
@@ -1003,14 +1017,25 @@ The workflow: develop and score locally with `python -m smart_buildings.evaluate
 ## 19. Testing it honestly, and what could go wrong
 
 ### 19.1 The questions we want answered
-1. **Does the discovered structure transfer?** Fit on N buildings and test the rollout error on unseen buildings and climates.
+1. **Does the discovered structure transfer?** Fit on N buildings and stations and test the rollout error on unseen buildings *and* unseen stations.
 2. **How much does symbolic structure help?** Compare against a hand-derived RC model with identical parameters, black-box MLP/GRU dynamics, and a linear ARX model.
 3. **Does online identification close the gap** between the pooled model and a per-building oracle whose parameters are read from the config?
-4. **What does the model buy the controller?** Ablate in steps: PID baseline → + feed-forward → + water reset → + pre-conditioning → full MPC.
+4. **What does the model buy the controller?** Ablate in steps: Controller 0 → + feed-forward → + water reset → + pre-conditioning → full MPC (§18.1).
 5. **Where is the headroom per climate?** Break results down by station and season, against the levers by regime of §15.5.
+6. **Does it fit the clock?** Mean and worst-case seconds per step on the largest generated building, against the 0.125 s of §4.3.
 
 ### 19.2 The protocol
-We evaluate on the **shipped 30 scenarios** at 8,640 steps — directly comparable with `baseline_returns.json` (the reference is about −0.054 for `pid_water`, and about −0.047 for the per-scenario best-of-baselines oracle of §11.4) — and on a **generated hold-out set** of many new buildings (seeds from 500) paired with station strips, including buildings larger than the shipped six. We report the leaderboard metric, a per-climate and per-season breakdown, the **worst-scenario score** (tail risk), the comfort/energy/carbon decomposition of §3.3, and wall-clock time per step. We never compare across step counts, never tune on the hold-out set, and run `check_scales.py` on generated scenarios so the reward scale is right. The baselines to beat and to include in ablations are `pid_water`, `pid`, `fixed_setpoint` and `bang_bang`; a learned RL controller would be a useful external comparison since the repo ships none.
+We evaluate on the **shipped 30 scenarios** at 8,640 steps — directly comparable with `baseline_returns.json` (about −0.054 for `pid_water`, about −0.047 for the per-scenario best-of-baselines oracle of §11.4) — and on a **generated hold-out set**: new buildings (seeds from 500, never used in fitting) larger than the shipped six, paired with a station left out of fitting. We report the leaderboard metric, a per-climate and per-season breakdown, the **worst-scenario score** (tail risk), the comfort/energy/carbon decomposition of §3.3, and wall-clock seconds per step. We never compare across step counts, never tune on the hold-out set, and run `check_scales.py` on generated scenarios so the reward scale is right. The baselines to beat and to include in ablations are `pid_water`, `pid`, `fixed_setpoint` and `bang_bang`.
+
+**Gates.** A stage advances only when it passes its target [I, to be tuned once data exists]:
+
+| Gate | Passed when |
+|---|---|
+| G0 packaging | Controller 0, assembled as a Kaggle notebook, runs end to end and scores on the leaderboard |
+| G1 toolchain | symbolic regression recovers `√P`, the coil effectiveness and `min(mixed, setpoint)` from simulator data (§13.4 rows 3–5) to within noise |
+| G2 zone model | multi-hour rollout error on held-out buildings and a held-out station is small enough to plan with (target: 3-hour mean error under 0.5 K) |
+| G3 feed-forward | Controller 1 beats −0.054 on the 30 shipped scenarios and does not lose to Controller 0 in the worst scenario |
+| G4 MPC | Controller 2 beats Controller 1 by a clear margin on the shipped set and the hold-out, within 0.1 s per step |
 
 ### 19.3 The main risks
 - **The symbolic model is too simple for hidden-state dynamics**, giving multi-hour prediction errors and poor pre-conditioning. *Mitigation:* a latent mass state, online estimation, validation on multi-step rollouts.
@@ -1023,15 +1048,19 @@ We evaluate on the **shipped 30 scenarios** at 8,640 steps — directly comparab
 - **Reward-hacking of model quirks**, where the model claims "free heat" and the simulator disagrees. *Mitigation:* energy-balance checks and closed-loop evaluation in the true simulator.
 - **Unverified Kaggle runtime details** — which libraries the image contains and whether scenarios run in parallel — which could invalidate a heavy dependency (§20.3). *Mitigation:* ship plain NumPy; test the assembled notebook on Kaggle early.
 
-### 19.4 A staged roadmap
-1. **Instrument and understand.** Run the baselines (Appendix B), log per-step internals, reproduce `baseline_returns.json` for a few scenarios and map the observation fields to model variables.
-2. **Validate the pipeline on known physics.** Use symbolic regression or SINDy to recover VAV airflow (`∝ d·√P`), the fan and pump laws and the coil heat — a unit test for the toolchain.
-3. **Discover the zone thermal structure** from pooled generated-building data, and compare against a hand-derived RC reference.
-4. **Online identification.** Show that θ estimated from the first day on an unseen building gives multi-hour rollout errors near the oracle.
-5. **Wrapper 1.** Feed-forward, water reset and pre-conditioning; target beating `pid_water` on the shipped set.
-6. **Wrapper 2.** MPC with a safety fallback; ablate horizon, cost margins and solver.
-7. **Hold-out validation** on many generated buildings, with stress tests (a cold snap, a heat wave, larger K).
-8. **Package** into the policy class (§4.1, §17.6), verify runtime, submit.
+### 19.4 A dated roadmap
+Today is 17 November 2026. The final deadline is 15 January 2027 and entry and team mergers close on 3 January (§4.3), so about eight weeks remain. Kaggle allows five submissions a day and two final selections, which is enough to test on the real gateway every week. The weeks are a plan, not a promise [I].
+
+| Weeks | Work | Gate |
+|---|---|---|
+| 1 (from 17 Nov) | Accept the rules and read the `kaggle_evaluation` package and the Code-tab notebook (closes §20.3 item 7). Build Controller 0 as a notebook and submit it. Measure simulator speed on all six buildings (closes item 5). Write the data-collection loop and logging of §17.1 and run Tier A. | G0 |
+| 2 | Run Tier B in parallel. Run Appendix B's profiling set (closes items 1 and 2). Validate the toolchain on the known physics rows of §13.4. | G1 |
+| 3–4 | Discover the zone thermal structure (row 1) on pooled data, with the room-type model of §14.4; compare with the hand-derived RC reference and the black-box baselines (§19.1 question 2). Fit the disturbance models (rows 6–7). | G2 |
+| 4–5 | Online identification of θ (§18.3). Build Controller 1; evaluate on the 30 shipped scenarios and the generated hold-out; submit. | G3 |
+| 5–7 | Build Controller 2 around the fixed-size model; tune horizon, candidates and margin against the 0.1 s budget. Collect Tier C data under the controller and refit. Stress tests: a cold snap, a heat wave, larger K. | G4 |
+| 7–8 (to 15 Jan) | Freeze. Choose the two final submissions by hold-out score and worst-case behaviour (Controller 1 and the best of Controller 2). Package, rerun on Kaggle, write the method description the rules require of winners (§4.3). | — |
+
+If a gate fails, the plan falls back to the previous controller and spends the remaining weeks improving the model that failed, not adding a new stage. The first submission is made in week 1 because every later risk (package, time limit, imports) is easier to find on the real gateway than in the notebook.
 
 # Part VI. Verification
 
