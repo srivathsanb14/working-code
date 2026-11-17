@@ -1,7 +1,7 @@
 # One Controller for Every Building
 ### The NeurIPS 2026 Smart Buildings competition: the problem, the interface, a state-space model of the building, and our method
 
-*Based on the starter kit `smart-buildings-2026/starter-kit` · Competition page: <https://www.kaggle.com/competitions/neurips-2026-smart-buildings/>*
+*Based on the starter kit `smart-buildings-2026/starter-kit` · Competition pages: <https://www.kaggle.com/competitions/neurips-2026-smart-buildings/> and <https://smart-buildings-2026.github.io/competition/>*
 
 ---
 
@@ -152,18 +152,27 @@ For a model-based controller the reward is more than a score: it is the cost fun
 ## 4. What is submitted
 
 ### 4.1 The artifact and its contract
-A submission is a **Kaggle Notebook** and nothing else. A working example (the "TransferPolicy Notebook") is on the competition's Code tab. The notebook defines one policy class; when the notebook is submitted, the same notebook is re-run unchanged against the hidden test scenarios, and the leaderboard number (§3.4) is computed server-side. The competition's Data page describes the class as subclassing `smart_buildings_inference_server.Policy`; the starter kit's template, and every shipped baseline, needs only two methods:
+A submission is a **Kaggle Notebook** and nothing else. A working example (the "TransferPolicy Notebook") is on the competition's Code tab; the competition website gives its structure:
 
 ```python
-__init__(self, building_meta_data, action_spec)   # called once per scenario (per building)
-get_action(self, obs) -> {"continuous_action": float32[3K+2+2V],
-                          "discrete_action":   int32[K+1]}   # called once per 5-minute step
+from kaggle_evaluation import smart_buildings_inference_server
+
+class TransferPolicy(smart_buildings_inference_server.Policy):
+    def __init__(self, building_meta_data, action_spec):       # once per scenario
+        super().__init__(building_meta_data, action_spec)
+    def get_action(self, obs):                                  # once per 5-minute step
+        return {"continuous_action": np.zeros(n_continuous, dtype=np.float32),   # shape 3K+2+2V
+                "discrete_action":   np.zeros(n_discrete,   dtype=np.int32)}     # shape K+1
+
+smart_buildings_inference_server.SmartBuildingsInferenceServer(TransferPolicy).run()
 ```
 
-The local harness (`evaluate.py`) needs no base class: `initialize_policy` tries `Policy(meta, action_spec)`, then `Policy(meta)`, then `Policy()`, and `get_policy_action` calls `get_action(obs)`. The Kaggle runtime imports `smart_buildings_inference_server`, which is not in the starter kit (it ships in the competition's `kaggle_evaluation` folder, visible only after accepting the rules). So we develop against the two-method contract, keep the class free of local-only imports, and make the final class inherit from `Policy` when the notebook is assembled. The base class's exact behaviour (extra hooks, how metadata is delivered) is unverified (§20.3).
+The notebook contains **no scenario list and no rollout loop**: an evaluation gateway owns the simulator, constructs the policy for each scenario, calls `get_action` and applies the result. Running the notebook yourself plays one public example scenario, as a check that the policy loads and runs; to score all 30 training scenarios locally use `evaluate.py` and `score_leaderboard.py`. On submission Kaggle re-runs the same notebook against the hidden test scenarios and the leaderboard number (§3.4) is computed server-side. Model weights are loaded in `__init__` from a Kaggle Dataset attached to the notebook.
+
+The local harness (`evaluate.py`) needs no base class: `initialize_policy` tries `Policy(meta, action_spec)`, then `Policy(meta)`, then `Policy()`, and `get_policy_action` calls `get_action(obs)`. So we develop against the two-method contract, keep the class free of local-only imports, and subclass `Policy` in the Kaggle notebook. The `kaggle_evaluation` package itself (the base class's other hooks) is visible only after accepting the rules and has not been read (§20.3).
 
 ### 4.2 What the harness does with the policy
-For each scenario `run_policy` resets the environment and loops 8,640 times: `get_action(obs)`, then `validate_action` (exact shapes; continuous cast to float32, discrete to int32; a wrong shape raises), then `tracker.step(action)`. The policy sees only the observation vector and the metadata (§6.5), never the reward, weather label, month, station or building id, and **hardcoding a reference to a held-out building or weather seed is disqualifying** (template docstring). The policy object is created once per scenario, so it can keep state between calls: the estimator, its previous action, a history.
+Locally, for each scenario `run_policy` resets the environment and loops 8,640 times (the gateway does the equivalent on Kaggle): `get_action(obs)`, then `validate_action` (exact shapes; continuous cast to float32, discrete to int32; a wrong shape raises), then `tracker.step(action)`. The policy sees only the observation vector and the metadata (§6.5), never the reward, weather label, month, station or building id, and **hardcoding a reference to a held-out building or weather seed is disqualifying** (template docstring). A fresh policy is built for every scenario, so state carries between steps (the estimator, the previous action, a history) but never between scenarios. Actions must lie inside the action-space bounds (out-of-range actions are rejected) and be finite: a NaN passes the bounds check and corrupts the rest of the episode.
 
 ### 4.3 Limits and rules
 
@@ -177,7 +186,10 @@ For each scenario `run_policy` resets the environment and loops 8,640 times: `ge
 | Team size | ≤ 5; mergers allowed | Rules §2.1 |
 | Winners | license the winning code CC-BY 4.0 and deliver training and inference code | Rules §2.5, §2.8 |
 | Dates | entry and merger deadline 3 Jan 2027; final submission 15 Jan 2027 | Overview page |
-| Compute budget per step | not stated; 9 h over 30 scenarios × 8,640 steps ≈ 1.25 s per step, minus simulator time | derived [I] |
+| Time limits | 15 min for the first step of each scenario (model loading), then 60 s per step; the whole submission must finish within one Kaggle session | submission page |
+| Effective budget per step | 9 h ÷ (30 scenarios × 8,640 steps) ≈ **0.125 s per step**, simulator time included (if the scenarios run one after another) | derived [I] |
+| Weather and buildings at test time | 6 unseen buildings × 5 unseen weather stations = 30 scenarios | scoring page |
+| Paper track | NeurIPS poster round 13 Nov 2026 (workshop in Paris 13 Dec); final round 15 Jan 2027; submitted on OpenReview | website |
 
 What these limits mean for our method is worked out in §17.6.
 
@@ -584,7 +596,7 @@ The competition is designed so that memorizing is impossible. Five things vary o
 1. **Topology.** Zone count, air-handler count (the generator raises `num_ahus` to `ceil(zones/10)`), floor-plan shape and the room-to-air-handler assignment all change, and with them the observation and action sizes. Held-out buildings can be larger than any shipped one.
 2. **Construction.** Each building draws its six envelope properties *independently* by Latin hypercube sampling (`materials.py`): exterior conductivity 0.15–0.55 (log scale), exterior density 350–2400, interior-mass density 10–40, interior-wall conductivity 0.45–0.60, interior-wall density 110–700, exterior heat capacity 840–1000. The authors explain why: choosing among *named* constructions collapses to a one-dimensional "how heavy is the building" line, because the properties are almost perfectly correlated. Independent draws fill a volume that includes real-world corners — a leaky heavy masonry warehouse and a tight light panel build are both possible.
 3. **Climate and season** (§10): −42 °C to +46 °C, with different 30-day windows per scenario.
-4. **A hidden test set** from the same generator and ranges, with weather strips that do not ship.
+4. **A hidden test set** of 6 unseen buildings and 5 unseen weather stations from the same generator and ranges, with weather that does not ship. The generator's published ranges are 2–4 floors, footprints of 400–700 ft by 300–500 ft, composite layouts, rooms of 30–60 ft and 1–2 occupants per zone.
 5. **No identity features.** No building id, month or station name appears in the observation (§6.5), and hard-coding references to held-out configs is disqualifying (§4.2).
 
 The conclusion is that the policy must **infer both building physics and climate from live signals**. It is as much a system-identification problem as a control problem — which is exactly the bet in §16.
@@ -937,7 +949,7 @@ One-step accuracy is misleading — nearly any model predicts `T_{t+1} ≈ T_t`.
 The constraints of §4.3 shape what can be submitted.
 - **Everything the policy needs at run time travels inside the notebook or an attached Kaggle dataset.** There is no internet, so no downloads and no installs. The discovered equations, fitted constants and per-type priors are written as plain Python/NumPy or a small JSON or `.npz` file, with versions pinned. Prefer NumPy at run time over a symbolic-regression toolchain: PySR needs Julia, and the availability of SINDy and CasADi in the Kaggle image is unverified (§20.3). Do the discovery off-line and ship only the result.
 - **The policy is built once per building and adapts online.** `__init__` does the per-building setup (index tables, parameter priors from the floor plan and zone map, §14); the object then carries the estimator state and its previous action between calls (§13.2 relies on this to drop the setpoints from the model's inputs). The notebook is deterministic and re-run on unseen buildings, so there is no per-building offline fit.
-- **Runtime.** The 8,640 × 30 evaluation must finish inside the notebook limit, and the simulator's own time counts: about 90 s per scenario on the smallest building (§17.1), more on larger ones (unmeasured). A closed-form model with tens of terms per zone and per type evaluates in microseconds, so even a sampling MPC over hundreds of candidate action sequences is small next to the simulator.
+- **Runtime.** The 60 s per-step limit is not the binding one: the whole 30 × 8,640-step evaluation must fit in one 9-hour session, which leaves about 0.125 s per step including the simulator (§4.3), if the scenarios run one after another. The simulator alone takes about 0.01 s per step on the smallest building (§17.1) and more on larger ones (unmeasured). A closed-form model evaluates in microseconds, but a sampling MPC with hundreds of candidate sequences over a multi-hour horizon has to be sized against roughly 0.1 s, and the 15-minute first-step allowance is the place for any heavy one-off setup such as the initial parameter fit.
 - **Reproducibility.** Winners must deliver training and inference code (Rules §2.8), so the data-generation scripts, seeds, the discovery configuration and the notebook builder are versioned together; trajectories are regenerable from seeds rather than stored.
 - **Fallbacks.** The notebook includes the PID-like fallback of §18.4 in the same file, so a bad model cannot take the policy off the leaderboard.
 
@@ -1006,10 +1018,10 @@ We evaluate on the **shipped 30 scenarios** at 8,640 steps — directly comparab
 - **Piecewise or hysteretic behaviour defeats smooth optimizers.** *Mitigation:* sampling-based MPC, explicit regime gating, a smoothed cost.
 - **The identification period is expensive** because every step is scored. *Mitigation:* priors from metadata, gentle dithering, a baseline-like safe mode.
 - **The unbounded comfort penalty** means one zone failure dominates. *Mitigation:* safety margins, a fallback controller, worst-case reporting.
-- **Compute budget**: MPC may be too slow for 30+ scenarios in a session. *Mitigation:* short horizons, coarse blocks, vectorized sampling, distillation.
+- **Compute budget**: about 0.125 s per step for the whole 30-scenario session (§4.3), so MPC may be too slow. *Mitigation:* short horizons, coarse blocks, vectorized sampling, a feed-forward wrapper (§18.1) as the fallback, distillation.
 - **Overfitting to the six shipped buildings.** *Mitigation:* train and validate on generated buildings, split by building.
 - **Reward-hacking of model quirks**, where the model claims "free heat" and the simulator disagrees. *Mitigation:* energy-balance checks and closed-loop evaluation in the true simulator.
-- **Unverified Kaggle runtime details** — the `Policy` base class and which libraries the image contains — which could invalidate a heavy dependency (§20.3). *Mitigation:* ship plain NumPy; test the assembled notebook on Kaggle early.
+- **Unverified Kaggle runtime details** — which libraries the image contains and whether scenarios run in parallel — which could invalidate a heavy dependency (§20.3). *Mitigation:* ship plain NumPy; test the assembled notebook on Kaggle early.
 
 ### 19.4 A staged roadmap
 1. **Instrument and understand.** Run the baselines (Appendix B), log per-step internals, reproduce `baseline_returns.json` for a few scenarios and map the observation fields to model variables.
@@ -1051,7 +1063,7 @@ Caveats: the rollouts use one or two buildings, one weather strip each and non-t
 4. **Sensor noise or delay**, if any; initial readings and the rollouts look noise-free.
 5. **Simulation speed across all building sizes**, which bounds how much data generation and in-simulation MPC is affordable.
 6. The exact **internal-gain parameters** in the scenario configs and whether they vary by building.
-7. Whether **solver libraries** (CasADi, JAX, PySR with Julia) are available in the Kaggle runtime image. The notebook limit (9 h) is known; the exact `smart_buildings_inference_server.Policy` base class and the `kaggle_evaluation` files were not visible without accepting the rules, so whether the runtime passes the same metadata and observation as `evaluate.py` is unverified.
+7. Whether **solver libraries** (CasADi, JAX, PySR with Julia) are available in the Kaggle runtime image, whether the 30 scenarios run sequentially or in parallel (which sets the real per-step budget of §4.3), and what the `kaggle_evaluation` package adds to the base class. The files were not visible without accepting the rules.
 8. Whether the **airflow and outside-air-flow signals have memory**, and whether the physical supply temperature `min(mixed air, setpoint)` is observable anywhere (the sensor reports the setpoint).
 9. Whether **room type predicts the response in all regimes** (§14.5) and whether the exterior-reach threshold of §14.2 is the right one; the all-off rollouts cover two buildings.
 10. Whether the **solver couples floors** (§9.4); the layout suggests not.
@@ -1198,7 +1210,7 @@ images/                     figures used in the README (and in this report)
 
 ---
 
-*Provenance.* §1–§4 and §11 come from the repo's README, docstrings and files and the Kaggle pages; §8 and parts of §15 come from reading the simulator source (`vav.py`, `air_handler.py`, `boiler.py`, `hot_water_system.py`, `pump.py`, `thermostat.py`, `simulator.py`). §9–§12 and the appendices are computed from the shipped YAML and `config.gin` files, the `.npy` grids, the weather CSVs and `baseline_returns.json`; §5–§7 and §13–§14 come from the environment's own field names, the rollouts and the geometry experiments listed in §20.1. The control-theory framing in §15 and everything from §16 on are our synthesis and proposal; claims about the method are hypotheses, not results. Baseline per-step numbers, derived facade U-values and heat capacities are computed from the shipped files.
+*Provenance.* §1–§4 and §11 come from the repo's README, docstrings and files, the Kaggle pages and the competition website; §8 and parts of §15 come from reading the simulator source (`vav.py`, `air_handler.py`, `boiler.py`, `hot_water_system.py`, `pump.py`, `thermostat.py`, `simulator.py`). §9–§12 and the appendices are computed from the shipped YAML and `config.gin` files, the `.npy` grids, the weather CSVs and `baseline_returns.json`; §5–§7 and §13–§14 come from the environment's own field names, the rollouts and the geometry experiments listed in §20.1. The control-theory framing in §15 and everything from §16 on are our synthesis and proposal; claims about the method are hypotheses, not results. Baseline per-step numbers, derived facade U-values and heat capacities are computed from the shipped files.
 
 ## Appendix E. Every entry of the train_8 vectors
 
