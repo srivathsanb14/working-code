@@ -1,0 +1,6 @@
+{
+  "_comment": "Glob patterns: with '/' they match building/weather, without they match the building; '!' excludes. Train: seeds 500-599 on every station except the val station (Phoenix) and the test station (Minneapolis). Val: seeds 700-719 on Phoenix only (unseen building and unseen station). Test: seeds 800-819 on Minneapolis only. Rotate the val station for leave-one-station-out.",
+  "train": ["building_05*", "!*/phoenix*", "!*/minneapolis*"],
+  "val":   ["building_07[01]*/phoenix*"],
+  "test":  ["building_08[01]*/minneapolis*"]
+}

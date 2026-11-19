@@ -44,9 +44,22 @@ DEFAULT_SPLIT = {"train": ["building_train_8", "building_train_2", "building_tra
 # ----------------------------------------------------------------------------- data
 
 def split_episodes(eps, split):
-    def match(e, keys):
-        return any(e.scenario.startswith(k) or e.building == k or e.name.startswith(k) for k in keys)
-    out = {k: [e for e in eps if match(e, v)] for k, v in split.items()}
+    """split: {"train": [...], "val": [...], "test": [...]} of glob patterns.
+
+    A pattern with "/" is matched against "building/weather" (e.g. "building_07[01]*/phoenix*");
+    one without is matched against the building name (e.g. "building_05*", "building_train_8").
+    A pattern starting with "!" excludes what it matches (e.g. "!*/minneapolis*").
+    Keys starting with "_" are comments."""
+    from fnmatch import fnmatch
+
+    def hit(e, pat):
+        return fnmatch(e.scenario, pat) if "/" in pat else fnmatch(e.building, pat)
+
+    def match(e, pats):
+        if any(hit(e, p[1:]) for p in pats if p.startswith("!")):
+            return False
+        return any(hit(e, p) for p in pats if not p.startswith("!"))
+    out = {k: [e for e in eps if match(e, v)] for k, v in split.items() if not k.startswith("_")}
     for k, v in out.items():
         if not v and k != "test":
             raise SystemExit(f"split '{k}' matched no episodes; adjust --split")
@@ -200,7 +213,7 @@ def main():
     ap.add_argument("--results-dir", type=Path, default=ROOT / "data/results",
                     help="evaluate.py --results-dir: <building>/<weather>/<policy>/timeseries.csv, ahu_log.csv, reward_components.csv")
     ap.add_argument("--policies", nargs="*", default=None, help="only these policy folders (default: all found)")
-    ap.add_argument("--split", help="JSON file {train: [...], val: [...], test: [...]} of building/scenario prefixes")
+    ap.add_argument("--split", help="JSON file {train: [...], val: [...], test: [...]} of glob patterns (see split_episodes, split_example.json)")
     ap.add_argument("--proposer", default="dry", choices=["dry", "dir", "claude"])
     ap.add_argument("--generations", type=int, default=0)
     ap.add_argument("--n", type=int, default=6, help="candidates per generation")

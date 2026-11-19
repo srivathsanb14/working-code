@@ -64,10 +64,11 @@ class ScenarioContext:
 
     def __init__(self, scenario_dir: Path):
         ev, self.cu, self.rbu = _kit()
+        sdir = Path(scenario_dir).resolve()             # resolve before changing into the kit
         cwd = os.getcwd(); os.chdir(KIT)
         try:
-            self.env = ev.load_hybrid_environment(Path(scenario_dir).resolve() / "config.gin")
-            self.meta = ev.create_building_meta_data(self.env, Path(scenario_dir).resolve())
+            self.env = ev.load_hybrid_environment(sdir / "config.gin")
+            self.meta = ev.create_building_meta_data(self.env, sdir)
             reset = self.env.reset()
             self.obs0 = np.asarray(reset[0] if isinstance(reset, tuple) else reset.observation, float)
         finally:
