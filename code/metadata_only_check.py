@@ -4,6 +4,7 @@ Uses only the dict returned by evaluate.create_building_meta_data (floor_plan, z
 ahu_zone_assignments, observation_field_names, zone_action_indices ...).  Compares with the
 simulator's own room dictionary.  Run from the starter-kit root; writes ../outputs.
 """
+import os; os.environ.setdefault("NUMBA_CACHE_DIR", str(__import__("pathlib").Path(__file__).resolve().parent.parent / ".numba_cache"))  # keep the starter kit untouched
 import csv, json, re, sys
 from pathlib import Path
 import numpy as np

@@ -1,4 +1,5 @@
 """Colour each room by corner/edge/interior and label it, one PNG per building (into ../outputs)."""
+import os; os.environ.setdefault("NUMBA_CACHE_DIR", str(__import__("pathlib").Path(__file__).resolve().parent.parent / ".numba_cache"))  # keep the starter kit untouched
 import csv, sys
 from pathlib import Path
 import numpy as np, matplotlib

@@ -8,6 +8,7 @@ through walls and through doors, and classify corner / edge / interior.
 Run from the starter-kit root (gin paths are relative to it); writes only to ../outputs:
   cd <kit> && PYTHONDONTWRITEBYTECODE=1 <venv>/python <this file> [building ...]
 """
+import os; os.environ.setdefault("NUMBA_CACHE_DIR", str(__import__("pathlib").Path(__file__).resolve().parent.parent / ".numba_cache"))  # keep the starter kit untouched
 import csv, json, sys
 from pathlib import Path
 import numpy as np

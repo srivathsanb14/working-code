@@ -4,6 +4,7 @@ Read-only with respect to the starter kit: imports it, loads one scenario per
 building, resets once, and writes CSVs into ../outputs. Run:
   PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=<starter-kit> python dump_vectors.py
 """
+import os; os.environ.setdefault("NUMBA_CACHE_DIR", str(__import__("pathlib").Path(__file__).resolve().parent.parent / ".numba_cache"))  # keep the starter kit untouched
 import csv, json, sys
 from pathlib import Path
 import numpy as np

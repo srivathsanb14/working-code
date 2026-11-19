@@ -1,4 +1,5 @@
 """Which floor slab each room sits on (connected pieces of the footprint) and how AHUs map to floors."""
+import os; os.environ.setdefault("NUMBA_CACHE_DIR", str(__import__("pathlib").Path(__file__).resolve().parent.parent / ".numba_cache"))  # keep the starter kit untouched
 import csv, json, sys
 from collections import Counter
 from pathlib import Path

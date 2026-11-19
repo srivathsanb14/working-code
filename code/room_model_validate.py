@@ -4,6 +4,8 @@ Run from the starter-kit root:  <venv>/python <this file> [building ...]
 """
 import json
 import sys
+import os
+os.environ.setdefault("NUMBA_CACHE_DIR", str(__import__('pathlib').Path(__file__).resolve().parent.parent / ".numba_cache"))  # keep the starter kit untouched
 from pathlib import Path
 
 import numpy as np

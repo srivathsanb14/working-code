@@ -2,6 +2,7 @@
 fields are duplicates / echoes / constants / normalized.  Writes only to ../outputs.
 Run from the starter-kit root:  <venv>/python <this file> [n_steps]
 """
+import os; os.environ.setdefault("NUMBA_CACHE_DIR", str(__import__("pathlib").Path(__file__).resolve().parent.parent / ".numba_cache"))  # keep the starter kit untouched
 import json, sys
 from pathlib import Path
 import numpy as np

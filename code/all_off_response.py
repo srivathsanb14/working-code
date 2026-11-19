@@ -3,6 +3,7 @@ follow the outside and its neighbours?  Per-room regression
     T[t+1]-T[t] = a (T_out-T) + n (mean_nbr(T)-T) + g*occupants + c
 and a comparison of `a` across room types.  Run from the starter-kit root; writes ../outputs.
 """
+import os; os.environ.setdefault("NUMBA_CACHE_DIR", str(__import__("pathlib").Path(__file__).resolve().parent.parent / ".numba_cache"))  # keep the starter kit untouched
 import csv, json, re, sys
 from pathlib import Path
 import numpy as np

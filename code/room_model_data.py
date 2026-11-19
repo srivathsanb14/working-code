@@ -14,6 +14,8 @@ policy: alloff | random | pidwater
 Writes ../outputs/roomdata_<building>_<weather>_<policy>.npz
 """
 import sys
+import os
+os.environ.setdefault("NUMBA_CACHE_DIR", str(__import__('pathlib').Path(__file__).resolve().parent.parent / ".numba_cache"))  # keep the starter kit untouched
 from pathlib import Path
 
 import numpy as np
