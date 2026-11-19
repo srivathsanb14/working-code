@@ -203,7 +203,7 @@ Results land in `outputs/discovery/main/`: `summary.json` (leaderboard and fitte
 
 ## 7. Test the model
 
-Test the best discovered model on the test split, with the global constants it was fitted with:
+Test the best discovered model on the test split, with the constants it was fitted with (default `--theta shared`: the shared θ from `summary.json`, no fitting on test buildings):
 
 ```bash
 python code/test_model.py outputs/discovery/main/best.py --params outputs/discovery/main/summary.json --on test
@@ -215,9 +215,13 @@ Any model file works, for example a seed, refitted on train first:
 python code/test_model.py code/discovery/seeds/seed_slab_wall_network.py --on val
 ```
 
-The report goes to `outputs/test/<model>_<split>/report.md`. Per run, station, policy and building it gives:
-- open-loop RMSE on day 1 and on the following days, with θ fitted on day 1 only, exactly as a deployed policy would;
+`--theta` picks how θ reaches a test building: `shared` (default, offline: one universal θ), `trainmean` (geometric mean of per-train-building θ), `prior` (initial values), or `day1` (online: fitted on that building's day 1). Only `day1` fits anything on the test building. Use `--deployment online` in step 6 if you want `summary.json` to carry per-building θ.
+
+The report goes to `outputs/test/<model>_<split>_theta-<mode>/report.md`. Per run, station, policy and building it gives:
+- open-loop RMSE on day 1 and on the following days, from the reset state;
 - if the model defines `network()`, the 1-, 3- and 6-hour forecast RMSE from a Kalman-filtered state, against persistence. The target for planning is under 0.5 K at 3 h.
+
+These forecasts are fed the true future inputs and weather: they test the model, not a controller (STATE_SPACE.md §17.8).
 
 Look at the **test** numbers once, at the end. Use `--on val` while iterating.
 

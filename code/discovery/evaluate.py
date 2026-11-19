@@ -121,11 +121,17 @@ def _checks_at(mod, ep, p, th):
 
 # ----------------------------------------------------------------------------- fitting
 
-def fit_train(mod, eps, max_nfev=40, stride=1):
-    """Joint least squares over PARAMS and one THETA per training scenario."""
+def fit_train(mod, eps, max_nfev=40, stride=1, shared=False):
+    """Joint least squares over PARAMS and THETA on the training scenarios.
+
+    shared=False: one THETA per training scenario (for online, day-1 identification).
+    shared=True:  ONE THETA for all buildings, i.e. universal constants learned offline
+                  (for deployment with no per-building fitting).  The returned dict still maps
+                  every training scenario to its THETA, which is then the same for all."""
     P, T = ParamMap(mod.PARAMS), ParamMap(mod.THETA)
-    scen = sorted({e.scenario for e in eps})
-    si = {s: k for k, s in enumerate(scen)}
+    all_scen = sorted({e.scenario for e in eps})
+    scen = ["shared"] if shared else all_scen
+    si = {s: (0 if shared else k) for k, s in enumerate(all_scen)}
     nP, nT = len(P.names), len(T.names)
 
     def unpack(z):
@@ -158,6 +164,8 @@ def fit_train(mod, eps, max_nfev=40, stride=1):
     fit = least_squares(resid, z0, bounds=(lo, hi), jac_sparsity=S if S.shape[1] > 1 else None,
                         max_nfev=max_nfev, diff_step=1e-3, x_scale="jac")
     p, ths = unpack(fit.x)
+    if shared:
+        return p, {s: ths[0] for s in all_scen}, fit
     return p, dict(zip(scen, ths)), fit
 
 
@@ -177,12 +185,18 @@ def fit_theta_day1(mod, eps_of_scenario, p, max_nfev=40):
     return T.as_dict(T.from_z(fit.x))
 
 
-def score_heldout(mod, eps, p, max_nfev=40):
-    """Fit THETA on day 1 per held-out scenario, then open-loop error on days 2-3."""
+def score_heldout(mod, eps, p, max_nfev=40, theta_mode="day1"):
+    """Per held-out scenario: THETA fitted on day 1 (theta_mode "day1"), or no fitting at all,
+    THETA at its initial values (theta_mode "prior"); then open-loop error on days 2-3."""
     out = {"episodes": {}, "scenarios": {}}
     for s in sorted({e.scenario for e in eps}):
         es = [e for e in eps if e.scenario == s]
-        th = fit_theta_day1(mod, es, p, max_nfev)
+        if theta_mode == "day1":
+            th = fit_theta_day1(mod, es, p, max_nfev)
+        elif isinstance(theta_mode, dict):          # a fixed THETA for every building (e.g. learned offline)
+            th = dict(theta_mode)
+        else:
+            th = {k: float(v[0]) for k, v in mod.THETA.items()}
         out["scenarios"][s] = {"theta": th}
         for e in es:
             Tp = _simulate(mod, e, th, p)
@@ -197,10 +211,28 @@ def score_heldout(mod, eps, p, max_nfev=40):
     return out
 
 
+def forecast_scores(mod, eps, p, thetas, horizons=(12, 36, 72)):
+    """k-step forecast RMSE from a Kalman-filtered state (the state corrected by measured history),
+    per episode; needs the candidate's network().  thetas: scenario -> THETA."""
+    from . import dlib
+    out = {}
+    for e in eps:
+        net, f = mod.network(e.geo, e.inputs, thetas[e.scenario], p)
+        fc = dlib.filtered_forecast(net, f["T_out"], f["g"], f["T_supply"], f["Q"], e.T_meas, e.T0, horizons=horizons)
+        out[e.name] = {f"{h // 12}h": v[0] for h, v in fc.items()} | {f"persistence_{h // 12}h": v[1] for h, v in fc.items()}
+    return out
+
+
 # ----------------------------------------------------------------------------- one full evaluation
 
-def evaluate(src, train_eps, val_eps, complexity_weight=0.0001, max_nfev=40, stride=1):
-    """Everything about one candidate, as a JSON-able record (plus 'val_detail' with arrays)."""
+def evaluate(src, train_eps, val_eps, complexity_weight=0.0001, max_nfev=40, stride=1, deployment="offline"):
+    """Everything about one candidate, as a JSON-able record (plus 'val_detail' with arrays).
+
+    deployment "offline" (default, no online fitting): PARAMS and ONE shared THETA are fitted on the
+      train buildings; held-out buildings get no fitting at all; the score is the 3-hour forecast RMSE
+      from a Kalman-filtered state (geometry + measured history + universal constants). Needs network().
+    deployment "online": one THETA per train building; each held-out building's THETA is fitted on its
+      day 1; the score is open-loop RMSE on the following days."""
     from . import contract
     t0 = time.time()
     rec = {"status": "ok"}
@@ -208,10 +240,14 @@ def evaluate(src, train_eps, val_eps, complexity_weight=0.0001, max_nfev=40, str
         mod, cx = contract.load(src)
         rec["complexity"] = cx
         rec["n_params"] = len(mod.PARAMS); rec["n_theta"] = len(mod.THETA)
+        rec["deployment"] = deployment
+        if deployment == "offline" and not hasattr(mod, "network"):
+            return {**rec, "status": "rejected", "reason": "offline deployment needs network(geo, inputs, theta, p): the score corrects "
+                    "the state from measured history with a Kalman filter", "sec": round(time.time() - t0, 1)}
         fails = physics_checks(mod, train_eps[0])
         if fails:
             return {**rec, "status": "rejected", "reason": "physics checks failed", "failures": fails, "sec": round(time.time() - t0, 1)}
-        p, thetas, fit = fit_train(mod, train_eps, max_nfev, stride)
+        p, thetas, fit = fit_train(mod, train_eps, max_nfev, stride, shared=(deployment == "offline"))
         rec["params"] = p
         rec["theta_train"] = thetas
         tr = {}
@@ -220,12 +256,23 @@ def evaluate(src, train_eps, val_eps, complexity_weight=0.0001, max_nfev=40, str
             tr[e.name] = float(np.sqrt((err ** 2).mean()))
         rec["train_rmse"] = tr
         rec["train_rmse_mean"] = float(np.mean(list(tr.values())))
-        val = score_heldout(mod, val_eps, p, max_nfev)
+        if deployment == "offline":
+            shared_th = next(iter(thetas.values()))
+            rec["theta_shared"] = shared_th
+            val = score_heldout(mod, val_eps, p, max_nfev, theta_mode=shared_th)
+            fc = forecast_scores(mod, val_eps, p, {e.scenario: shared_th for e in val_eps})
+            rec["val_forecast"] = fc
+            rec["val_forecast_3h_mean"] = float(np.mean([v["3h"] for v in fc.values()]))
+            metric = rec["val_forecast_3h_mean"]
+        else:
+            val = score_heldout(mod, val_eps, p, max_nfev)
+            metric = val["rmse_days23_mean"]
         rec["val_rmse_days23"] = {k: v["rmse_days23"] for k, v in val["episodes"].items()}
         rec["val_rmse_day1"] = {k: v["rmse_day1"] for k, v in val["episodes"].items()}
         rec["val_theta"] = {k: v["theta"] for k, v in val["scenarios"].items()}
         rec["val_rmse_days23_mean"] = val["rmse_days23_mean"]
-        rec["score"] = val["rmse_days23_mean"] + complexity_weight * cx
+        rec["score_metric"] = "val 3 h filtered-forecast RMSE" if deployment == "offline" else "val open-loop RMSE after day 1"
+        rec["score"] = metric + complexity_weight * cx
         rec["val_detail"] = val
     except Exception as e:  # noqa: BLE001
         tb = traceback.format_exc().strip().splitlines()

@@ -9,10 +9,17 @@ THETA, simulate(geo, inputs, theta, p, T0), and optionally network(geo, inputs, 
 For every scenario of the chosen split (default: test), exactly as a deployed policy would:
   1. global constants PARAMS: from --params (a summary.json of a discovery run, or a JSON dict),
      else fitted on the train split;
-  2. per-building THETA: fitted on DAY 1 of that scenario only (the Sunday);
+  2. THETA, by --theta:
+       shared (default, OFFLINE deployment: no fitting on the new building) - one universal THETA:
+              summary.json's theta_shared if given, else fitted jointly with PARAMS on train;
+       trainmean - geometric mean of per-train-building THETA (no fitting on the new building);
+       prior     - THETA at its initial values (no fitting on the new building);
+       day1      - ONLINE identification: THETA fitted on DAY 1 of that scenario only (the Sunday);
   3. open-loop RMSE of room temperature on day 1 and on every later day, from the reset state;
-  4. if the model defines network(): a Kalman filter on the measured room temperatures, and the
-     1-, 3- and 6-hour forecast RMSE from the filtered state (what MPC uses), against persistence.
+  4. if the model defines network(): a Kalman filter on the measured room temperatures (the state
+     corrected from measured history), and the 1-, 3- and 6-hour forecast RMSE from the filtered
+     state (what MPC uses), against persistence.  Forecasts use the TRUE future inputs and weather:
+     this tests the model, not a closed-loop controller.
 Results by run, by station, by policy and by building go to outputs/test/<model>_<split>/report.{md,json}.
 """
 from __future__ import annotations
@@ -44,6 +51,11 @@ def main():
     ap.add_argument("--params", type=Path, help="summary.json of a discovery run, or a JSON dict of PARAMS")
     ap.add_argument("--max-nfev", type=int, default=40)
     ap.add_argument("--no-forecast", action="store_true")
+    ap.add_argument("--theta", choices=["shared", "trainmean", "prior", "day1"], default="shared",
+                    help="shared (default, offline): one universal THETA (summary's theta_shared, else fitted with PARAMS on "
+                         "train); trainmean: geometric mean of per-train-building THETA; prior: THETA initial values; "
+                         "day1: fit THETA per building on its day 1 (online identification). Except day1, only the Kalman "
+                         "filter's state correction adapts to the building")
     a = ap.parse_args()
     mod, cx = contract.load(a.model.read_text())
     idx = json.loads((a.dataset / "index.json").read_text())
@@ -57,8 +69,22 @@ def main():
     if fails:
         print("physics checks failed:\n  " + "\n  ".join(fails)); sys.exit(1)
 
-    if a.params:
-        P = json.loads(a.params.read_text())
+    theta_mode = a.theta
+    P = json.loads(a.params.read_text()) if a.params else None
+    if a.theta == "shared" and P and P.get("best", {}).get("theta_shared"):
+        p, theta_mode = P["best"]["params"], P["best"]["theta_shared"]
+        src = f"{a.params} (PARAMS and shared THETA)"
+    elif a.theta == "shared":
+        print(f"fitting PARAMS and ONE shared THETA on train ({len(S['train'])} runs) ...")
+        p, ths, _ = evaluate.fit_train(mod, S["train"], a.max_nfev, stride=2, shared=True)
+        theta_mode = next(iter(ths.values()))
+        src = "fitted on train (with one THETA shared by all train buildings)"
+    elif a.theta == "trainmean":
+        print(f"fitting PARAMS and per-building THETA on train ({len(S['train'])} runs) to average THETA ...")
+        p, ths, _ = evaluate.fit_train(mod, S["train"], a.max_nfev, stride=2)
+        theta_mode = {k: float(np.exp(np.mean([np.log(t[k]) for t in ths.values()]))) for k in mod.THETA}
+        src = "fitted on train (with THETA averaged over train buildings)"
+    elif P:
         p = P["best"]["params"] if "best" in P else P
         src = str(a.params)
     else:
@@ -66,8 +92,10 @@ def main():
         p, _, _ = evaluate.fit_train(mod, S["train"], a.max_nfev, stride=2)
         src = "fitted on train"
     print(f"PARAMS ({src}): {p}")
+    if isinstance(theta_mode, dict):
+        print(f"THETA used for every tested building (no fitting on them): {theta_mode}")
 
-    res = evaluate.score_heldout(mod, target, p, a.max_nfev)
+    res = evaluate.score_heldout(mod, target, p, a.max_nfev, theta_mode=theta_mode)
     rows = []
     for e in target:
         d = res["episodes"][e.name]
@@ -93,14 +121,16 @@ def main():
         for r in rows:
             g[r[by]].append(r)
         return {k: {m: float(np.mean([x[m] for x in v])) for m in keys} | {"runs": len(v)} for k, v in sorted(g.items())}
-    report = dict(model=str(a.model), split=a.on, params=p, params_source=src, complexity=cx,
+    report = dict(model=str(a.model), split=a.on, theta_mode=a.theta, params=p, params_source=src, complexity=cx,
                   theta=res["scenarios"], overall={m: float(np.mean([r[m] for r in rows])) for m in keys},
                   by_station=agg("station"), by_policy=agg("policy"), by_building=agg("building"), runs=rows)
-    out = WC / "outputs" / "test" / f"{a.model.stem}_{a.on}"
+    out = WC / "outputs" / "test" / f"{a.model.stem}_{a.on}_theta-{a.theta}"
     out.mkdir(parents=True, exist_ok=True)
     (out / "report.json").write_text(json.dumps(report, indent=1, default=float))
     L = [f"# Test of `{a.model}` on `{a.on}`\n", f"PARAMS ({src}): `{json.dumps(p)}`  \ncomplexity {cx} AST nodes\n",
-         "Open loop from the reset state with THETA fitted on day 1; forecasts from a Kalman-filtered state. RMSE in K.\n"]
+         f"THETA mode `{a.theta}` ({'fitted on day 1 of each building: online identification' if a.theta == 'day1' else 'no fitting on the tested buildings: offline deployment'}). "
+         "Open loop from the reset state; forecasts from a Kalman-filtered state with the true future inputs "
+         "(a model test, not a closed-loop controller result). RMSE in K.\n"]
     for title, tab in (("Overall", {"all": report["overall"] | {"runs": len(rows)}}), ("By station", report["by_station"]),
                        ("By policy", report["by_policy"]), ("By building", report["by_building"])):
         L.append(f"\n## {title}\n\n| | runs | " + " | ".join(keys) + " |\n|---|---|" + "---|" * len(keys))

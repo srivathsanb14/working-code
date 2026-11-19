@@ -161,7 +161,7 @@ def run(args):
     if not paths:
         raise SystemExit("no usable runs; generate data and build the dataset (see docs/RUNBOOK.md)")
     (run_dir / "config.json").write_text(json.dumps({**vars(args), "split": split, "n_runs": len(paths)}, indent=1, default=str))
-    kw = dict(max_nfev=args.max_nfev, stride=args.stride, complexity_weight=args.complexity_weight)
+    kw = dict(max_nfev=args.max_nfev, stride=args.stride, complexity_weight=args.complexity_weight, deployment=args.deployment)
 
     def consider(cands, gen):
         for c in cands:
@@ -174,7 +174,11 @@ def run(args):
                        code=c["code"], hash=h, wall_sec=round(time.time() - t0, 1))
             (db.dir / "candidates" / f"{rec['id']}_{c['name']}.py").write_text(c["code"])
             db.add(rec)
-            s = f"score {rec['score']:.4f} (held-out {rec['val_rmse_days23_mean']:.3f} K, train {rec['train_rmse_mean']:.3f} K)" if rec["status"] == "ok" else f"{rec['status']}: {rec.get('reason')}"
+            if rec["status"] == "ok":
+                fc = f", 3 h forecast {rec['val_forecast_3h_mean']:.3f} K" if "val_forecast_3h_mean" in rec else ""
+                s = f"score {rec['score']:.4f} (held-out open loop {rec['val_rmse_days23_mean']:.3f} K{fc}, train {rec['train_rmse_mean']:.3f} K)"
+            else:
+                s = f"{rec['status']}: {rec.get('reason')}"
             print(f"  [{rec['id']}] {c['name']}: {s}  [{rec['wall_sec']} s]")
 
     if not db.recs and args.seeds != "none":
@@ -185,7 +189,7 @@ def run(args):
         consider(seeds, 0)
 
     proposer = make_proposer(args.proposer, run_dir, args.model, args.effort) if args.generations > 0 else None
-    system = prompts.system_prompt(informed=args.informed, complexity_weight=args.complexity_weight)
+    system = prompts.system_prompt(informed=args.informed, complexity_weight=args.complexity_weight, deployment=args.deployment)
     start = db.generation() + 1
     for gen in range(start, start + args.generations):
         user = prompts.user_prompt(gen, db.elites(args.elites), db.failures(args.failures), args.n, args.explore)
@@ -202,17 +206,19 @@ def run(args):
     if best:
         b = best[0]
         (run_dir / "best.py").write_text(b["code"])
-        summary["best"] = {k: b[k] for k in ("id", "name", "score", "val_rmse_days23_mean", "train_rmse_mean", "complexity",
-                                             "params", "val_theta", "val_rmse_days23")}
+        summary["best"] = {k: b.get(k) for k in ("id", "name", "deployment", "score", "score_metric", "val_forecast_3h_mean",
+                                                 "val_rmse_days23_mean", "train_rmse_mean", "complexity", "params", "theta_shared",
+                                                 "val_theta", "val_rmse_days23")}
         if args.test:
             S = split_episodes([_load_cached(p) for p in paths], split)
             if S.get("test"):
                 from . import contract
                 mod, _ = contract.load(b["code"])
-                t = evaluate.score_heldout(mod, S["test"], b["params"], args.max_nfev)
+                t = evaluate.score_heldout(mod, S["test"], b["params"], args.max_nfev,
+                                           theta_mode=b["theta_shared"] if b.get("theta_shared") else "day1")
                 summary["best"]["test_rmse_days23"] = {k: v["rmse_days23"] for k, v in t["episodes"].items()}
                 summary["best"]["test_rmse_days23_mean"] = t["rmse_days23_mean"]
-    summary["leaderboard"] = [{k: r.get(k) for k in ("id", "name", "score", "val_rmse_days23_mean", "complexity")} for r in db.elites(10)]
+    summary["leaderboard"] = [{k: r.get(k) for k in ("id", "name", "score", "val_forecast_3h_mean", "val_rmse_days23_mean", "complexity")} for r in db.elites(10)]
     (run_dir / "summary.json").write_text(json.dumps(summary, indent=1))
     print(json.dumps(summary.get("best", {}), indent=1, default=str)[:2000])
 
@@ -235,6 +241,10 @@ def main():
     ap.add_argument("--elites", type=int, default=4)
     ap.add_argument("--failures", type=int, default=6)
     ap.add_argument("--informed", action="store_true", help="add physics notes from the code audit to the prompt")
+    ap.add_argument("--deployment", choices=["offline", "online"], default="offline",
+                    help="offline (default): no per-building fitting at deployment; THETA is one universal value fitted on "
+                         "train, and held-out buildings are scored by 3 h forecasts from a Kalman-filtered state (measured "
+                         "history). online: THETA fitted per building on day 1, scored open loop on the following days")
     ap.add_argument("--seeds", default="all", choices=["all", "naive", "none"],
                     help="generation-0 seeds: all (incl. the audited physics network), naive (blind runs), none")
     ap.add_argument("--timeout", type=float, default=1200)

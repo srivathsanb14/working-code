@@ -1,0 +1,93 @@
+{
+ "n_candidates": 2,
+ "n_ok": 2,
+ "best": {
+  "id": "g000_0001",
+  "name": "seed_slab_wall_network",
+  "deployment": "offline",
+  "score": 0.30963330011018736,
+  "score_metric": "val 3 h filtered-forecast RMSE",
+  "val_forecast_3h_mean": 0.21333330011018736,
+  "val_rmse_days23_mean": 1.2586889818345903,
+  "train_rmse_mean": 0.9231249802777235,
+  "complexity": 963,
+  "params": {
+   "h_slab": 5.421370105566423,
+   "a_spread": 0.68449950439843
+  },
+  "theta_shared": {
+   "k_ext": 0.2873969751903283,
+   "h_film": 8.348796358222836,
+   "rc_ext": 888228.2708522461,
+   "k_iw": 0.22423452557288456,
+   "rc_iw": 50143.58498871191,
+   "rc_mass": 27623.466447201165
+  },
+  "val_theta": {
+   "building_0700/phoenix_6": {
+    "k_ext": 0.2873969751903283,
+    "h_film": 8.348796358222836,
+    "rc_ext": 888228.2708522461,
+    "k_iw": 0.22423452557288456,
+    "rc_iw": 50143.58498871191,
+    "rc_mass": 27623.466447201165
+   },
+   "building_0701/phoenix_7": {
+    "k_ext": 0.2873969751903283,
+    "h_film": 8.348796358222836,
+    "rc_ext": 888228.2708522461,
+    "k_iw": 0.22423452557288456,
+    "rc_iw": 50143.58498871191,
+    "rc_mass": 27623.466447201165
+   }
+  },
+  "val_rmse_days23": {
+   "building_0700_phoenix_6_all_off": 3.8736504819690114,
+   "building_0700_phoenix_6_bang_bang": 0.5124914569813781,
+   "building_0700_phoenix_6_fixed_setpoint": 0.9484120929877167,
+   "building_0700_phoenix_6_pid": 1.0536798295628724,
+   "building_0700_phoenix_6_pid_water": 1.0536798295628724,
+   "building_0701_phoenix_7_all_off": 3.6336693630583614,
+   "building_0701_phoenix_7_bang_bang": 0.27382253857773836,
+   "building_0701_phoenix_7_fixed_setpoint": 0.34974686920310766,
+   "building_0701_phoenix_7_pid": 0.443867276432425,
+   "building_0701_phoenix_7_pid_water": 0.44387008001042055
+  },
+  "test_rmse_days23": {
+   "building_0801_minneapolis_2_all_off": 0.7045887856776045,
+   "building_0801_minneapolis_2_bang_bang": 0.7434514131257891,
+   "building_0801_minneapolis_2_fixed_setpoint": 0.706509048521196,
+   "building_0801_minneapolis_2_pid": 0.6869550982279836,
+   "building_0801_minneapolis_2_pid_water": 0.6513782178342445,
+   "building_0801_minneapolis_5_all_off": 1.499570623409878,
+   "building_0801_minneapolis_5_bang_bang": 0.38571831836738246,
+   "building_0801_minneapolis_5_fixed_setpoint": 0.5225463751511753,
+   "building_0801_minneapolis_5_pid": 0.5788462518138313,
+   "building_0801_minneapolis_5_pid_water": 0.5795089021561273,
+   "building_0801_minneapolis_8_all_off": 0.7299563187103818,
+   "building_0801_minneapolis_8_bang_bang": 0.5770626325002258,
+   "building_0801_minneapolis_8_fixed_setpoint": 0.6104154741232077,
+   "building_0801_minneapolis_8_pid": 0.5919840126839102,
+   "building_0801_minneapolis_8_pid_water": 0.5625109439908265
+  },
+  "test_rmse_days23_mean": 0.6754001610862511
+ },
+ "leaderboard": [
+  {
+   "id": "g000_0001",
+   "name": "seed_slab_wall_network",
+   "score": 0.30963330011018736,
+   "val_forecast_3h_mean": 0.21333330011018736,
+   "val_rmse_days23_mean": 1.2586889818345903,
+   "complexity": 963
+  },
+  {
+   "id": "g000_0000",
+   "name": "seed_rc_one_node",
+   "score": 1.0226848892284504,
+   "val_forecast_3h_mean": 1.0019848892284504,
+   "val_rmse_days23_mean": 1.9117517336130607,
+   "complexity": 207
+  }
+ ]
+}

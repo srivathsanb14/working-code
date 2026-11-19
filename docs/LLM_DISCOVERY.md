@@ -2,12 +2,14 @@
 
 The LLM proposes **structure**: small Python programs that state a hypothesis about how room temperatures evolve. Numerical optimization fits every constant, and a simulation on held-out buildings decides which program is better. The LLM never supplies numbers or verdicts.
 
+**Status.** The loop runs end to end with the `dry` proposer, but only the two hand-written seeds have been evaluated; no LLM generation has run yet. **Default deployment is offline** (`--deployment offline`): no fitting on a new building, only its floor plan, measured history and universal constants (STATE_SPACE.md §17.8).
+
 Code: `code/discovery/` (`loop.py` orchestrates; `prompts.py` is what the LLM sees; `contract.py` is what it must write; `evaluate.py` fits and scores; `diagnostics.py` writes the feedback; `proposers.py` is where candidates come from). Entry point: `code/run_discovery.py`.
 
 ```
  data/dataset (build_dataset.py) ──► episodes: geometry G, inputs, measured temperatures
                                           │
- proposer ──► candidate programs ──► contract check ─► physics checks ─► fit (p on train, θ per scenario) ─► score on val ─► diagnostics
+ proposer ──► candidate programs ──► contract check ─► physics checks ─► fit on train (p + shared θ) ─► score on val ─► diagnostics
     ▲                                                                                                                         │
     └─────────────── next prompt: best programs + their diagnostics + recent failures ◄──────────────────────────────────────┘
 ```
@@ -22,8 +24,8 @@ One request per generation. The exact text of every request is saved in `outputs
 |---|---|
 | Task | Discover the dynamics of rooms as interpretable simulation programs: what stores heat, what exchanges heat with what, how every coefficient follows from geometry plus a few constants. Prefer energy balances, sensible units and parsimony |
 | Data dictionary | **Geometry** `geo`: `V`, `area`, `facade_faces`, `wall_cells` (V×V), `door_cells` (V×V), `n_doors` (V×V), `bbox_x/y`, `ahu`, `floor`. **Inputs** (n steps): `T_out`, `g` (W/K), `T_supply`, `Q_reheat`, `Q_gain`, `occupants` (building total), `comfort`, clock. **Target**: measured room temperatures after each step, from a uniform 294 K start. **Constants**: 300 s step, 0.2 m cell, 3 m height, air 1206 J/m³K, 70 W per occupant. These are exactly GUIDE.md B.3/B.5, all available at run time |
-| Contract | `PARAMS` (global constants with bounds), `THETA` (per-building constants with bounds), `simulate(geo, inputs, theta, p, T0) -> (n, V)`, optional `network(...)`; numpy, math and `dlib` only; at most 16 constants; no per-room fitted coefficients; implicit integration recommended (`dlib.LinearNetwork`) |
-| Scoring rules | The checks, the nested fit, the held-out day-1 / later-days protocol, and the complexity price |
+| Contract | `PARAMS` (global constants with bounds), `THETA` (material constants with bounds), `simulate(geo, inputs, theta, p, T0) -> (n, V)`, `network(...)` (required for offline scoring); numpy, math and `dlib` only; at most 16 constants; no per-room fitted coefficients; implicit integration recommended (`dlib.LinearNetwork`) |
+| Scoring rules | The checks, the fit and the held-out protocol of the chosen `--deployment` (offline: shared θ, no fitting on val, 3 h filtered-forecast score; online: θ from day 1, open-loop score on later days), and the complexity price |
 | Physics notes | Only with `--informed`: a short summary of the simulator audit (STATE_SPACE.md §14) |
 
 **User message** (changes every generation):
@@ -46,7 +48,7 @@ Each `code` is a complete, deployable model: it reads only run-time quantities. 
 
 | File | Content |
 |---|---|
-| `summary.json` | leaderboard; best program's fitted `PARAMS`, its θ per val scenario, its val errors (and test errors with `--test`) |
+| `summary.json` | leaderboard; best program's fitted `PARAMS`, its shared θ (`theta_shared`, offline) and the θ used per val scenario, its val errors (and test errors with `--test`) |
 | `best.py` | the winning program, the discovered dynamics equation |
 | `database.jsonl` | every candidate: status, score, fitted constants, errors, diagnostics, source |
 | `candidates/*.py` | every program evaluated |
@@ -95,6 +97,7 @@ A run continues from its database when re-run with the same `--run`.
 | `--generations`, `--n`, `--explore`, `--elites`, `--failures` | 0, 6, 2, 4, 6 | loop size and prompt content |
 | `--seeds` | all | `all` (naive and audited physics network), `naive` (blind runs), `none` |
 | `--informed` | off | add the audit's physics notes to the prompt |
+| `--deployment` | `offline` | `offline`: no fitting on new buildings, one shared θ, score = val 3 h filtered-forecast RMSE (needs `network()`). `online`: θ per building from day 1, score = open-loop RMSE after day 1 |
 | `--max-nfev`, `--stride` | 30, 2 | fitting effort (lower = faster, rougher) |
 | `--complexity-weight` | 0.0001 K per AST node | parsimony price |
 | `--timeout` | 1200 s | per candidate |
@@ -112,7 +115,7 @@ A run continues from its database when re-run with the same `--run`.
   - Error growing day 1 → 3 means a slow store or a steady-state gain is off.
   - Bias by exposure tertile means the facade law is off.
   - Bias by door count means the coupling law is off.
-  - Wide θ spread across buildings means a constant is not identifiable from one day, so merge or fix it.
+  - Wide θ spread across buildings (online mode) means a constant is not identifiable from one day, so merge or fix it.
 - **Keep `--explore` ≥ 2**, so the search does not only re-tune.
 - **Watch the complexity.** A much longer program has to earn its error reduction on val.
 - **Train with all five policies.** `bang_bang` and `all_off` carry most of the information.
@@ -130,14 +133,14 @@ Copy `code/discovery/seeds/seed_rc_one_node.py` (the smallest valid model) and c
    - heat into a room warms it and cools no neighbour;
    - stable under a 2400 W/K air stream.
 
-Defining `network()` as the seeds do enables the filtered forecast test.
+Define `network()` as the seeds do: the default offline score is the filtered forecast, so candidates without it are rejected (online mode accepts them).
 
 ## 7. From the discovered model to the controller
 
 `best.py` with the global `PARAMS` from `summary.json` is the model the policy ships (in a Kaggle Dataset). At run time the policy:
 1. builds the geometry from the metadata arrays;
-2. starts θ at the middle of its ranges;
-3. fits θ on the first day of observations, or runs a Kalman filter over `network()`;
+2. uses the shared θ from `summary.json` (offline, default), or fits θ on the first day (online, optional);
+3. runs a Kalman filter over `network()` on the measured room temperatures, so the hidden state follows the measured history;
 4. predicts with the same inputs it computes from its own actions (GUIDE.md B.5).
 
 `test_model.py` measures exactly this protocol.

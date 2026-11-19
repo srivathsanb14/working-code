@@ -303,7 +303,7 @@ For building a policy the useful split is not just observed versus hidden but *w
 | **1. Dynamic, observed every step** | zone temperatures (V), supply-water temperature, outside temperature, total occupants, hour and weekday phase, comfort-mode flags and bounds, the echoes | the observation: `6V+15K+58` values, of which about `V+8` carry information (§13.1) | read each step; the model's states, disturbances and context |
 | **2. Static per building, given** | the 21 metadata keys (§6.5) | `building_meta_data`, once | read, never hard-code; derive K, V, room areas (0.2 m grid cell), types, adjacency, floors and each room's AHU (§14) |
 | **3. Constant across all buildings, not given** | the fixed parameters of §12.2 (43 class-B parameters and 18 generator constants) and the equipment laws in the code: time step 300 s and 8,640 steps; reward weights 0.6/0.2/0.2, $300 productivity bound, 5 K reference, energy scales 80,000 and 205,000 W per AHU (maxima `80,000·K` and `205,000·K`); fan efficiency 0.9, box maximum airflow 2.0 m³/s, air handler sized at 20 m³/s, reheat flow factor 0.108, discharge cap 308.15 K, cooling COP 3.5, pump efficiency, boiler ramps 0.5 and 0.1 K/min; the floors (200 Pa, 0.7, 0.1); internal gains 10 W/m² (standby 0.2) and 70 W per person; occupant arrival 06–12 and departure 13–19; reset state (zones 294 K, water 340 K, supply setpoint 298 K, pressure 1000 Pa) | nothing: the metadata omits them | hard-code in the policy and in the model's known-physics blocks (§13.3); this is what makes the symbolic equations transferable. Assumed equal in the hidden set [I] |
-| **4. Varies by building, not given** | the six envelope materials (which set the lumped resistances and capacitances); occupants per zone (1 or 2); wall-and-slab thermal mass; per climate, the convection coefficient (8.8–26.7 W/m²K) | nothing: the metadata omits materials, and the observation omits weather beyond temperature | **estimate online** or from priors on the floor plan (§17.3): the θ of the method: six building-level scalars, four or five of them identifiable (§14.4). Occupants per zone are bounded by the largest occupant count seen divided by V [I] |
+| **4. Varies by building, not given** | the six envelope materials (which set the lumped resistances and capacitances); occupants per zone (1 or 2); wall-and-slab thermal mass; per climate, the convection coefficient (8.8–26.7 W/m²K) | nothing: the metadata omits materials, and the observation omits weather beyond temperature | **one universal value learned offline** (default, §17.8), optionally estimated online (§17.3): the θ of the method: six building-level scalars, four or five of them identifiable (§14.4). Occupants per zone are bounded by the largest occupant count seen divided by V [I] |
 | **5. Hidden state, dynamic** | slab, wall and envelope temperatures; per-room occupancy and internal gains; the boiler tank temperature; the factor by which an air handler caps total flow; the physical supply-air temperature `min(mixed air, setpoint)` | not observed (the boiler tank only partly, through the water sensor) | estimate (§18.3); the model carries them as latent states |
 | **6. The policy's own memory** | its previous action, the estimator, the history of temperatures and weather | built by the policy | store (§4.2); required to drop the echoed setpoints (§13.1) |
 
@@ -750,7 +750,7 @@ Against the solver's own inputs these are exact for `T_out`, `g` and `T_sa`. The
 
 ### 14.4 What has to be learned, and from what
 
-1. **The six material scalars θ, per building, online.** They are fitted by open-loop simulation error over the first day from the known reset state; every episode starts at a uniform 294 K. The fit takes 2–11 s on a laptop. Identifiability is uneven:
+1. **The six material scalars θ.** By default one universal value is learned offline on training buildings and nothing is fitted on a new building (§17.8). Per building and online, the optional upgrade, they are fitted by open-loop simulation error over the first day from the known reset state; every episode starts at a uniform 294 K. The fit takes 2–11 s on a laptop. Identifiability is uneven:
    - `ρc_mass` and `k_iw` are recovered within about 10–20 % under excitation.
    - `k_ext` and `h` enter only in series, so only their combination, the facade U-value, is identifiable.
    - `ρc_iw` is weak.
@@ -913,7 +913,7 @@ Take a winter morning in Denver, the building empty overnight and occupants due 
 > *Status: §16–§19 are the team's proposed approach, a design and not an implementation. Statements about the simulator come from its source; statements about what the method will achieve are hypotheses.*
 
 ### 16.1 The idea, and why it fits
-Instead of training a black-box policy or hand-tuning PIDs, **discover compact, interpretable equations for how the building responds to HVAC commands and weather**, using symbolic regression or sparse identification on simulator data; then **wrap those equations in a control policy** (feed-forward with feedback, or MPC) that plans by simulating the discovered model. Because the equations have the same *form* in every building and only a few *parameters* change, the policy generalizes to unseen buildings by identifying those parameters online, in the first hours or days of the episode. Why this suits the competition:
+Instead of training a black-box policy or hand-tuning PIDs, **discover compact, interpretable equations for how the building responds to HVAC commands and weather**, using symbolic regression or sparse identification on simulator data; then **wrap those equations in a control policy** (feed-forward with feedback, or MPC) that plans by simulating the discovered model. Because the equations have the same *form* in every building and only a few *parameters* change, the policy generalizes to unseen buildings through the floor plan, universal constants learned offline and a state corrected from measured history; identifying parameters online is an optional upgrade (§17.8). Why this suits the competition:
 
 - **Held-out buildings.** Physics has universal structure, an energy balance. Discover it once; fit only resistances, capacitances and gains per building.
 - **Variable shapes.** The equations are per zone and per unit with a shared form; the policy composes them from the room-to-handler assignment and the floor plan.
@@ -935,7 +935,7 @@ The governing principle is **parsimony**: among models of similar accuracy, the 
 ### 16.3 What to discover, and what to leave known
 Using the blocks of §8.2 we divide the work so the search stays small and the result physical.
 
-- **Zone RC dynamics** (block A) and **inter-zone coupling**: originally the part to discover. The audit of §14 found the structure exactly in the code (a linear network over room air, slab, facade, partitions and doors). What is left is to refine the closed-form coefficient formulas against exact grid targets, model the slow residual, and identify six material scalars online. The **occupancy gain** is known (70 W per person in the zone); only its split across zones is unobserved.
+- **Zone RC dynamics** (block A) and **inter-zone coupling**: originally the part to discover. The audit of §14 found the structure exactly in the code (a linear network over room air, slab, facade, partitions and doors). What is left is to refine the closed-form coefficient formulas against exact grid targets, model the slow residual, and learn six material scalars (offline by default, §17.8). The **occupancy gain** is known (70 W per person in the zone); only its split across zones is unobserved.
 - **Seed with the known form and refine** the **VAV airflow and coil heat** (block B): symbolic regression confirms the saturations and fits the constants.
 - **Keep the known form and fit only constants** for the **air handler** (block C) and **boiler and pump** (block D): COP, efficiency, dissipation and tank constants. Gas is about half of the energy reward, so these matter.
 
@@ -1002,9 +1002,11 @@ This is the heart of the method. We write each model as
 dT_z/dt = F( x_z, u_z, d_t ; θ_building )
 ```
 
-where **F, the symbolic structure, is discovered once on pooled data from many buildings**, and **θ, a small vector of lumped capacitances, conductances and gains, is specific to each building and estimated online.** This differs from "fit a separate model per building offline," impossible for held-out buildings, and from "one global model with no parameters," which cannot represent different constructions. The six buildings of §9 are simply six values of θ: what separates `train_1` from `train_7` is a handful of numbers, not a different kind of physics.
+where **F, the symbolic structure, is discovered once on pooled data from many buildings**, and **θ is a small vector of material constants**. All room-to-room variation comes from the floor plan through F, never from fitted per-room numbers. The six buildings of §9 differ in geometry and in a handful of material numbers, not in kind of physics.
 
-Two ways to obtain θ for a new building. **Online estimation** from the first hours or days (recursive least squares, an extended Kalman filter or moving-horizon estimation) is fast and well posed, because RC models are linear in their parameters. **Priors from metadata** use the floor-plan and zone-map arrays, which give zone area, perimeter and adjacency and so predict capacitance and exterior exposure; we can learn a symbolic map `θ = g(metadata)` as a starting point and refine it online. Since materials are not exposed (§6.5), θ must otherwise be inferred from behaviour alone. §14 goes further than a prior. The arrays fix every coefficient up to six material scalars (four or five identifiable), and one day of excited data identifies them well enough for 3-hour forecasts within 0.5 K (§14.5).
+**Default: no online fitting (§17.8).** θ is learned offline as one universal value on the training buildings, and a new building gets the floor plan, its measured history and those constants: the Kalman filter corrects the hidden state from history, nothing is re-fitted. Estimating θ per building online is the optional upgrade below.
+
+Two ways to adapt θ to a new building, both optional. **Online estimation** from the first hours or days (recursive least squares, an extended Kalman filter or moving-horizon estimation) is fast and well posed, because RC models are linear in their parameters. **Priors from metadata** use the floor-plan and zone-map arrays, which give zone area, perimeter and adjacency and so predict capacitance and exterior exposure; we can learn a symbolic map `θ = g(metadata)` as a starting point and refine it online. Since materials are not exposed (§6.5), θ must otherwise be inferred from behaviour alone. §14 goes further than a prior. The arrays fix every coefficient up to six material scalars (four or five identifiable), and one day of excited data identifies them well enough for 3-hour forecasts within 0.5 K (§14.5).
 
 ### 17.4 Noise, hidden states and identifiability
 - **Hidden states.** A one-state-per-zone model shows systematic hour-scale error because slab and walls store heat the sensor cannot see. Add one or two latent states per zone and estimate them; use lagged temperatures or moving averages as a proxy; or fit a two-time-constant structure and let sparsity prune it.
@@ -1018,8 +1020,8 @@ One-step accuracy is misleading, since nearly any model predicts `T_{t+1} ≈ T_
 
 ### 17.6 Shipping the fitted model and the runtime budget
 - **Everything the policy needs travels inside the notebook or an attached Kaggle dataset.** No internet means no downloads and no installs. The discovered equations, fitted constants and per-type priors go in plain Python/NumPy or a small JSON or `.npz` file with pinned versions. Prefer NumPy at run time over a symbolic-regression toolchain: PySR needs Julia, and the availability of SINDy and CasADi in the Kaggle image is unverified (§20.3). Do discovery off-line and ship only the result.
-- **The policy is built once per building and adapts online.** `__init__` does per-building setup (index tables, parameter priors from the floor plan and zone map, §14); the object then carries the estimator state and previous action between calls (§13.1 relies on this to drop the setpoints). The notebook is deterministic and re-run on unseen buildings, so there is no per-building offline fit.
-- **Runtime.** The 60 s per-step limit is not the binding one; the 9-hour session is, leaving about **0.125 s per step** including the simulator if the scenarios run one after another (§4.3). The simulator alone takes about 0.01 s per step on the smallest building (§17.1) and more on larger ones. A closed-form model evaluates in microseconds, but a sampling MPC with hundreds of candidate sequences over a multi-hour horizon must be sized against roughly 0.1 s, and the 15-minute first-step allowance is the place for heavy one-off setup such as the initial parameter fit.
+- **The policy is built once per building and adapts only through its state.** `__init__` does per-building setup (index tables, the room network from the floor plan and zone map with the shipped universal constants, §14); the object then carries the estimator state and previous action between calls (§13.1 relies on this to drop the setpoints). The notebook is deterministic and re-run on unseen buildings, so there is no per-building offline fit. By default there is no per-building online fit either (§17.8).
+- **Runtime.** The 60 s per-step limit is not the binding one; the 9-hour session is, leaving about **0.125 s per step** including the simulator if the scenarios run one after another (§4.3). The simulator alone takes about 0.01 s per step on the smallest building (§17.1) and more on larger ones. A closed-form model evaluates in microseconds, but a sampling MPC with hundreds of candidate sequences over a multi-hour horizon must be sized against roughly 0.1 s, and the 15-minute first-step allowance is the place for heavy one-off setup (building the network, compiling; a parameter fit only if online identification is used, §17.8).
 - **Reproducibility.** Winners must deliver training and inference code (Rules §2.8), so data-generation scripts, seeds, discovery configuration and the notebook builder are versioned together; trajectories are regenerable from seeds, not stored.
 - **Fallbacks.** The notebook includes the PID-like fallback of §18.3 in the same file, so a bad model cannot take the policy off the leaderboard.
 
@@ -1030,8 +1032,8 @@ One-step accuracy is misleading, since nearly any model predicts `T_{t+1} ≈ T_
 ```
  starter-kit outputs (evaluate.py results + scenario folders) ──► replay ──► episodes: inference-time inputs + geometry + measured T
                                           │
-  proposer ──► candidate programs ──► contract check ─► physics checks ─► nested fit ─► held-out score ─► diagnostics
-     ▲            (LLM, inbox,                                  (PARAMS global, THETA per scenario)        │
+  proposer ──► candidate programs ──► contract check ─► physics checks ─► fit on train ─► held-out score ─► diagnostics
+     ▲            (LLM, inbox,                                  (PARAMS + one shared THETA)               │
      │             seeds)                                                                                  │
      └──────────── prompt: best programs + their diagnostics + recent failures ◄───────────────────────────┘
 ```
@@ -1042,8 +1044,8 @@ One-step accuracy is misleading, since nearly any model predicts `T_{t+1} ≈ T_
 |---|---|---|
 | Task and rules | Discover room dynamics as interpretable programs. In blind mode there is no simulator source and there are no config values. Coefficients must come from geometry and a few constants, never per-room fits | no (cached system prompt) |
 | Data dictionary | The arrays a candidate receives, with units (rooms in the starter kit's VAV order). **Geometry** from the floor-plan arrays: area, facade segments, shared-wall cells and door cells per pair, doors, bounding box, AHU, floor. **Inputs** rebuilt from observations: `T_out`, air-stream conductance `g`, `T_supply`, `Q_reheat`, `Q_gain`, building occupants, comfort flag, time of day and week. **Target**: measured room temperatures from a uniform 294 K start | no |
-| Contract | `PARAMS` (global constants), `THETA` (per-building constants), `simulate(geo, inputs, theta, p, T0) -> (n, V)`; allowed imports; the `dlib.LinearNetwork` helper (implicit RC network solver) | no |
-| Scoring rules | The checks, the nested fit, the held-out day-1/days-2–3 protocol and the complexity price | no |
+| Contract | `PARAMS` (global constants), `THETA` (material constants), `simulate(geo, inputs, theta, p, T0) -> (n, V)`, `network(...)` (required for offline scoring); allowed imports; the `dlib.LinearNetwork` helper (implicit RC network solver) | no |
+| Scoring rules | The checks, the fit, the held-out protocol of the chosen deployment (§17.8) and the complexity price | no |
 | Physics notes | A short summary of the §14 audit | only with `--informed` |
 | Elites | The best *k* programs so far: full source, score, held-out and train RMSE, and **diagnostics** (error by facade exposure, door count and room size; worst rooms; HVAC on/off; time of day; growth over days; spread of fitted θ across buildings) | yes |
 | Failures | Recently rejected or crashed programs with the reason (failed check, exception, timeout) | yes |
@@ -1055,8 +1057,9 @@ One-step accuracy is misleading, since nearly any model predicts `T_{t+1} ≈ T_
 
 Each `code` is a complete Python module:
 - a table of global constants with bounds;
-- a table of per-building constants with bounds;
-- a `simulate` function that builds the model from geometry and returns predicted room temperatures.
+- a table of material constants with bounds;
+- a `simulate` function that builds the model from geometry and returns predicted room temperatures;
+- a `network` function returning the same model as a linear RC network, for the Kalman filter.
 
 That module **is** the discovered dynamics equation. It is directly deployable, because it reads only inference-time quantities.
 
@@ -1064,7 +1067,7 @@ That module **is** the discovered dynamics equation. It is directly deployable, 
 - `database.jsonl`: one record per candidate with its status, score, fitted constants, held-out errors and diagnostics.
 - `candidates/*.py`: every program evaluated.
 - `best.py`: the winning equation.
-- `summary.json`: the leaderboard, the best program's fitted global constants, its per-building θ, and its test score with `--test`.
+- `summary.json`: the leaderboard, the best program's fitted global constants, its shared θ (offline) or per-building θ (online), and its test score with `--test`.
 
 **How a candidate is judged** (`code/discovery/evaluate.py`):
 1. **Contract check:** allowed imports only, bounded constants, at most 16 constants in total.
@@ -1073,8 +1076,12 @@ That module **is** the discovered dynamics equation. It is directly deployable, 
    - bounded cooling toward a colder outside;
    - a room warms when heated, and its neighbours never cool;
    - a strong air stream is stable.
-3. **Fit:** global constants and one θ per training scenario, jointly, by sparse-Jacobian least squares on 3-day open-loop error.
-4. **Held out:** with the global constants frozen, θ is fitted on **day 1 only**, then scored on **days 2–3**, plus a small price per AST node. Candidates run in a child process with a timeout. The contract check is a filter, not a security boundary, so run untrusted code in a container.
+3. **Fit** by sparse-Jacobian least squares on 3-day open-loop error over the training scenarios: the global constants plus **one shared θ** (`--deployment offline`, the default) or one θ per training scenario (`--deployment online`).
+4. **Held out**, plus a small price per AST node:
+   - offline: **nothing is fitted** on held-out buildings; the score is the **3-hour forecast RMSE from a Kalman-filtered state** (geometry + measured history + universal constants); open-loop RMSE is reported as a diagnostic;
+   - online: θ is fitted on **day 1 only**, then open loop is scored on **days 2–3**.
+
+Candidates run in a child process with a timeout. The contract check is a filter, not a security boundary, so run untrusted code in a container.
 
 Proposers:
 - `dry`: write the prompt only.
@@ -1124,7 +1131,7 @@ With `test_model.py`, the network seed's filtered forecasts on the held-out buil
 
 Gate G2 (under 0.5 K at 3 h) holds on this building. An earlier pass that took the return-air temperature one step too old scored 0.37 K. An ablation run on that earlier data recovered that the spreading resistance matters (0.51 K without it), and an unstable explicit-Euler candidate was rejected at its lower capacity bound with the reason fed back.
 
-**Pilot of the full workflow [X]** (`outputs/discovery/pilot/`, `outputs/test/pilot_best_test/`). Six generated buildings (45–120 rooms, 5–12 AHUs; two more seeds were rejected by the generator) × their strips × 5 policies × 864 steps make 140 runs, made with `generate_data.py` (38 min on 8 cores). The audit found no hard failures and all 140 replays were exact. Train: 3 buildings on 4 stations. Val: 2 buildings on Phoenix. Test: 1 building on Minneapolis (unseen building, unseen station). The network seed scores 0.18 K on val after day 1, against 1.15 K for the naive seed. On test:
+**Pilot of the full workflow [X]** (`outputs/discovery/pilot/` (online scoring), `outputs/discovery/pilot_offline/`, `outputs/test/pilot_best_test_theta-*/`). Six generated buildings (45–120 rooms, 5–12 AHUs; two more seeds were rejected by the generator) × their strips × 5 policies × 864 steps make 140 runs, made with `generate_data.py` (38 min on 8 cores). The audit found no hard failures and all 140 replays were exact. Train: 3 buildings on 4 stations. Val: 2 buildings on Phoenix. Test: 1 building on Minneapolis (unseen building, unseen station). The network seed scores 0.18 K on val after day 1, against 1.15 K for the naive seed. On test, with θ fitted on day 1 (online identification; the offline numbers are in §17.8):
 
 | Measure | Model | Persistence |
 |---|---|---|
@@ -1146,6 +1153,36 @@ The worst policy is `bang_bang`, at 0.30 K for the 3-hour forecast.
 7. `test_model.py`.
 
 The data rules and the model's variables are in `GUIDE.md`; how to use the LLM is in `docs/LLM_DISCOVERY.md`.
+
+### 17.8 Reconciling the method with the plan: deployment, state, status and limits
+
+The planning sets out a model built **only from geometry, measured history and universal constants, with no online fitting**. Earlier versions of this method fitted shared constants on training data (compatible with the plan) but also re-fitted θ on each new building's first day (not compatible). This section settles four points.
+
+**1. Deployment: no online fitting by default; day-1 identification permitted but optional.**
+- *Is day-1 identification allowed?* Yes. The policy object persists through a scenario (§4.1, §17.6), so state carried between calls, including a θ estimate, is legitimate. What is disqualifying is hard-coding held-out references or reading the configuration, not learning from the episode's own measurements.
+- *What does it cost?* Every step is scored, so there is no free identification period (§18.3). A poorly excited first day can give a bad θ, which is a robustness risk. The fit takes 2–11 s, affordable inside the 15-minute first-step allowance.
+- *Does it pay?* On the pilot test (unseen `building_0801`, unseen Minneapolis station, 15 runs; `outputs/test/pilot_best_test_theta-*`), with the §14 network seed and PARAMS from training:
+
+| θ for the test building | Fitting on it? | Open loop, day 1 | Open loop, after day 1 | Forecast 1 h | 3 h | 6 h |
+|---|---|---|---|---|---|---|
+| prior (initial values) | none | 0.361 | 0.625 | 0.138 | 0.222 | 0.324 |
+| train mean (geometric mean of per-train-building θ) | none | 0.323 | 0.645 | 0.142 | 0.225 | 0.325 |
+| fitted on its day 1 | online | 0.145 | 0.543 | 0.127 | 0.184 | 0.256 |
+| persistence | — | — | — | 1.196 | 1.300 | 1.743 |
+
+  RMSE in K; forecasts are from a Kalman-filtered state. Day-1 fitting helps the open-loop error most. For the filtered forecasts that MPC uses, the history correction already does most of the work: 3 h error rises from 0.18 to 0.22 K without any per-building fitting, still far inside gate G2 (0.5 K) and six times better than persistence.
+- *Decision.* **Offline deployment is the default** in the code (`--deployment offline` in `run_discovery.py`, `--theta shared` in `test_model.py`): PARAMS and **one shared θ** are fitted on the training buildings, held-out buildings get no fitting, and candidates are ranked by the 3-hour filtered-forecast RMSE. Online day-1 identification stays available (`--deployment online`, `--theta day1`). It is adopted only if it wins in closed loop on the generated hold-out (§19.1 question 3).
+- *The discovery loop in offline mode [X]* (`outputs/discovery/pilot_offline/`, same pilot data, seeds only, rough fit with 8 function evaluations): on val (2 Phoenix buildings, no fitting on them) the network seed's 3-hour filtered forecast is **0.21 K** against 1.00 K for the naive seed. Its open loop is worse than with day-1 θ (1.26 K on val, 0.68 K on test after day 1, against 0.18 and 0.54 K), driven by the all-off rollouts of one val building (up to 3.6 K), where a slightly wrong θ drifts for three days with nothing to correct it. Without per-building fitting, open loop is a poor guide and the filtered forecast is the right score.
+
+**2. State: the hidden nodes are a compressed history buffer.** The plan favours a measured history buffer as the state; the network carries hidden slab, facade, wall and door temperatures. The two are the same information in different coordinates. A Kalman filter on a linear network is, in steady state, a fixed linear filter of past measured temperatures and past inputs, so the filtered hidden state is a weighted sum of the measured history. The filter uses only the stale zone temperatures the controller observes (§13.1), never a hidden truth. We keep the network form because its coefficients follow from the floor plan and its few constants are physical; an explicit history-buffer (ARX) model can be derived from it. A candidate written directly as a history buffer is not yet supported by the contract, because offline scoring requires `network()`.
+
+**3. Discovery status: built, exercised, but no LLM generation has run.** The loop, prompts, checks, fitting, scoring and diagnostics run end to end with the `dry` proposer. Only the two hand-written generation-0 seeds have been evaluated; the pilot's `best.py` is the §14 seed, not an LLM discovery. Any claim that an LLM improves on the seeds is untested until a `--proposer claude` or `dir` run is done.
+
+**4. Test limits: one building, one station, model accuracy only.**
+- The test split is one building on one station (3 weather strips × 5 policies); val is two buildings on Phoenix.
+- The forecasts are fed the **true future inputs and weather**, so they measure the model, not a controller; a real controller must forecast weather and occupancy itself.
+- The behaviour policies are the shipped baselines, so states an MPC controller would visit are not covered.
+- *Next:* a test split of at least 10 buildings across the size range on at least 2 held-out stations; forecasts with forecast disturbances (persistence plus diurnal fit for `T_out`); and **closed-loop evaluation**: the model inside Controller 1 and 2 (§18.1), run in the real simulator with `evaluate.py` and scored with the competition reward against `pid_water` (gates G3 and G4, §19.1).
 
 
 ---
@@ -1175,8 +1212,8 @@ Layer by layer (§15.1):
 - **Pre-conditioning and setback** timed so the building reaches the comfort band at `morning_start_hour` and drifts to the eco band at `evening_start_hour`.
 
 ### 18.3 Estimating the unobserved, and handling model error
-**Estimation.** The controller needs the hidden states and building parameters. In rough order of simplicity: **recursive least squares** on the linear-in-parameter form with a simple observer for hidden states; an **augmented-state Kalman filter** over zone temperatures, slab temperatures and parameters with the symbolic model as process model; **moving-horizon estimation**, which fits state and parameters to the last N steps (more robust to nonlinearity, higher cost); and a **warm-start phase** in which the first hours run safe baseline-like behaviour with small deliberate dithering to learn θ before switching to MPC. There is no warm-up exemption (every step is scored), so dithering must stay gentle and band-respecting. The 15-minute first-step allowance is free time for loading weights, compiling, building the room network from the floor plan (0.02–0.12 s) and setting the priors on θ. **Tested design (§14.5):**
-- A Kalman filter over the full room network, with only the stale zone temperatures as measurements, plus an open-loop least-squares fit of θ on the first day.
+**Estimation.** The controller needs the hidden states and building parameters. In rough order of simplicity: **recursive least squares** on the linear-in-parameter form with a simple observer for hidden states; an **augmented-state Kalman filter** over zone temperatures, slab temperatures and parameters with the symbolic model as process model; **moving-horizon estimation**, which fits state and parameters to the last N steps (more robust to nonlinearity, higher cost); and, only if online identification is adopted (§17.8), a **warm-start phase** in which the first hours run safe baseline-like behaviour with small deliberate dithering to learn θ before switching to MPC. There is no warm-up exemption (every step is scored), so dithering must stay gentle and band-respecting. The 15-minute first-step allowance is free time for loading weights, compiling, building the room network from the floor plan (0.02–0.12 s) and setting the priors on θ. **Tested design (§14.5):**
+- A Kalman filter over the full room network, with only the stale zone temperatures as measurements. Default (offline): θ is the shared value learned on training buildings, 3-hour forecast 0.22 K on the pilot's unseen building and station. Optional (online): an open-loop least-squares fit of θ on the first day, 0.18 K (§17.8).
 - From the filtered state, 3-hour forecast error is 0.12–0.51 K across 18 test rollouts.
 - The fit is best when the first day is excited, so the warm-start dithering is worth its small comfort cost.
 
@@ -1217,7 +1254,7 @@ Develop and score locally with `python -m smart_buildings.evaluate --policies <k
 We want six questions answered:
 1. **Does the discovered structure transfer?** Fit on N buildings and stations; test rollout error on unseen buildings *and* unseen stations.
 2. **How much does symbolic structure help?** Compare with a hand-derived RC model with identical parameters, black-box MLP/GRU dynamics and a linear ARX model.
-3. **Does online identification close the gap** between the pooled model and a per-building oracle whose parameters are read from the config (§12.3)?
+3. **Is online identification worth it?** Compare offline deployment (shared θ, no fitting), day-1 identification and a per-building oracle whose parameters are read from the config (§12.3), in closed loop. On forecasts alone the pilot gap is 0.22 versus 0.18 K at 3 h (§17.8).
 4. **What does the model buy the controller?** Ablate in steps: Controller 0 → + feed-forward → + water reset → + pre-conditioning → full MPC (§18.1).
 5. **Where is the headroom per climate?** Break results down by station and season against the levers of §15.3.
 6. **Does it fit the clock?** Mean and worst-case seconds per step on the largest generated building, against the 0.125 s of §4.3.
@@ -1230,15 +1267,15 @@ We want six questions answered:
 |---|---|
 | G0 packaging | Controller 0, assembled as a Kaggle notebook, runs end to end and scores on the leaderboard |
 | G1 toolchain | symbolic regression recovers `√P`, the coil effectiveness and `min(mixed, setpoint)` from simulator data (§13.3 rows 3–5) to within noise |
-| G2 zone model | multi-hour rollout error on held-out buildings and a held-out station is small enough to plan with (target: 3-hour mean error under 0.5 K). The network of §14 already meets it in 17 of 18 test rollouts from a filtered state, with the 18th at 0.51 K (§14.5); a held-out *station* is still to be shown |
+| G2 zone model | multi-hour rollout error on held-out buildings and a held-out station is small enough to plan with (target: 3-hour mean error under 0.5 K). The network of §14 already meets it in 17 of 18 test rollouts from a filtered state, with the 18th at 0.51 K (§14.5); the pilot shows it on one held-out building and station: 0.18 K with day-1 θ, 0.22 K with no per-building fitting (§17.8); a larger test is still to be done |
 | G3 feed-forward | Controller 1 beats −0.054 on the 30 shipped scenarios and does not lose to Controller 0 in the worst scenario |
 | G4 MPC | Controller 2 beats Controller 1 by a clear margin on the shipped set and the hold-out, within 0.1 s per step |
 
 ### 19.2 The main risks
-- **The symbolic model is too simple for hidden-state dynamics**, giving multi-hour errors and poor pre-conditioning. *Mitigation:* a latent mass state, online estimation, validation on multi-step rollouts.
+- **The symbolic model is too simple for hidden-state dynamics**, giving multi-hour errors and poor pre-conditioning. *Mitigation:* latent slab and wall states corrected from measured history by a Kalman filter, validation on multi-step rollouts.
 - **The search returns non-physical equations** that fit but do not extrapolate. *Mitigation:* physics-constrained libraries, units, monotonicity, a complexity penalty, held-out-building validation.
 - **Piecewise or hysteretic behaviour defeats smooth optimizers.** *Mitigation:* sampling-based MPC, explicit regime gating, a smoothed cost.
-- **The identification period is expensive** because every step is scored. *Mitigation:* metadata priors, gentle dithering, a baseline-like safe mode.
+- **The identification period is expensive** because every step is scored. *Mitigation:* the default deployment needs no identification period (§17.8); if online fitting is adopted, gentle dithering and a baseline-like safe mode.
 - **The unbounded comfort penalty** lets one zone failure dominate. *Mitigation:* safety margins, a fallback controller, worst-case reporting.
 - **Compute budget** (about 0.125 s per step for the whole session) may be too slow for MPC. *Mitigation:* short horizons, coarse blocks, vectorized sampling, the feed-forward controller as fallback, distillation.
 - **Overfitting to the six shipped buildings.** *Mitigation:* train and validate on generated buildings, split by building.
@@ -1253,7 +1290,7 @@ Today is 17 November 2026. The final deadline is 15 January 2027 and entry and t
 | 1 (from 17 Nov) | Accept the rules; read the `kaggle_evaluation` package and the Code-tab notebook (closes §20.3 item 7). Build Controller 0 as a notebook and submit it. Measure simulator speed on all six buildings (item 5). Write the collection loop and logging of §17.1 and run Tier A. | G0 |
 | 2 | Run Tier B in parallel. Run Appendix B's profiling set (items 1 and 2). Validate the toolchain on the known-physics rows of §13.3. | G1 |
 | 3–4 | Harden the room network of §14: symbolic regression on the coefficient formulas against exact grid targets and on the slow free-float residual. Add a projection reduction for MPC. Test on generated buildings and a held-out station. Compare with black-box baselines (§19.1 question 2). Fit the disturbance models (rows 6–7). | G2 |
-| 4–5 | Online identification of θ (§18.3). Build Controller 1; evaluate on the 30 shipped scenarios and the hold-out; submit. | G3 |
+| 4–5 | Decide offline versus online θ in closed loop (§17.8). Build Controller 1; evaluate on the 30 shipped scenarios and the hold-out; submit. | G3 |
 | 5–7 | Build Controller 2 around the reduced room model; tune horizon, candidates and margin to the 0.1 s budget. Collect Tier C data under the controller and refit. Stress tests: a cold snap, a heat wave, larger K. | G4 |
 | 7–8 (to 15 Jan) | Freeze. Choose the two finals by hold-out score and worst-case behaviour (Controller 1 and the best of Controller 2). Package, rerun on Kaggle, write the method description the rules require of winners (§4.3). | — |
 

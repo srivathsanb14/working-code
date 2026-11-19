@@ -55,12 +55,14 @@ Write one Python module:
     import dlib                                    # optional helper, API below
 
     PARAMS = {"name": (init, lo, hi), ...}         # GLOBAL constants: one value shared by every building
-    THETA  = {"name": (init, lo, hi), ...}         # PER-BUILDING constants: re-fitted for each new building
+    THETA  = {"name": (init, lo, hi), ...}         # MATERIAL constants: offline deployment (default) fits ONE value on
+                                                   # the train buildings; online deployment re-fits them per building on day 1
 
     def simulate(geo, inputs, theta, p, T0):
         """Return predicted room air temperatures, array (n, V), after each step."""
 
-    # optional but recommended: lets the tester run a Kalman filter and score multi-hour forecasts
+    # REQUIRED for the default offline deployment (optional online): the scorer runs a Kalman filter on it,
+    # which corrects the hidden state from measured history, and scores multi-hour forecasts
     def network(geo, inputs, theta, p):
         """Return (dlib.LinearNetwork, dict(T_out=..., g=..., T_supply=..., Q=...)) with simulate() equal to
         net.simulate(T_out, g, T_supply, Q, T0)."""
@@ -86,16 +88,33 @@ dlib API:
   dlib.pairs(M) -> (i, j, M[i,j]) over the upper triangle where M > 0
   dlib.softplus(x);  constants dlib.DT, dlib.CELL, dlib.HEIGHT, dlib.RHO_C_AIR'''
 
-SCORING = """\
-How a candidate is scored (you cannot see the data, only these results):
+SCORING_OFFLINE = """\
+How a candidate is scored (you cannot see the data, only these results).  Deployment is OFFLINE: a
+deployed controller does NO fitting on a new building; it has only the floor plan, the measured history
+and universal constants.
+  1. checks as above; failing candidates are rejected with the reason.  network() is REQUIRED.
+  2. PARAMS and ONE THETA shared by all TRAINING buildings are fitted jointly by least squares on
+     open-loop simulation error over 3-day episodes (several behaviour policies per building: HVAC off,
+     random actuator moves, a PID baseline).  THETA is therefore a universal constant too.
+  3. For each HELD-OUT building nothing is fitted.  A Kalman filter on your network() corrects the hidden
+     state from the measured room temperatures (the history), and the model forecasts 3 hours ahead from
+     that state, every hour.  Score = mean 3-hour forecast RMSE on held-out buildings (lower is better)
+     + {cw} K per AST node of your code.  Open-loop RMSE is reported too, as a diagnostic.
+  So a structure wins only if the floor plan alone fixes its coefficients well enough to transfer to
+  unseen buildings, with the hidden state recoverable from measured history."""
+
+SCORING_ONLINE = """\
+How a candidate is scored (you cannot see the data, only these results).  Deployment is ONLINE: a
+deployed controller may identify a few per-building numbers from the building's first day.
   1. checks as above; failing candidates are rejected with the reason.
   2. PARAMS and one THETA per TRAINING building are fitted jointly by least squares on open-loop simulation
      error over 3-day episodes (several behaviour policies per building: HVAC off, random actuator moves,
      a PID baseline).
-  3. For each HELD-OUT building, PARAMS are frozen and THETA is fitted on DAY 1 ONLY - exactly what a
-     deployed controller can do online.  Score = mean open-loop RMSE on DAYS 2-3 of held-out buildings
-     (lower is better) + {cw} K per AST node of your code.
+  3. For each HELD-OUT building, PARAMS are frozen and THETA is fitted on DAY 1 ONLY.  Score = mean
+     open-loop RMSE on DAYS 2-3 of held-out buildings (lower is better) + {cw} K per AST node of your code.
   So a structure wins only if it transfers to unseen buildings and its THETA is identifiable from one day."""
+
+SCORING = SCORING_OFFLINE   # default deployment
 
 INFORMED_NOTES = """\
 Physics notes (informed mode; omitted in blind runs):
@@ -144,8 +163,9 @@ RESPONSE_SCHEMA = {
 }
 
 
-def system_prompt(informed=False, complexity_weight=0.0001):
-    return SYSTEM_TEMPLATE.format(data=DATA_DICTIONARY, contract=CONTRACT, scoring=SCORING.format(cw=complexity_weight),
+def system_prompt(informed=False, complexity_weight=0.0001, deployment="offline"):
+    scoring = SCORING_OFFLINE if deployment == "offline" else SCORING_ONLINE
+    return SYSTEM_TEMPLATE.format(data=DATA_DICTIONARY, contract=CONTRACT, scoring=scoring.format(cw=complexity_weight),
                                   informed=("\n" + INFORMED_NOTES + "\n") if informed else "")
 
 
