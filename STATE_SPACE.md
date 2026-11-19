@@ -1087,7 +1087,7 @@ Seeds (generation 0):
 
 `--seeds naive` keeps blind runs free of the audited structure.
 
-**Data comes only from the starter kit (`DATA.md`).** Training data is whatever the starter kit's own commands write:
+**Data comes only from the starter kit (`GUIDE.md`, Part A).** Training data is whatever the starter kit's own commands write:
 - `evaluate.py` results folders (`timeseries.csv`, `ahu_log.csv`, `reward_components.csv`) for any policies and scenarios;
 - the scenario folders from `run_scenario_generator`.
 
@@ -1118,7 +1118,7 @@ As a cross-check, the full §14 network with the true materials, driven by these
 
 The shipped policies excite the building less than random actuator moves do, so these errors are higher than the §14.5 figures. The seed, being a geometry-only approximation of the §14 network, also sits above the full network. Closing that gap is the loop's job.
 
-A seed evaluation takes 20–140 s on 20 training runs. To scale up, follow `DATA.md`:
+A seed evaluation takes 20–140 s on 20 training runs. To scale up, follow `GUIDE.md` Part A, which also lists what may and may not be changed in data generation and defines the model's variables (Part B):
 - generate buildings with `run_floor_generator`;
 - make scenarios across all six stations with `run_scenario_generator`;
 - run `evaluate.py` with the five shipped policies.
@@ -1315,7 +1315,7 @@ Items 1, 2 and 5 can be closed with the repo's existing commands; Appendix B is 
 | `outputs/roomdata_<building>_<weather>_<policy>.npz` | 3-day rollouts with the solver's exact per-room inputs logged beside the observations (§14.5) |
 | `outputs/room_model_validate.json`, `room_coeff_targets.npz`, `room_coeff_fit.json`, `room_spread_fit.json`, `room_model_eval.json`, `room_model_identify.json`, `room_model_forecast.json` | results of §14.1 and §14.5 |
 | `code/` | the scripts listed in §20.1 |
-| `code/discovery/`, `code/run_discovery.py`; `outputs/discovery/<run>/`; `DATA.md`, `data/results/` | the LLM discovery loop, its runs, and the starter-kit data it reads (§17.7) |
+| `code/discovery/`, `code/run_discovery.py`; `outputs/discovery/<run>/`; `GUIDE.md`, `split_example.json`, `data/` | the LLM discovery loop, its runs, the data-generation rules and model variable definitions, and the starter-kit data it reads (§17.7) |
 
 The scripts run from the starter-kit root (the gin configs use relative paths) with the environment in `.venv/` (Python 3.12, dependencies pinned in the starter kit's `pyproject.toml`), for example `cd smart-buildings-starter-kit && PYTHONDONTWRITEBYTECODE=1 ../working-code/.venv/bin/python ../working-code/code/rollout_checks.py 600`.
 

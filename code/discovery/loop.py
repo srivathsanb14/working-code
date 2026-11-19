@@ -146,7 +146,7 @@ def run(args):
     eps, report = load_all(args.scenarios_dir, args.results_dir, args.policies, cache)
     (run_dir / "data_report.json").write_text(json.dumps(report, indent=1))
     if not eps:
-        raise SystemExit("no usable runs; generate them with the starter kit (see DATA.md)")
+        raise SystemExit("no usable runs; generate them with the starter kit (see GUIDE.md, Part A)")
     paths = [cache / f"episode_{e.name}.npz" for e in eps]
     (run_dir / "config.json").write_text(json.dumps({**vars(args), "split": split, "n_runs": len(paths)}, indent=1, default=str))
     kw = dict(max_nfev=args.max_nfev, stride=args.stride, complexity_weight=args.complexity_weight)

@@ -1,6 +1,6 @@
 """Episodes from data generated ONLY with the starter kit's own commands.
 
-Assumed layout (all written by unmodified starter-kit CLIs; see DATA.md):
+Assumed layout (all written by unmodified starter-kit CLIs; see GUIDE.md, Part A):
 
   <scenarios_dir>/<building>/<weather>/config.gin, floor_plan.npy, zone_map.npy
         from `python -m smart_buildings.run_scenario_generator --output-dir <scenarios_dir>`
