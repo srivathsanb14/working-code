@@ -1,0 +1,110 @@
+{
+ "building_train_8": {
+  "solved_mismatch_cells": 0,
+  "material_k_mismatch_cells": 0,
+  "capacitance_max_rel_err": 2.002458649946685e-16,
+  "face_conductance_sum_max_abs_err_WK": 2.042810365310288e-14,
+  "ambient_conductance_max_abs_err_WK": 0.0,
+  "mass_coupling_max_abs_err": 0.0,
+  "rooms_mismatch": 0,
+  "rooms": 30,
+  "theta": {
+   "k_iw": 0.5807,
+   "rc_iw": 302792.67000000004,
+   "k_ext": 0.2703,
+   "rc_ext": 959557.69550487,
+   "rc_mass": 11467.9,
+   "h": 19.1
+  }
+ },
+ "building_train_1": {
+  "solved_mismatch_cells": 0,
+  "material_k_mismatch_cells": 0,
+  "capacitance_max_rel_err": 1.6234734996626486e-16,
+  "face_conductance_sum_max_abs_err_WK": 5.684341886080802e-14,
+  "ambient_conductance_max_abs_err_WK": 0.0,
+  "mass_coupling_max_abs_err": 0.0,
+  "rooms_mismatch": 0,
+  "rooms": 39,
+  "theta": {
+   "k_iw": 0.5362,
+   "rc_iw": 373476.87000000005,
+   "k_ext": 0.2119,
+   "rc_ext": 1871515.92034602,
+   "rc_mass": 32291.899999999998,
+   "h": 19.1
+  }
+ },
+ "building_train_2": {
+  "solved_mismatch_cells": 0,
+  "material_k_mismatch_cells": 0,
+  "capacitance_max_rel_err": 0.0,
+  "face_conductance_sum_max_abs_err_WK": 8.881784197001252e-15,
+  "ambient_conductance_max_abs_err_WK": 0.0,
+  "mass_coupling_max_abs_err": 2.7755575615628914e-17,
+  "rooms_mismatch": 0,
+  "rooms": 85,
+  "theta": {
+   "k_iw": 0.5149,
+   "rc_iw": 161636.85,
+   "k_ext": 0.3385,
+   "rc_ext": 523088.81047101,
+   "rc_mass": 14359.5,
+   "h": 19.1
+  }
+ },
+ "building_train_4": {
+  "solved_mismatch_cells": 0,
+  "material_k_mismatch_cells": 0,
+  "capacitance_max_rel_err": 1.4235683558391054e-16,
+  "face_conductance_sum_max_abs_err_WK": 1.3766765505351941e-14,
+  "ambient_conductance_max_abs_err_WK": 0.0,
+  "mass_coupling_max_abs_err": 0.0,
+  "rooms_mismatch": 0,
+  "rooms": 54,
+  "theta": {
+   "k_iw": 0.4635,
+   "rc_iw": 435699.18,
+   "k_ext": 0.182,
+   "rc_ext": 425922.50571948,
+   "rc_mass": 23382.6,
+   "h": 19.1
+  }
+ },
+ "building_train_5": {
+  "solved_mismatch_cells": 0,
+  "material_k_mismatch_cells": 0,
+  "capacitance_max_rel_err": 1.1794546720904438e-16,
+  "face_conductance_sum_max_abs_err_WK": 2.4868995751603507e-14,
+  "ambient_conductance_max_abs_err_WK": 0.0,
+  "mass_coupling_max_abs_err": 2.7755575615628914e-17,
+  "rooms_mismatch": 0,
+  "rooms": 79,
+  "theta": {
+   "k_iw": 0.4974,
+   "rc_iw": 578749.14,
+   "k_ext": 0.3041,
+   "rc_ext": 1028152.78200951,
+   "rc_mass": 28010.7,
+   "h": 19.1
+  }
+ },
+ "building_train_7": {
+  "solved_mismatch_cells": 0,
+  "material_k_mismatch_cells": 0,
+  "capacitance_max_rel_err": 0.0,
+  "face_conductance_sum_max_abs_err_WK": 8.881784197001252e-15,
+  "ambient_conductance_max_abs_err_WK": 0.0,
+  "mass_coupling_max_abs_err": 0.0,
+  "rooms_mismatch": 0,
+  "rooms": 36,
+  "theta": {
+   "k_iw": 0.4775,
+   "rc_iw": 139570.74,
+   "k_ext": 0.5479,
+   "rc_ext": 403263.2499552,
+   "rc_mass": 35680.3,
+   "h": 19.1
+  }
+ }
+}

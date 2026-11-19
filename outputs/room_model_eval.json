@@ -1,0 +1,1028 @@
+{
+ "roomdata_building_train_1_fairbanks_1_alloff": {
+  "V": 39,
+  "n_nodes_full": 327,
+  "lumped full_lumped": {
+   "states": 327,
+   "rmse_K": 2.222639031799209,
+   "max_abs_K": 8.656741713353597,
+   "rmse_day1": 0.7154532192944959,
+   "rmse_day3": 3.2513013620499027,
+   "sec": 0.33
+  },
+  "lumped air+slab+facade (3/room)": {
+   "states": 112,
+   "rmse_K": 2.169741393253244,
+   "max_abs_K": 8.536750430791983,
+   "rmse_day1": 0.6621361453099426,
+   "rmse_day3": 3.1683332714496903,
+   "sec": 0.04
+  },
+  "spread full_lumped": {
+   "states": 327,
+   "rmse_K": 0.8859510272965035,
+   "max_abs_K": 3.603991485622373,
+   "rmse_day1": 0.2491759606413344,
+   "rmse_day3": 1.3137226646444775,
+   "sec": 0.33
+  },
+  "spread air+slab+facade (3/room)": {
+   "states": 112,
+   "rmse_K": 0.8370876580991419,
+   "max_abs_K": 3.4518497866533266,
+   "rmse_day1": 0.2222386230714307,
+   "rmse_day3": 1.2311139379083331,
+   "sec": 0.04
+  },
+  "spread air+slab (2/room)": {
+   "states": 78,
+   "rmse_K": 1.7094303179291326,
+   "max_abs_K": 4.300418799778242,
+   "rmse_day1": 1.3584008443537752,
+   "rmse_day3": 1.693371382326388,
+   "sec": 0.03
+  },
+  "spread air only (1/room)": {
+   "states": 39,
+   "rmse_K": 1.3928665438163765,
+   "max_abs_K": 3.5904350162485343,
+   "rmse_day1": 0.789183881550616,
+   "rmse_day3": 1.3274727860303002,
+   "sec": 0.02
+  },
+  "true_T_range_K": [
+   271.02854645098415,
+   296.1104857333562
+  ],
+  "true_T_std_K": 4.824780397740799
+ },
+ "roomdata_building_train_1_fairbanks_1_pidwater": {
+  "V": 39,
+  "n_nodes_full": 327,
+  "lumped full_lumped": {
+   "states": 327,
+   "rmse_K": 1.5447302700437873,
+   "max_abs_K": 6.660807344174145,
+   "rmse_day1": 0.713390664410417,
+   "rmse_day3": 2.088759190191302,
+   "sec": 0.33
+  },
+  "lumped air+slab+facade (3/room)": {
+   "states": 112,
+   "rmse_K": 1.3962823950820278,
+   "max_abs_K": 6.152491941915002,
+   "rmse_day1": 0.671111397698699,
+   "rmse_day3": 1.8802713482747757,
+   "sec": 0.04
+  },
+  "spread full_lumped": {
+   "states": 327,
+   "rmse_K": 0.8511049162929899,
+   "max_abs_K": 3.5921376050981166,
+   "rmse_day1": 0.24920533054479319,
+   "rmse_day3": 1.2394171436027308,
+   "sec": 0.33
+  },
+  "spread air+slab+facade (3/room)": {
+   "states": 112,
+   "rmse_K": 0.8869107596296706,
+   "max_abs_K": 4.5557711419965585,
+   "rmse_day1": 0.24895099914082794,
+   "rmse_day3": 1.2372207307179368,
+   "sec": 0.04
+  },
+  "spread air+slab (2/room)": {
+   "states": 78,
+   "rmse_K": 1.4481045324759387,
+   "max_abs_K": 7.030017165252104,
+   "rmse_day1": 1.374691099995963,
+   "rmse_day3": 1.4707879076450383,
+   "sec": 0.03
+  },
+  "spread air only (1/room)": {
+   "states": 39,
+   "rmse_K": 1.6576319395034524,
+   "max_abs_K": 7.946884306265815,
+   "rmse_day1": 0.8252423722009496,
+   "rmse_day3": 1.7058904263586745,
+   "sec": 0.01
+  },
+  "true_T_range_K": [
+   281.35725289103294,
+   298.9367264116854
+  ],
+  "true_T_std_K": 2.4959939729796856
+ },
+ "roomdata_building_train_1_fairbanks_1_random": {
+  "V": 39,
+  "n_nodes_full": 327,
+  "lumped full_lumped": {
+   "states": 327,
+   "rmse_K": 0.8802443045597459,
+   "max_abs_K": 3.994874584067702,
+   "rmse_day1": 0.6085983265981765,
+   "rmse_day3": 1.1153019638697113,
+   "sec": 0.33
+  },
+  "lumped air+slab+facade (3/room)": {
+   "states": 112,
+   "rmse_K": 2.330287522671684,
+   "max_abs_K": 12.041023126069433,
+   "rmse_day1": 1.8757529149512326,
+   "rmse_day3": 3.027474122180762,
+   "sec": 0.05
+  },
+  "spread full_lumped": {
+   "states": 327,
+   "rmse_K": 0.38690121484423956,
+   "max_abs_K": 1.8137275000430577,
+   "rmse_day1": 0.23670952511591187,
+   "rmse_day3": 0.5067521993855653,
+   "sec": 0.33
+  },
+  "spread air+slab+facade (3/room)": {
+   "states": 112,
+   "rmse_K": 2.2681850428896677,
+   "max_abs_K": 12.92600355908047,
+   "rmse_day1": 1.8763402746025815,
+   "rmse_day3": 2.933772653362031,
+   "sec": 0.05
+  },
+  "spread air+slab (2/room)": {
+   "states": 78,
+   "rmse_K": 3.185428550564427,
+   "max_abs_K": 17.56938219692887,
+   "rmse_day1": 2.793951872175302,
+   "rmse_day3": 3.9506960783278338,
+   "sec": 0.03
+  },
+  "spread air only (1/room)": {
+   "states": 39,
+   "rmse_K": 4.317805995853875,
+   "max_abs_K": 21.87914893834204,
+   "rmse_day1": 3.7246031620416176,
+   "rmse_day3": 5.404861992157989,
+   "sec": 0.02
+  },
+  "true_T_range_K": [
+   252.9122130167869,
+   300.30698947712625
+  ],
+  "true_T_std_K": 8.066574019881195
+ },
+ "roomdata_building_train_2_atlanta_3_alloff": {
+  "V": 85,
+  "n_nodes_full": 747,
+  "lumped full_lumped": {
+   "states": 747,
+   "rmse_K": 1.5851663085987175,
+   "max_abs_K": 6.05347462946952,
+   "rmse_day1": 0.3949983249581361,
+   "rmse_day3": 2.426743807807559,
+   "sec": 2.07
+  },
+  "lumped air+slab+facade (3/room)": {
+   "states": 215,
+   "rmse_K": 1.5875834350773987,
+   "max_abs_K": 5.975801930102705,
+   "rmse_day1": 0.3979462597369981,
+   "rmse_day3": 2.4262188098247575,
+   "sec": 0.13
+  },
+  "spread full_lumped": {
+   "states": 747,
+   "rmse_K": 0.6710337146911208,
+   "max_abs_K": 2.8148295610936884,
+   "rmse_day1": 0.1583554092143819,
+   "rmse_day3": 1.0357699888521117,
+   "sec": 2.07
+  },
+  "spread air+slab+facade (3/room)": {
+   "states": 215,
+   "rmse_K": 0.6839298895246826,
+   "max_abs_K": 2.746474711476594,
+   "rmse_day1": 0.16293664099513966,
+   "rmse_day3": 1.0457895185612038,
+   "sec": 0.14
+  },
+  "spread air+slab (2/room)": {
+   "states": 170,
+   "rmse_K": 0.7740948679105489,
+   "max_abs_K": 2.824306109635586,
+   "rmse_day1": 0.347654548889005,
+   "rmse_day3": 1.1283897029184147,
+   "sec": 0.09
+  },
+  "spread air only (1/room)": {
+   "states": 85,
+   "rmse_K": 0.972179398599544,
+   "max_abs_K": 2.8503360889251894,
+   "rmse_day1": 0.34447707303271424,
+   "rmse_day3": 1.3110063932229123,
+   "sec": 0.03
+  },
+  "true_T_range_K": [
+   290.852158451286,
+   311.3833254195873
+  ],
+  "true_T_std_K": 4.568049160484067
+ },
+ "roomdata_building_train_2_atlanta_3_pidwater": {
+  "V": 85,
+  "n_nodes_full": 747,
+  "lumped full_lumped": {
+   "states": 747,
+   "rmse_K": 0.6100520394024165,
+   "max_abs_K": 2.155593604197861,
+   "rmse_day1": 0.3950206960889963,
+   "rmse_day3": 0.7191913267021215,
+   "sec": 2.07
+  },
+  "lumped air+slab+facade (3/room)": {
+   "states": 215,
+   "rmse_K": 0.7202030078525359,
+   "max_abs_K": 3.1144449482216032,
+   "rmse_day1": 0.39797102220771585,
+   "rmse_day3": 0.9016829217845281,
+   "sec": 0.14
+  },
+  "spread full_lumped": {
+   "states": 747,
+   "rmse_K": 0.2544173629303171,
+   "max_abs_K": 0.9985401374872254,
+   "rmse_day1": 0.15836353585250593,
+   "rmse_day3": 0.30177415404977254,
+   "sec": 2.07
+  },
+  "spread air+slab+facade (3/room)": {
+   "states": 215,
+   "rmse_K": 0.41501121193348295,
+   "max_abs_K": 2.957096946296531,
+   "rmse_day1": 0.16294762091585355,
+   "rmse_day3": 0.5498210167530145,
+   "sec": 0.14
+  },
+  "spread air+slab (2/room)": {
+   "states": 170,
+   "rmse_K": 0.486061127950161,
+   "max_abs_K": 3.618932899441063,
+   "rmse_day1": 0.347664932611421,
+   "rmse_day3": 0.5879563415043926,
+   "sec": 0.09
+  },
+  "spread air only (1/room)": {
+   "states": 85,
+   "rmse_K": 0.6282562043041261,
+   "max_abs_K": 5.470019684600061,
+   "rmse_day1": 0.34450719932491475,
+   "rmse_day3": 0.7423645671388639,
+   "sec": 0.04
+  },
+  "true_T_range_K": [
+   290.2913947998023,
+   300.2458354825106
+  ],
+  "true_T_std_K": 1.72311662648162
+ },
+ "roomdata_building_train_2_atlanta_3_random": {
+  "V": 85,
+  "n_nodes_full": 747,
+  "lumped full_lumped": {
+   "states": 747,
+   "rmse_K": 0.5452878035191026,
+   "max_abs_K": 3.2654104659941936,
+   "rmse_day1": 0.4161111039723897,
+   "rmse_day3": 0.6120729374656436,
+   "sec": 2.08
+  },
+  "lumped air+slab+facade (3/room)": {
+   "states": 215,
+   "rmse_K": 0.9090602176653755,
+   "max_abs_K": 6.423556834214821,
+   "rmse_day1": 0.8040508014525901,
+   "rmse_day3": 0.9978194441109249,
+   "sec": 0.14
+  },
+  "spread full_lumped": {
+   "states": 747,
+   "rmse_K": 0.2573786388979266,
+   "max_abs_K": 1.2595041680687018,
+   "rmse_day1": 0.20472622853815817,
+   "rmse_day3": 0.28549687700277004,
+   "sec": 2.07
+  },
+  "spread air+slab+facade (3/room)": {
+   "states": 215,
+   "rmse_K": 0.8363851607595144,
+   "max_abs_K": 6.545590544457241,
+   "rmse_day1": 0.7833359781661061,
+   "rmse_day3": 0.8929330109642089,
+   "sec": 0.14
+  },
+  "spread air+slab (2/room)": {
+   "states": 170,
+   "rmse_K": 0.9399099518418305,
+   "max_abs_K": 6.4215783703549505,
+   "rmse_day1": 0.8921400953710443,
+   "rmse_day3": 1.005784583471683,
+   "sec": 0.09
+  },
+  "spread air only (1/room)": {
+   "states": 85,
+   "rmse_K": 1.9388215014682815,
+   "max_abs_K": 9.207125850667865,
+   "rmse_day1": 1.7739882849710578,
+   "rmse_day3": 2.1796874595836644,
+   "sec": 0.04
+  },
+  "true_T_range_K": [
+   285.5515932895255,
+   307.17156930107285
+  ],
+  "true_T_std_K": 3.589664129409101
+ },
+ "roomdata_building_train_4_denver_2_alloff": {
+  "V": 54,
+  "n_nodes_full": 460,
+  "lumped full_lumped": {
+   "states": 460,
+   "rmse_K": 1.4312175305073178,
+   "max_abs_K": 4.665215370938654,
+   "rmse_day1": 0.6477254756259899,
+   "rmse_day3": 1.927289748920055,
+   "sec": 0.65
+  },
+  "lumped air+slab+facade (3/room)": {
+   "states": 154,
+   "rmse_K": 1.4571282871408728,
+   "max_abs_K": 4.5031258881242024,
+   "rmse_day1": 0.5946486019157913,
+   "rmse_day3": 1.960622532153731,
+   "sec": 0.08
+  },
+  "spread full_lumped": {
+   "states": 460,
+   "rmse_K": 0.6328968059016662,
+   "max_abs_K": 2.222647285843948,
+   "rmse_day1": 0.2562862003264642,
+   "rmse_day3": 0.8650088998454772,
+   "sec": 0.65
+  },
+  "spread air+slab+facade (3/room)": {
+   "states": 154,
+   "rmse_K": 0.6911746295194652,
+   "max_abs_K": 2.383884961948695,
+   "rmse_day1": 0.23814678514155613,
+   "rmse_day3": 0.9310205970336518,
+   "sec": 0.08
+  },
+  "spread air+slab (2/room)": {
+   "states": 108,
+   "rmse_K": 1.0149065434743014,
+   "max_abs_K": 3.172855091372071,
+   "rmse_day1": 0.7187488625830748,
+   "rmse_day3": 1.1895896282274636,
+   "sec": 0.04
+  },
+  "spread air only (1/room)": {
+   "states": 54,
+   "rmse_K": 1.1907650721031584,
+   "max_abs_K": 3.265881073379717,
+   "rmse_day1": 0.4130755444386754,
+   "rmse_day3": 1.4578803353510144,
+   "sec": 0.02
+  },
+  "true_T_range_K": [
+   280.92262688439524,
+   300.2951323900614
+  ],
+  "true_T_std_K": 3.0785164553050604
+ },
+ "roomdata_building_train_4_denver_2_pidwater": {
+  "V": 54,
+  "n_nodes_full": 460,
+  "lumped full_lumped": {
+   "states": 460,
+   "rmse_K": 1.2846967631896786,
+   "max_abs_K": 4.311881176027214,
+   "rmse_day1": 0.643904102997009,
+   "rmse_day3": 1.7563983872308553,
+   "sec": 0.65
+  },
+  "lumped air+slab+facade (3/room)": {
+   "states": 154,
+   "rmse_K": 1.1646494392336406,
+   "max_abs_K": 4.517425883895669,
+   "rmse_day1": 0.6114121893007802,
+   "rmse_day3": 1.5677518126336825,
+   "sec": 0.08
+  },
+  "spread full_lumped": {
+   "states": 460,
+   "rmse_K": 0.6309467720498766,
+   "max_abs_K": 2.2996284453263343,
+   "rmse_day1": 0.2560073578428162,
+   "rmse_day3": 0.8689670955228492,
+   "sec": 0.65
+  },
+  "spread air+slab+facade (3/room)": {
+   "states": 154,
+   "rmse_K": 0.6398065475907189,
+   "max_abs_K": 4.69425317107391,
+   "rmse_day1": 0.2827402232079087,
+   "rmse_day3": 0.7694570720321793,
+   "sec": 0.08
+  },
+  "spread air+slab (2/room)": {
+   "states": 108,
+   "rmse_K": 0.8599725238317767,
+   "max_abs_K": 6.48283104095259,
+   "rmse_day1": 0.7453720451126268,
+   "rmse_day3": 0.9038251293854399,
+   "sec": 0.04
+  },
+  "spread air only (1/room)": {
+   "states": 54,
+   "rmse_K": 1.1258400003155846,
+   "max_abs_K": 9.018945737629224,
+   "rmse_day1": 0.4923266526125598,
+   "rmse_day3": 1.1195812055734362,
+   "sec": 0.02
+  },
+  "true_T_range_K": [
+   281.84433852951616,
+   301.0254858239934
+  ],
+  "true_T_std_K": 2.7611491383639857
+ },
+ "roomdata_building_train_4_denver_2_random": {
+  "V": 54,
+  "n_nodes_full": 460,
+  "lumped full_lumped": {
+   "states": 460,
+   "rmse_K": 0.6213458923470708,
+   "max_abs_K": 3.0125003261587153,
+   "rmse_day1": 0.48852610608087227,
+   "rmse_day3": 0.6646203183435239,
+   "sec": 0.65
+  },
+  "lumped air+slab+facade (3/room)": {
+   "states": 154,
+   "rmse_K": 1.5677937224278369,
+   "max_abs_K": 9.132817934028935,
+   "rmse_day1": 1.4908291853350109,
+   "rmse_day3": 1.703301157603597,
+   "sec": 0.08
+  },
+  "spread full_lumped": {
+   "states": 460,
+   "rmse_K": 0.28692613389115657,
+   "max_abs_K": 1.3886155381640606,
+   "rmse_day1": 0.20366954772837387,
+   "rmse_day3": 0.3138832591338373,
+   "sec": 0.65
+  },
+  "spread air+slab+facade (3/room)": {
+   "states": 154,
+   "rmse_K": 1.5267381097401125,
+   "max_abs_K": 9.121364866213696,
+   "rmse_day1": 1.4889356205362683,
+   "rmse_day3": 1.6631786008764666,
+   "sec": 0.08
+  },
+  "spread air+slab (2/room)": {
+   "states": 108,
+   "rmse_K": 1.6875081340471338,
+   "max_abs_K": 9.858554365723194,
+   "rmse_day1": 1.6608713718443946,
+   "rmse_day3": 1.8205108708891042,
+   "sec": 0.05
+  },
+  "spread air only (1/room)": {
+   "states": 54,
+   "rmse_K": 2.6214070417223683,
+   "max_abs_K": 12.6714650088025,
+   "rmse_day1": 2.4348144231061455,
+   "rmse_day3": 2.9582789844121127,
+   "sec": 0.02
+  },
+  "true_T_range_K": [
+   278.44852525436863,
+   304.70484865312
+  ],
+  "true_T_std_K": 3.839637259048188
+ },
+ "roomdata_building_train_7_phoenix_3_alloff": {
+  "V": 36,
+  "n_nodes_full": 281,
+  "lumped full_lumped": {
+   "states": 281,
+   "rmse_K": 0.6628642348538019,
+   "max_abs_K": 2.1329478283872163,
+   "rmse_day1": 0.8053120525345184,
+   "rmse_day3": 0.5487040828399093,
+   "sec": 0.23
+  },
+  "lumped air+slab+facade (3/room)": {
+   "states": 96,
+   "rmse_K": 0.6649780098589649,
+   "max_abs_K": 2.1567423802214307,
+   "rmse_day1": 0.8145814562462995,
+   "rmse_day3": 0.5385877270153548,
+   "sec": 0.04
+  },
+  "spread full_lumped": {
+   "states": 281,
+   "rmse_K": 0.3237120054065679,
+   "max_abs_K": 1.7232563778725876,
+   "rmse_day1": 0.3842113418625928,
+   "rmse_day3": 0.2631156479459664,
+   "sec": 0.23
+  },
+  "spread air+slab+facade (3/room)": {
+   "states": 96,
+   "rmse_K": 0.32924822227640965,
+   "max_abs_K": 1.776262791968577,
+   "rmse_day1": 0.3937747771428152,
+   "rmse_day3": 0.26047852331445914,
+   "sec": 0.04
+  },
+  "spread air+slab (2/room)": {
+   "states": 72,
+   "rmse_K": 0.3529919638444137,
+   "max_abs_K": 1.9543930601810757,
+   "rmse_day1": 0.434777006042725,
+   "rmse_day3": 0.282582512833305,
+   "sec": 0.03
+  },
+  "spread air only (1/room)": {
+   "states": 36,
+   "rmse_K": 0.9224445598304338,
+   "max_abs_K": 2.6903606437965664,
+   "rmse_day1": 1.0716422192131978,
+   "rmse_day3": 0.7724612572096397,
+   "sec": 0.01
+  },
+  "true_T_range_K": [
+   293.838179734709,
+   306.5999478307219
+  ],
+  "true_T_std_K": 3.0288628864734375
+ },
+ "roomdata_building_train_7_phoenix_3_pidwater": {
+  "V": 36,
+  "n_nodes_full": 281,
+  "lumped full_lumped": {
+   "states": 281,
+   "rmse_K": 0.5775269760217858,
+   "max_abs_K": 2.16318707402786,
+   "rmse_day1": 0.7537456529658859,
+   "rmse_day3": 0.3267103859647007,
+   "sec": 0.23
+  },
+  "lumped air+slab+facade (3/room)": {
+   "states": 96,
+   "rmse_K": 0.6385672700785034,
+   "max_abs_K": 4.052953925003067,
+   "rmse_day1": 0.7486154919163273,
+   "rmse_day3": 0.39410574019065164,
+   "sec": 0.04
+  },
+  "spread full_lumped": {
+   "states": 281,
+   "rmse_K": 0.30524656773419745,
+   "max_abs_K": 1.7624004251245537,
+   "rmse_day1": 0.3747897628508659,
+   "rmse_day3": 0.20004285404670227,
+   "sec": 0.23
+  },
+  "spread air+slab+facade (3/room)": {
+   "states": 96,
+   "rmse_K": 0.5120636411378937,
+   "max_abs_K": 3.8633674675243697,
+   "rmse_day1": 0.400293279132375,
+   "rmse_day3": 0.4157323532014986,
+   "sec": 0.04
+  },
+  "spread air+slab (2/room)": {
+   "states": 72,
+   "rmse_K": 0.6113643762151857,
+   "max_abs_K": 3.935047481130482,
+   "rmse_day1": 0.4656069999851827,
+   "rmse_day3": 0.4940435926244517,
+   "sec": 0.03
+  },
+  "spread air only (1/room)": {
+   "states": 36,
+   "rmse_K": 1.0410951569939377,
+   "max_abs_K": 6.561688884645434,
+   "rmse_day1": 0.932205777503634,
+   "rmse_day3": 0.789332983301361,
+   "sec": 0.01
+  },
+  "true_T_range_K": [
+   288.6674131465274,
+   302.44489443301717
+  ],
+  "true_T_std_K": 1.3268196957923488
+ },
+ "roomdata_building_train_7_phoenix_3_random": {
+  "V": 36,
+  "n_nodes_full": 281,
+  "lumped full_lumped": {
+   "states": 281,
+   "rmse_K": 0.33479656606148805,
+   "max_abs_K": 1.9359414948168023,
+   "rmse_day1": 0.29506944848477745,
+   "rmse_day3": 0.41316238728416793,
+   "sec": 0.23
+  },
+  "lumped air+slab+facade (3/room)": {
+   "states": 96,
+   "rmse_K": 0.7491432728136617,
+   "max_abs_K": 5.021108847046946,
+   "rmse_day1": 0.6877139823575114,
+   "rmse_day3": 0.7358043695981036,
+   "sec": 0.04
+  },
+  "spread full_lumped": {
+   "states": 281,
+   "rmse_K": 0.17318058383002866,
+   "max_abs_K": 1.3403512696845041,
+   "rmse_day1": 0.15110116231870704,
+   "rmse_day3": 0.22223463396435741,
+   "sec": 0.23
+  },
+  "spread air+slab+facade (3/room)": {
+   "states": 96,
+   "rmse_K": 0.732354862478949,
+   "max_abs_K": 5.074321688812347,
+   "rmse_day1": 0.6849071007071739,
+   "rmse_day3": 0.6761335748806139,
+   "sec": 0.04
+  },
+  "spread air+slab (2/room)": {
+   "states": 72,
+   "rmse_K": 0.8538866852895686,
+   "max_abs_K": 5.030604827281536,
+   "rmse_day1": 0.8298472897148174,
+   "rmse_day3": 0.7757155962616266,
+   "sec": 0.03
+  },
+  "spread air only (1/room)": {
+   "states": 36,
+   "rmse_K": 2.183750225362542,
+   "max_abs_K": 9.022771075470416,
+   "rmse_day1": 2.2632271304720586,
+   "rmse_day3": 1.978896231913453,
+   "sec": 0.02
+  },
+  "true_T_range_K": [
+   289.9064418676602,
+   307.3050091290604
+  ],
+  "true_T_std_K": 3.0137029584817836
+ },
+ "roomdata_building_train_8_atlanta_1_alloff": {
+  "V": 30,
+  "n_nodes_full": 237,
+  "lumped full_lumped": {
+   "states": 237,
+   "rmse_K": 1.47107418375122,
+   "max_abs_K": 3.6396940913145954,
+   "rmse_day1": 0.9061313820802659,
+   "rmse_day3": 1.723711610244472,
+   "sec": 0.16
+  },
+  "lumped air+slab+facade (3/room)": {
+   "states": 85,
+   "rmse_K": 1.5403270219880043,
+   "max_abs_K": 4.157280981007887,
+   "rmse_day1": 0.8883898946406386,
+   "rmse_day3": 1.819962132090196,
+   "sec": 0.03
+  },
+  "spread full_lumped": {
+   "states": 237,
+   "rmse_K": 0.6463821807368852,
+   "max_abs_K": 1.5592217400088089,
+   "rmse_day1": 0.37253546166772056,
+   "rmse_day3": 0.7804145239626096,
+   "sec": 0.16
+  },
+  "spread air+slab+facade (3/room)": {
+   "states": 85,
+   "rmse_K": 0.7266996605309161,
+   "max_abs_K": 2.0785685952858444,
+   "rmse_day1": 0.36181364905498475,
+   "rmse_day3": 0.8897181568068857,
+   "sec": 0.03
+  },
+  "spread air+slab (2/room)": {
+   "states": 60,
+   "rmse_K": 1.5616456060484876,
+   "max_abs_K": 3.9191984256113983,
+   "rmse_day1": 1.7363363692609675,
+   "rmse_day3": 1.3184893352331881,
+   "sec": 0.02
+  },
+  "spread air only (1/room)": {
+   "states": 30,
+   "rmse_K": 1.5990182021133608,
+   "max_abs_K": 3.461147360698874,
+   "rmse_day1": 1.5973406383349054,
+   "rmse_day3": 1.4452576980137328,
+   "sec": 0.01
+  },
+  "true_T_range_K": [
+   285.07827472490374,
+   298.2994581788745
+  ],
+  "true_T_std_K": 2.5193939736429405
+ },
+ "roomdata_building_train_8_atlanta_1_pidwater": {
+  "V": 30,
+  "n_nodes_full": 237,
+  "lumped full_lumped": {
+   "states": 237,
+   "rmse_K": 1.4160302001564506,
+   "max_abs_K": 3.7137005288078626,
+   "rmse_day1": 0.8989970617059438,
+   "rmse_day3": 1.7594701249715894,
+   "sec": 0.16
+  },
+  "lumped air+slab+facade (3/room)": {
+   "states": 85,
+   "rmse_K": 1.1905543217484682,
+   "max_abs_K": 4.8640225764285105,
+   "rmse_day1": 0.9390311127366515,
+   "rmse_day3": 1.4739020360859334,
+   "sec": 0.03
+  },
+  "spread full_lumped": {
+   "states": 237,
+   "rmse_K": 0.6745983332470968,
+   "max_abs_K": 1.7352394703171967,
+   "rmse_day1": 0.37564394638092713,
+   "rmse_day3": 0.8436614003629136,
+   "sec": 0.16
+  },
+  "spread air+slab+facade (3/room)": {
+   "states": 85,
+   "rmse_K": 0.6313416234600726,
+   "max_abs_K": 4.746494814561572,
+   "rmse_day1": 0.4898016656947024,
+   "rmse_day3": 0.6485789039745815,
+   "sec": 0.03
+  },
+  "spread air+slab (2/room)": {
+   "states": 60,
+   "rmse_K": 1.2369598395968164,
+   "max_abs_K": 7.46132528305742,
+   "rmse_day1": 1.7820448314763953,
+   "rmse_day3": 0.7590059734532459,
+   "sec": 0.02
+  },
+  "spread air only (1/room)": {
+   "states": 30,
+   "rmse_K": 1.2791325388646448,
+   "max_abs_K": 8.836928167006647,
+   "rmse_day1": 1.675334625884021,
+   "rmse_day3": 0.7435231371780386,
+   "sec": 0.01
+  },
+  "true_T_range_K": [
+   285.4554864131922,
+   300.4425036863425
+  ],
+  "true_T_std_K": 2.703183074440602
+ },
+ "roomdata_building_train_8_atlanta_1_random": {
+  "V": 30,
+  "n_nodes_full": 237,
+  "lumped full_lumped": {
+   "states": 237,
+   "rmse_K": 0.62386814354351,
+   "max_abs_K": 3.2871446505298536,
+   "rmse_day1": 0.5497939929592089,
+   "rmse_day3": 0.6060710210605516,
+   "sec": 0.16
+  },
+  "lumped air+slab+facade (3/room)": {
+   "states": 85,
+   "rmse_K": 1.3224577090030392,
+   "max_abs_K": 8.796654551998586,
+   "rmse_day1": 1.5250903665419762,
+   "rmse_day3": 1.2471624149947826,
+   "sec": 0.03
+  },
+  "spread full_lumped": {
+   "states": 237,
+   "rmse_K": 0.33417307121023637,
+   "max_abs_K": 1.5255838387161589,
+   "rmse_day1": 0.30131694200504416,
+   "rmse_day3": 0.3411361388576869,
+   "sec": 0.16
+  },
+  "spread air+slab+facade (3/room)": {
+   "states": 85,
+   "rmse_K": 1.2715903557445343,
+   "max_abs_K": 9.840498549352958,
+   "rmse_day1": 1.514948383158301,
+   "rmse_day3": 1.1975612130800115,
+   "sec": 0.03
+  },
+  "spread air+slab (2/room)": {
+   "states": 60,
+   "rmse_K": 1.5844101849860495,
+   "max_abs_K": 9.887221631525051,
+   "rmse_day1": 1.942272625148176,
+   "rmse_day3": 1.4356146310251805,
+   "sec": 0.02
+  },
+  "spread air only (1/room)": {
+   "states": 30,
+   "rmse_K": 2.1470617403443417,
+   "max_abs_K": 12.293621824716297,
+   "rmse_day1": 2.605860638389933,
+   "rmse_day3": 1.9162427558761712,
+   "sec": 0.01
+  },
+  "true_T_range_K": [
+   281.65409616953605,
+   305.3539337536097
+  ],
+  "true_T_std_K": 3.9576530875211664
+ },
+ "roomdata_building_train_8_fairbanks_8_alloff": {
+  "V": 30,
+  "n_nodes_full": 237,
+  "lumped full_lumped": {
+   "states": 237,
+   "rmse_K": 2.148278521649478,
+   "max_abs_K": 6.218682232602816,
+   "rmse_day1": 1.0345102085473623,
+   "rmse_day3": 2.854606897403428,
+   "sec": 0.16
+  },
+  "lumped air+slab+facade (3/room)": {
+   "states": 85,
+   "rmse_K": 2.1524493181613646,
+   "max_abs_K": 6.146940010721153,
+   "rmse_day1": 0.9711876187188554,
+   "rmse_day3": 2.8652440285538145,
+   "sec": 0.03
+  },
+  "spread full_lumped": {
+   "states": 237,
+   "rmse_K": 0.9501824639787646,
+   "max_abs_K": 2.7230763258919524,
+   "rmse_day1": 0.42809113290085804,
+   "rmse_day3": 1.2837057174198383,
+   "sec": 0.16
+  },
+  "spread air+slab+facade (3/room)": {
+   "states": 85,
+   "rmse_K": 0.9574159984697758,
+   "max_abs_K": 2.6821731535315507,
+   "rmse_day1": 0.38705151802572746,
+   "rmse_day3": 1.2920824713242576,
+   "sec": 0.03
+  },
+  "spread air+slab (2/room)": {
+   "states": 60,
+   "rmse_K": 1.6196664468305488,
+   "max_abs_K": 3.366963783188055,
+   "rmse_day1": 1.455861343628413,
+   "rmse_day3": 1.6970568850771874,
+   "sec": 0.02
+  },
+  "spread air only (1/room)": {
+   "states": 30,
+   "rmse_K": 1.5915270994270059,
+   "max_abs_K": 3.4422665378177726,
+   "rmse_day1": 1.2693035766706786,
+   "rmse_day3": 1.7008244574166216,
+   "sec": 0.01
+  },
+  "true_T_range_K": [
+   276.2979180824087,
+   294.4160507217898
+  ],
+  "true_T_std_K": 4.033832014834355
+ },
+ "roomdata_building_train_8_fairbanks_8_pidwater": {
+  "V": 30,
+  "n_nodes_full": 237,
+  "lumped full_lumped": {
+   "states": 237,
+   "rmse_K": 1.68458426522066,
+   "max_abs_K": 5.544628268919212,
+   "rmse_day1": 0.9682797061893001,
+   "rmse_day3": 2.138196579840957,
+   "sec": 0.16
+  },
+  "lumped air+slab+facade (3/room)": {
+   "states": 85,
+   "rmse_K": 1.3487930736017377,
+   "max_abs_K": 5.2156653594718705,
+   "rmse_day1": 1.0350736003907972,
+   "rmse_day3": 1.6522290845016165,
+   "sec": 0.03
+  },
+  "spread full_lumped": {
+   "states": 237,
+   "rmse_K": 0.9094602509891356,
+   "max_abs_K": 3.0838352132433897,
+   "rmse_day1": 0.43226187375412345,
+   "rmse_day3": 1.1997184025268712,
+   "sec": 0.16
+  },
+  "spread air+slab+facade (3/room)": {
+   "states": 85,
+   "rmse_K": 0.9477790444093851,
+   "max_abs_K": 4.8670734779562395,
+   "rmse_day1": 0.6809621101959312,
+   "rmse_day3": 1.155017772913398,
+   "sec": 0.03
+  },
+  "spread air+slab (2/room)": {
+   "states": 60,
+   "rmse_K": 1.4075787778140247,
+   "max_abs_K": 7.984547860720454,
+   "rmse_day1": 1.5789127651674482,
+   "rmse_day3": 1.4036000662289385,
+   "sec": 0.02
+  },
+  "spread air only (1/room)": {
+   "states": 30,
+   "rmse_K": 1.5958258085159767,
+   "max_abs_K": 9.18484020841521,
+   "rmse_day1": 1.498282650995985,
+   "rmse_day3": 1.6916742495251982,
+   "sec": 0.01
+  },
+  "true_T_range_K": [
+   282.80478893282367,
+   300.1455760465917
+  ],
+  "true_T_std_K": 2.7958707480146225
+ },
+ "roomdata_building_train_8_fairbanks_8_random": {
+  "V": 30,
+  "n_nodes_full": 237,
+  "lumped full_lumped": {
+   "states": 237,
+   "rmse_K": 0.8138306824276745,
+   "max_abs_K": 3.8943819547866383,
+   "rmse_day1": 0.613450714324446,
+   "rmse_day3": 0.9390533623064327,
+   "sec": 0.16
+  },
+  "lumped air+slab+facade (3/room)": {
+   "states": 85,
+   "rmse_K": 1.77892282281189,
+   "max_abs_K": 10.000339017625379,
+   "rmse_day1": 1.7403777552291952,
+   "rmse_day3": 1.9817680615706192,
+   "sec": 0.03
+  },
+  "spread full_lumped": {
+   "states": 237,
+   "rmse_K": 0.41751756875152507,
+   "max_abs_K": 1.9180620672810846,
+   "rmse_day1": 0.3262563724319999,
+   "rmse_day3": 0.4890380028990624,
+   "sec": 0.16
+  },
+  "spread air+slab+facade (3/room)": {
+   "states": 85,
+   "rmse_K": 1.712704398170941,
+   "max_abs_K": 10.977631981481977,
+   "rmse_day1": 1.7335419610900498,
+   "rmse_day3": 1.8910706008969536,
+   "sec": 0.03
+  },
+  "spread air+slab (2/room)": {
+   "states": 60,
+   "rmse_K": 2.151180213821857,
+   "max_abs_K": 12.391591029158178,
+   "rmse_day1": 2.1913534959237757,
+   "rmse_day3": 2.3557230060116554,
+   "sec": 0.02
+  },
+  "spread air only (1/room)": {
+   "states": 30,
+   "rmse_K": 2.8945824608809394,
+   "max_abs_K": 13.702115826744148,
+   "rmse_day1": 2.9146131819989387,
+   "rmse_day3": 3.193980174818953,
+   "sec": 0.01
+  },
+  "true_T_range_K": [
+   273.23131502657384,
+   301.37443196262706
+  ],
+  "true_T_std_K": 4.916702858558074
+ }
+}

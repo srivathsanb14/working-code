@@ -1,0 +1,632 @@
+{
+ "roomdata_building_train_1_fairbanks_1_alloff": {
+  "V": 39,
+  "true_theta": {
+   "day1": 0.2491759487303396,
+   "days2_3": 1.0704993007281478
+  },
+  "prior_theta": {
+   "day1": 4.419667523687719,
+   "days2_3": 9.618075509312138
+  },
+  "identified_theta": {
+   "day1": 0.13190417088852496,
+   "days2_3": 0.8119886531489869,
+   "nfev": 21
+  },
+  "theta_ratio_identified_over_true": {
+   "k_iw": 0.681,
+   "rc_iw": 2.187,
+   "k_ext": 1.389,
+   "rc_ext": 1.354,
+   "rc_mass": 0.973,
+   "h": 0.741
+  },
+  "jacobian_singular_values": [
+   359.50492829109083,
+   30.530094172119323,
+   23.694808895211118,
+   13.904852683196545,
+   7.8141592996757785,
+   3.2560925788162014
+  ],
+  "persistence_baseline_days2_3": 0.03929261863231659,
+  "measured_std_K": 4.816056251525879,
+  "sec": 5.0
+ },
+ "roomdata_building_train_1_fairbanks_1_pidwater": {
+  "V": 39,
+  "true_theta": {
+   "day1": 0.24920538260833994,
+   "days2_3": 1.0266470942199684
+  },
+  "prior_theta": {
+   "day1": 4.405012682802954,
+   "days2_3": 4.530662212863161
+  },
+  "identified_theta": {
+   "day1": 0.13196195118198392,
+   "days2_3": 1.325663521122456,
+   "nfev": 22
+  },
+  "theta_ratio_identified_over_true": {
+   "k_iw": 0.687,
+   "rc_iw": 2.249,
+   "k_ext": 1.406,
+   "rc_ext": 1.368,
+   "rc_mass": 0.971,
+   "h": 0.741
+  },
+  "jacobian_singular_values": [
+   357.7413638716677,
+   30.518852080061862,
+   23.47739670124802,
+   13.858387379838858,
+   8.053250096631132,
+   3.3543055623073195
+  ],
+  "persistence_baseline_days2_3": 1.050355076789856,
+  "measured_std_K": 2.494485855102539,
+  "sec": 5.2
+ },
+ "roomdata_building_train_1_fairbanks_1_random": {
+  "V": 39,
+  "true_theta": {
+   "day1": 0.23670966775862406,
+   "days2_3": 0.4437807003888556
+  },
+  "prior_theta": {
+   "day1": 2.0723748386631033,
+   "days2_3": 2.9413908236179407
+  },
+  "identified_theta": {
+   "day1": 0.22409759500083148,
+   "days2_3": 0.3830967777483418,
+   "nfev": 22
+  },
+  "theta_ratio_identified_over_true": {
+   "k_iw": 0.943,
+   "rc_iw": 0.96,
+   "k_ext": 1.107,
+   "rc_ext": 0.972,
+   "rc_mass": 1.08,
+   "h": 0.741
+  },
+  "jacobian_singular_values": [
+   206.16483312044906,
+   71.38445250994796,
+   64.44688900885015,
+   22.768772608256636,
+   16.29977064918975,
+   4.54859058045684
+  ],
+  "persistence_baseline_days2_3": 1.1863690614700317,
+  "measured_std_K": 8.063300132751465,
+  "sec": 4.4
+ },
+ "roomdata_building_train_2_atlanta_3_alloff": {
+  "V": 85,
+  "true_theta": {
+   "day1": 0.15835529782222368,
+   "days2_3": 0.8126419688211776
+  },
+  "prior_theta": {
+   "day1": 0.37292996389560173,
+   "days2_3": 1.983144731782631
+  },
+  "identified_theta": {
+   "day1": 0.06101676133643054,
+   "days2_3": 0.3193088972393701,
+   "nfev": 19
+  },
+  "theta_ratio_identified_over_true": {
+   "k_iw": 0.647,
+   "rc_iw": 1.609,
+   "k_ext": 1.025,
+   "rc_ext": 0.855,
+   "rc_mass": 0.669,
+   "h": 0.632
+  },
+  "jacobian_singular_values": [
+   150.37168287761148,
+   69.3348048905255,
+   18.916572798894535,
+   11.046234128147065,
+   5.980840750404125,
+   0.7868832758974952
+  ],
+  "persistence_baseline_days2_3": 0.045537177473306656,
+  "measured_std_K": 4.566025257110596,
+  "sec": 9.2
+ },
+ "roomdata_building_train_2_atlanta_3_pidwater": {
+  "V": 85,
+  "true_theta": {
+   "day1": 0.15836346324393222,
+   "days2_3": 0.2906747303233651
+  },
+  "prior_theta": {
+   "day1": 0.3729416480762315,
+   "days2_3": 0.5618369507081288
+  },
+  "identified_theta": {
+   "day1": 0.06101684777304371,
+   "days2_3": 0.20793400416069724,
+   "nfev": 19
+  },
+  "theta_ratio_identified_over_true": {
+   "k_iw": 0.647,
+   "rc_iw": 1.609,
+   "k_ext": 1.024,
+   "rc_ext": 0.855,
+   "rc_mass": 0.669,
+   "h": 0.633
+  },
+  "jacobian_singular_values": [
+   150.4097149973753,
+   69.35018786744831,
+   18.916747269495747,
+   11.046342152639694,
+   5.981310643386552,
+   0.7857634634328521
+  ],
+  "persistence_baseline_days2_3": 0.40083426237106323,
+  "measured_std_K": 1.722104549407959,
+  "sec": 9.2
+ },
+ "roomdata_building_train_2_atlanta_3_random": {
+  "V": 85,
+  "true_theta": {
+   "day1": 0.20472634355507824,
+   "days2_3": 0.2797050150403939
+  },
+  "prior_theta": {
+   "day1": 0.4267611556363201,
+   "days2_3": 0.5538674040577813
+  },
+  "identified_theta": {
+   "day1": 0.18470902073032366,
+   "days2_3": 0.272106683313749,
+   "nfev": 18
+  },
+  "theta_ratio_identified_over_true": {
+   "k_iw": 0.935,
+   "rc_iw": 1.152,
+   "k_ext": 1.581,
+   "rc_ext": 1.244,
+   "rc_mass": 0.822,
+   "h": 0.342
+  },
+  "jacobian_singular_values": [
+   108.31612386297464,
+   77.3251448924773,
+   64.9779055862283,
+   21.11467028577549,
+   16.039839947965756,
+   10.499244642955098
+  ],
+  "persistence_baseline_days2_3": 0.676631510257721,
+  "measured_std_K": 3.5883381366729736,
+  "sec": 5.7
+ },
+ "roomdata_building_train_4_denver_2_alloff": {
+  "V": 54,
+  "true_theta": {
+   "day1": 0.2562861910753322,
+   "days2_3": 0.7528433685290832
+  },
+  "prior_theta": {
+   "day1": 1.1732331878059132,
+   "days2_3": 2.5385717706989577
+  },
+  "identified_theta": {
+   "day1": 0.172634780204513,
+   "days2_3": 1.1062183915182693,
+   "nfev": 34
+  },
+  "theta_ratio_identified_over_true": {
+   "k_iw": 0.719,
+   "rc_iw": 1.832,
+   "k_ext": 1.391,
+   "rc_ext": 1.241,
+   "rc_mass": 1.185,
+   "h": 0.312
+  },
+  "jacobian_singular_values": [
+   325.1660155636983,
+   38.206637975713946,
+   34.42093599393014,
+   20.151390646173148,
+   9.28382970338769,
+   1.7141276076959344
+  ],
+  "persistence_baseline_days2_3": 0.04205777496099472,
+  "measured_std_K": 3.077261447906494,
+  "sec": 10.9
+ },
+ "roomdata_building_train_4_denver_2_pidwater": {
+  "V": 54,
+  "true_theta": {
+   "day1": 0.25600725360883264,
+   "days2_3": 0.7501237923657086
+  },
+  "prior_theta": {
+   "day1": 1.1705903265254265,
+   "days2_3": 2.255255627233909
+  },
+  "identified_theta": {
+   "day1": 0.17217360372096213,
+   "days2_3": 1.378801853853441,
+   "nfev": 23
+  },
+  "theta_ratio_identified_over_true": {
+   "k_iw": 0.719,
+   "rc_iw": 1.815,
+   "k_ext": 1.334,
+   "rc_ext": 1.242,
+   "rc_mass": 1.188,
+   "h": 0.357
+  },
+  "jacobian_singular_values": [
+   330.97620565637845,
+   38.10000289329307,
+   34.364040046096704,
+   19.740266898122403,
+   9.99378767786308,
+   1.7616220370848958
+  ],
+  "persistence_baseline_days2_3": 0.5264962315559387,
+  "measured_std_K": 2.759733200073242,
+  "sec": 7.4
+ },
+ "roomdata_building_train_4_denver_2_random": {
+  "V": 54,
+  "true_theta": {
+   "day1": 0.2036696888083575,
+   "days2_3": 0.32041507144897957
+  },
+  "prior_theta": {
+   "day1": 0.5765825789695282,
+   "days2_3": 0.8096744483658992
+  },
+  "identified_theta": {
+   "day1": 0.19196804710831109,
+   "days2_3": 0.3079530926629636,
+   "nfev": 18
+  },
+  "theta_ratio_identified_over_true": {
+   "k_iw": 0.944,
+   "rc_iw": 1.261,
+   "k_ext": 1.222,
+   "rc_ext": 0.813,
+   "rc_mass": 0.949,
+   "h": 0.244
+  },
+  "jacobian_singular_values": [
+   152.88429047515643,
+   62.68748861645253,
+   47.851488474626485,
+   19.00672954508235,
+   10.471254344680789,
+   6.117739851468025
+  ],
+  "persistence_baseline_days2_3": 0.7240446209907532,
+  "measured_std_K": 3.8396730422973633,
+  "sec": 4.7
+ },
+ "roomdata_building_train_7_phoenix_3_alloff": {
+  "V": 36,
+  "true_theta": {
+   "day1": 0.38421138588931397,
+   "days2_3": 0.28969029215310915
+  },
+  "prior_theta": {
+   "day1": 1.0430379136731287,
+   "days2_3": 1.7482955727019827
+  },
+  "identified_theta": {
+   "day1": 0.24454345064704996,
+   "days2_3": 0.6809895907722772,
+   "nfev": 18
+  },
+  "theta_ratio_identified_over_true": {
+   "k_iw": 0.976,
+   "rc_iw": 2.272,
+   "k_ext": 1.049,
+   "rc_ext": 0.977,
+   "rc_mass": 1.039,
+   "h": 1.399
+  },
+  "jacobian_singular_values": [
+   193.81949983434856,
+   74.32032599308668,
+   44.191068383764055,
+   13.180698730590747,
+   7.08610929923484,
+   0.43434975011468074
+  ],
+  "persistence_baseline_days2_3": 0.04060376062989235,
+  "measured_std_K": 3.0292131900787354,
+  "sec": 2.0
+ },
+ "roomdata_building_train_7_phoenix_3_pidwater": {
+  "V": 36,
+  "true_theta": {
+   "day1": 0.37478988401755264,
+   "days2_3": 0.26486483850002146
+  },
+  "prior_theta": {
+   "day1": 0.9285889306918754,
+   "days2_3": 0.502096987255009
+  },
+  "identified_theta": {
+   "day1": 0.2381346464501887,
+   "days2_3": 0.19651451789276547,
+   "nfev": 36
+  },
+  "theta_ratio_identified_over_true": {
+   "k_iw": 1.111,
+   "rc_iw": 2.849,
+   "k_ext": 1.252,
+   "rc_ext": 0.737,
+   "rc_mass": 1.002,
+   "h": 0.736
+  },
+  "jacobian_singular_values": [
+   155.6060136025542,
+   57.5758821932409,
+   32.2899469985136,
+   13.974936646499666,
+   10.036308116313132,
+   1.7946950814658793
+  ],
+  "persistence_baseline_days2_3": 1.1386151313781738,
+  "measured_std_K": 1.3271781206130981,
+  "sec": 5.3
+ },
+ "roomdata_building_train_7_phoenix_3_random": {
+  "V": 36,
+  "true_theta": {
+   "day1": 0.15110120555658926,
+   "days2_3": 0.18324394988585396
+  },
+  "prior_theta": {
+   "day1": 0.541871936062069,
+   "days2_3": 0.4293346179164186
+  },
+  "identified_theta": {
+   "day1": 0.14830379209799052,
+   "days2_3": 0.184030915499904,
+   "nfev": 16
+  },
+  "theta_ratio_identified_over_true": {
+   "k_iw": 0.997,
+   "rc_iw": 1.068,
+   "k_ext": 1.156,
+   "rc_ext": 0.915,
+   "rc_mass": 1.001,
+   "h": 0.665
+  },
+  "jacobian_singular_values": [
+   114.57457069650897,
+   43.26261220785775,
+   35.91923557276218,
+   27.223724910316413,
+   14.39613529975485,
+   5.904920480317854
+  ],
+  "persistence_baseline_days2_3": 0.6928954124450684,
+  "measured_std_K": 3.013956308364868,
+  "sec": 2.3
+ },
+ "roomdata_building_train_8_atlanta_1_alloff": {
+  "V": 30,
+  "true_theta": {
+   "day1": 0.3725356735987946,
+   "days2_3": 0.7479282465925294
+  },
+  "prior_theta": {
+   "day1": 0.3106189436371352,
+   "days2_3": 0.7700932441620274
+  },
+  "identified_theta": {
+   "day1": 0.20456719515203098,
+   "days2_3": 1.1072597129968786,
+   "nfev": 28
+  },
+  "theta_ratio_identified_over_true": {
+   "k_iw": 0.764,
+   "rc_iw": 1.636,
+   "k_ext": 1.331,
+   "rc_ext": 1.231,
+   "rc_mass": 0.943,
+   "h": 0.573
+  },
+  "jacobian_singular_values": [
+   316.61370755773567,
+   57.95850774364348,
+   25.446825945027864,
+   12.397803096521688,
+   9.967264194732156,
+   2.05447209739938
+  ],
+  "persistence_baseline_days2_3": 0.03465062752366066,
+  "measured_std_K": 2.519145965576172,
+  "sec": 3.8
+ },
+ "roomdata_building_train_8_atlanta_1_pidwater": {
+  "V": 30,
+  "true_theta": {
+   "day1": 0.37564412460867486,
+   "days2_3": 0.7826940815712142
+  },
+  "prior_theta": {
+   "day1": 0.3104348205205721,
+   "days2_3": 1.0716487152054892
+  },
+  "identified_theta": {
+   "day1": 0.21869381035066543,
+   "days2_3": 0.8314532684612274,
+   "nfev": 30
+  },
+  "theta_ratio_identified_over_true": {
+   "k_iw": 0.671,
+   "rc_iw": 1.422,
+   "k_ext": 1.307,
+   "rc_ext": 1.058,
+   "rc_mass": 0.793,
+   "h": 0.394
+  },
+  "jacobian_singular_values": [
+   305.00861448583396,
+   56.18443458877068,
+   24.86233215148805,
+   17.68445470451572,
+   11.378094539104563,
+   3.528435519736722
+  ],
+  "persistence_baseline_days2_3": 0.5188276171684265,
+  "measured_std_K": 2.703437566757202,
+  "sec": 4.0
+ },
+ "roomdata_building_train_8_atlanta_1_random": {
+  "V": 30,
+  "true_theta": {
+   "day1": 0.3013176315825303,
+   "days2_3": 0.35040938015757367
+  },
+  "prior_theta": {
+   "day1": 0.3392438637458831,
+   "days2_3": 0.48485688071644084
+  },
+  "identified_theta": {
+   "day1": 0.27256113816781763,
+   "days2_3": 0.3125320539303114,
+   "nfev": 17
+  },
+  "theta_ratio_identified_over_true": {
+   "k_iw": 0.913,
+   "rc_iw": 1.125,
+   "k_ext": 1.178,
+   "rc_ext": 0.758,
+   "rc_mass": 0.981,
+   "h": 0.342
+  },
+  "jacobian_singular_values": [
+   106.44360796158675,
+   55.1909078407934,
+   51.60026531781842,
+   16.51323159609981,
+   9.108325653271836,
+   7.144251948304256
+  ],
+  "persistence_baseline_days2_3": 0.6609207391738892,
+  "measured_std_K": 3.9546031951904297,
+  "sec": 1.6
+ },
+ "roomdata_building_train_8_fairbanks_8_alloff": {
+  "V": 30,
+  "true_theta": {
+   "day1": 0.42809142648603554,
+   "days2_3": 1.1244161055130844
+  },
+  "prior_theta": {
+   "day1": 0.6732781715799816,
+   "days2_3": 1.6132655990440592
+  },
+  "identified_theta": {
+   "day1": 0.2444327937806751,
+   "days2_3": 1.3283117994399756,
+   "nfev": 32
+  },
+  "theta_ratio_identified_over_true": {
+   "k_iw": 0.818,
+   "rc_iw": 1.725,
+   "k_ext": 1.349,
+   "rc_ext": 1.429,
+   "rc_mass": 0.997,
+   "h": 0.989
+  },
+  "jacobian_singular_values": [
+   401.92011184028155,
+   68.6815546493537,
+   26.364297029170526,
+   15.519558202041093,
+   12.122247524768925,
+   3.0984894370965272
+  ],
+  "persistence_baseline_days2_3": 0.034993335604667664,
+  "measured_std_K": 4.030270099639893,
+  "sec": 4.0
+ },
+ "roomdata_building_train_8_fairbanks_8_pidwater": {
+  "V": 30,
+  "true_theta": {
+   "day1": 0.43226202410127246,
+   "days2_3": 1.0707595939321044
+  },
+  "prior_theta": {
+   "day1": 0.7242336979216513,
+   "days2_3": 2.0925855421744446
+  },
+  "identified_theta": {
+   "day1": 0.2827782555139251,
+   "days2_3": 1.325199285581204,
+   "nfev": 27
+  },
+  "theta_ratio_identified_over_true": {
+   "k_iw": 0.73,
+   "rc_iw": 1.729,
+   "k_ext": 1.206,
+   "rc_ext": 1.087,
+   "rc_mass": 0.784,
+   "h": 0.741
+  },
+  "jacobian_singular_values": [
+   361.33021911138263,
+   57.93021718067562,
+   33.89453692761461,
+   22.694659746305202,
+   12.046019461162134,
+   4.878114295362443
+  ],
+  "persistence_baseline_days2_3": 1.030123233795166,
+  "measured_std_K": 2.7946550846099854,
+  "sec": 3.3
+ },
+ "roomdata_building_train_8_fairbanks_8_random": {
+  "V": 30,
+  "true_theta": {
+   "day1": 0.3262568760087164,
+   "days2_3": 0.45710625021757817
+  },
+  "prior_theta": {
+   "day1": 0.4361689918201048,
+   "days2_3": 0.6518794423072044
+  },
+  "identified_theta": {
+   "day1": 0.2867484763207907,
+   "days2_3": 0.4162057238343885,
+   "nfev": 18
+  },
+  "theta_ratio_identified_over_true": {
+   "k_iw": 0.975,
+   "rc_iw": 1.519,
+   "k_ext": 1.034,
+   "rc_ext": 0.853,
+   "rc_mass": 0.818,
+   "h": 0.742
+  },
+  "jacobian_singular_values": [
+   134.30673615033785,
+   67.31794436544918,
+   60.99341428668416,
+   17.019714305047735,
+   11.52901021512474,
+   6.5024476872042944
+  ],
+  "persistence_baseline_days2_3": 0.985899031162262,
+  "measured_std_K": 4.9174580574035645,
+  "sec": 2.0
+ }
+}

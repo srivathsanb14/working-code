@@ -1,0 +1,64 @@
+{
+ "kappa_params_a_b": [
+  6.963549809144094,
+  4.0623034607735145
+ ],
+ "eps_param_c": [
+  2.8175471736462545
+ ],
+ "kappa_lumped_train_buildings": {
+  "r2": -1.0670828923500175,
+  "median_abs_rel_err": 0.2573547824869575,
+  "p90_abs_rel_err": 1.511856102604188,
+  "total_ratio": 1.6473841417975292
+ },
+ "kappa_spread_train_buildings": {
+  "r2": 0.9600921533640044,
+  "median_abs_rel_err": 0.07659252553589328,
+  "p90_abs_rel_err": 0.3188821156985041,
+  "total_ratio": 1.0188478599368374
+ },
+ "kappa_lumped_test_buildings": {
+  "r2": -0.8964921868536246,
+  "median_abs_rel_err": 0.28075365876102926,
+  "p90_abs_rel_err": 1.4005428737749717,
+  "total_ratio": 1.6847677353727926
+ },
+ "kappa_spread_test_buildings": {
+  "r2": 0.9762590359529524,
+  "median_abs_rel_err": 0.07112287095184833,
+  "p90_abs_rel_err": 0.2564654310412282,
+  "total_ratio": 1.0122736834430315
+ },
+ "eps_lumped_train_buildings": {
+  "r2": 0.7911844063415482,
+  "median_abs_rel_err": 0.21569061436326692,
+  "p90_abs_rel_err": 0.6709948908358635,
+  "total_ratio": 1.302836615943245
+ },
+ "eps_spread_train_buildings": {
+  "r2": 0.9262741576295737,
+  "median_abs_rel_err": 0.1193645090121886,
+  "p90_abs_rel_err": 0.3647774350550081,
+  "total_ratio": 1.009004881853923
+ },
+ "eps_lumped_test_buildings": {
+  "r2": 0.895923187520252,
+  "median_abs_rel_err": 0.1862776994871359,
+  "p90_abs_rel_err": 0.42422336006734757,
+  "total_ratio": 1.2651554701115217
+ },
+ "eps_spread_test_buildings": {
+  "r2": 0.9399693380578381,
+  "median_abs_rel_err": 0.14546357864812576,
+  "p90_abs_rel_err": 0.3063826252556571,
+  "total_ratio": 0.9603723748622915
+ },
+ "pairs_without_shared_wall_or_door": {
+  "n": 815,
+  "max_kappa": 12.117287336963159,
+  "share_of_total_kappa": 0.004900320905009243
+ },
+ "n_pairs": 3539,
+ "n_rooms": 1292
+}

@@ -1,0 +1,254 @@
+{
+ "roomdata_building_train_1_fairbanks_1_alloff": {
+  "1h": {
+   "model": 0.10790623226493962,
+   "persistence": 0.290656715631485
+  },
+  "3h": {
+   "model": 0.18775322520918095,
+   "persistence": 0.7991788983345032
+  },
+  "6h": {
+   "model": 0.2910981925445419,
+   "persistence": 1.5585353374481201
+  }
+ },
+ "roomdata_building_train_1_fairbanks_1_pidwater": {
+  "1h": {
+   "model": 0.2957274405206435,
+   "persistence": 1.5906785726547241
+  },
+  "3h": {
+   "model": 0.45029867530891365,
+   "persistence": 2.000983238220215
+  },
+  "6h": {
+   "model": 0.6312484561886791,
+   "persistence": 2.6644628047943115
+  }
+ },
+ "roomdata_building_train_1_fairbanks_1_random": {
+  "1h": {
+   "model": 0.1788147154925902,
+   "persistence": 3.792191505432129
+  },
+  "3h": {
+   "model": 0.20822964335788324,
+   "persistence": 5.54062032699585
+  },
+  "6h": {
+   "model": 0.2430907321411971,
+   "persistence": 6.502763748168945
+  }
+ },
+ "roomdata_building_train_2_atlanta_3_alloff": {
+  "1h": {
+   "model": 0.10126486778951044,
+   "persistence": 0.4377935528755188
+  },
+  "3h": {
+   "model": 0.15782515377911663,
+   "persistence": 1.1995595693588257
+  },
+  "6h": {
+   "model": 0.22022192256504391,
+   "persistence": 2.165398597717285
+  }
+ },
+ "roomdata_building_train_2_atlanta_3_pidwater": {
+  "1h": {
+   "model": 0.08836798229531599,
+   "persistence": 0.6968770623207092
+  },
+  "3h": {
+   "model": 0.12786688341590538,
+   "persistence": 0.874447226524353
+  },
+  "6h": {
+   "model": 0.16275635014940998,
+   "persistence": 1.3742883205413818
+  }
+ },
+ "roomdata_building_train_2_atlanta_3_random": {
+  "1h": {
+   "model": 0.16317125262866988,
+   "persistence": 2.1893563270568848
+  },
+  "3h": {
+   "model": 0.19520363340168467,
+   "persistence": 3.775285243988037
+  },
+  "6h": {
+   "model": 0.2252039940385119,
+   "persistence": 4.570724964141846
+  }
+ },
+ "roomdata_building_train_4_denver_2_alloff": {
+  "1h": {
+   "model": 0.15269720687211352,
+   "persistence": 0.34949442744255066
+  },
+  "3h": {
+   "model": 0.2664058302455769,
+   "persistence": 0.9321846961975098
+  },
+  "6h": {
+   "model": 0.4125127951866051,
+   "persistence": 1.6617094278335571
+  }
+ },
+ "roomdata_building_train_4_denver_2_pidwater": {
+  "1h": {
+   "model": 0.19698744078366046,
+   "persistence": 1.0269064903259277
+  },
+  "3h": {
+   "model": 0.33458082316344323,
+   "persistence": 1.3846837282180786
+  },
+  "6h": {
+   "model": 0.4965654375149976,
+   "persistence": 1.8057199716567993
+  }
+ },
+ "roomdata_building_train_4_denver_2_random": {
+  "1h": {
+   "model": 0.12745118913684422,
+   "persistence": 2.2313754558563232
+  },
+  "3h": {
+   "model": 0.15601787012635104,
+   "persistence": 3.5891494750976562
+  },
+  "6h": {
+   "model": 0.19180144515412267,
+   "persistence": 4.4883856773376465
+  }
+ },
+ "roomdata_building_train_7_phoenix_3_alloff": {
+  "1h": {
+   "model": 0.10706514309759954,
+   "persistence": 0.37062978744506836
+  },
+  "3h": {
+   "model": 0.18293175291665165,
+   "persistence": 0.9955307841300964
+  },
+  "6h": {
+   "model": 0.27315480709293793,
+   "persistence": 1.73793363571167
+  }
+ },
+ "roomdata_building_train_7_phoenix_3_pidwater": {
+  "1h": {
+   "model": 0.10006298053903115,
+   "persistence": 1.719718098640442
+  },
+  "3h": {
+   "model": 0.13681772844774284,
+   "persistence": 1.2270054817199707
+  },
+  "6h": {
+   "model": 0.16478211428431702,
+   "persistence": 1.6649203300476074
+  }
+ },
+ "roomdata_building_train_7_phoenix_3_random": {
+  "1h": {
+   "model": 0.11244599940883189,
+   "persistence": 2.078953742980957
+  },
+  "3h": {
+   "model": 0.11933402523608991,
+   "persistence": 2.837658166885376
+  },
+  "6h": {
+   "model": 0.13313634214497755,
+   "persistence": 3.152515172958374
+  }
+ },
+ "roomdata_building_train_8_atlanta_1_alloff": {
+  "1h": {
+   "model": 0.17197207991531588,
+   "persistence": 0.2701907157897949
+  },
+  "3h": {
+   "model": 0.2949813256512941,
+   "persistence": 0.7013318538665771
+  },
+  "6h": {
+   "model": 0.4475756030447851,
+   "persistence": 1.2334285974502563
+  }
+ },
+ "roomdata_building_train_8_atlanta_1_pidwater": {
+  "1h": {
+   "model": 0.18655551662634423,
+   "persistence": 0.8585744500160217
+  },
+  "3h": {
+   "model": 0.2844935724215609,
+   "persistence": 1.0858057737350464
+  },
+  "6h": {
+   "model": 0.3779666990609888,
+   "persistence": 1.408351182937622
+  }
+ },
+ "roomdata_building_train_8_atlanta_1_random": {
+  "1h": {
+   "model": 0.19078660216405752,
+   "persistence": 2.092761993408203
+  },
+  "3h": {
+   "model": 0.2251918449292713,
+   "persistence": 2.998444080352783
+  },
+  "6h": {
+   "model": 0.2524059307815325,
+   "persistence": 3.4037222862243652
+  }
+ },
+ "roomdata_building_train_8_fairbanks_8_alloff": {
+  "1h": {
+   "model": 0.20736992822539946,
+   "persistence": 0.25691458582878113
+  },
+  "3h": {
+   "model": 0.35263924426237075,
+   "persistence": 0.6791242957115173
+  },
+  "6h": {
+   "model": 0.5308309082118371,
+   "persistence": 1.255280613899231
+  }
+ },
+ "roomdata_building_train_8_fairbanks_8_pidwater": {
+  "1h": {
+   "model": 0.33049517521828925,
+   "persistence": 1.7396175861358643
+  },
+  "3h": {
+   "model": 0.5080564064837656,
+   "persistence": 2.265202283859253
+  },
+  "6h": {
+   "model": 0.6890750068561009,
+   "persistence": 3.2793116569519043
+  }
+ },
+ "roomdata_building_train_8_fairbanks_8_random": {
+  "1h": {
+   "model": 0.26200870311416197,
+   "persistence": 3.0495901107788086
+  },
+  "3h": {
+   "model": 0.3105944685317297,
+   "persistence": 4.469542980194092
+  },
+  "6h": {
+   "model": 0.3470906848786129,
+   "persistence": 4.963222503662109
+  }
+ }
+}

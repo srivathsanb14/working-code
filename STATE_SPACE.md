@@ -11,7 +11,7 @@ The competition asks for **one control policy that can run the HVAC system of an
 
 **The problem and the interface (Parts I–III).** A submission returns, every five minutes, 75–209 commands chosen from 283–703 observed numbers (§4–§7). The simulator is deterministic, scored over 30 days at a mean per-step reward whose best shipped baseline is about 0.054 (§3, §11). The evaluation set is six unseen buildings in five unseen weather stations drawn from the same generator, so the useful question is what varies between buildings and what does not (§12).
 
-**The state-space model (Part IV).** Only about `V+8` of the observation's numbers carry information a dynamics model needs; the rest echo the policy's own commands, mirror setpoints, duplicate other fields or are constant (§13). Room identity and room type (corner, edge, interior) can be rebuilt exactly from the metadata, and the type predicts how strongly a room follows the weather, so a fixed-size hidden state of about 15 numbers is feasible (§14).
+**The state-space model (Part IV).** Only about `V+8` of the observation's numbers carry information a dynamics model needs; the rest echo the policy's own commands, mirror setpoints, duplicate other fields or are constant (§13). An audit of the simulator shows that its thermal model is a linear RC network. The policy can rebuild it exactly from the floor-plan arrays, up to six unknown material scalars. That gives a **generic room equation** whose coefficients are closed forms in geometry. With two global spreading constants it tracks the simulator to about 0.5 K over three days open loop. With the scalars identified from one day of data, it forecasts 3 hours ahead within about 0.5 K from a filtered state (§14).
 
 **The method (Part V).** Every building obeys the same energy balance and differs in a few numbers. We **generate as much simulator data as possible, discover the structure of the equations by symbolic regression, identify each new building's few parameters while the policy runs, and plan with the discovered model** (§15–§19). The plan is staged and gated: a safe baseline notebook first, then a model-based feed-forward controller, then a sampling MPC sized to the roughly 0.125 s per step the 9-hour session allows, on a dated roadmap to the 15 January 2027 deadline (§19.3). **Part VI** records what has been verified and what has not (§20).
 
@@ -25,7 +25,7 @@ The competition asks for **one control policy that can run the HVAC system of an
 
 **Part III. The world being controlled** — 8 The physics inside the simulator · 9 The six training buildings · 10 The five climates · 11 A day in the life, and the shipped baselines · 12 What varies and what is fixed
 
-**Part IV. The state-space model** — 13 The dynamics model · 14 A hidden state indexed by room type
+**Part IV. The state-space model** — 13 The dynamics model · 14 A generic room model built from the floor plan
 
 **Part V. Our method** — 15 What a control policy is · 16 Our idea: discover the physics, then control with it · 17 Stage one: data and discovering the dynamics · 18 Stage two: wrapping the model in a controller · 19 Testing it honestly, risks and roadmap
 
@@ -205,7 +205,12 @@ The observation is a flat float32 vector of length **`6V + 15K + 58`**, from 283
 | next 7 | **hot-water block** `hws_*` | 7 |
 | last 51 | **time and occupancy** (§6.4) | 51 |
 
-Always read the order from `observation_field_names` in the metadata, never compute it. The observation at step *t* reports the state after the action of step *t−1* was applied: realized and echoed values equal the action just taken [X].
+Always read the order from `observation_field_names` in the metadata, never compute it. **Timing [X].**
+- The observation returned after a step carries the actuator positions and setpoints used *during* that step; realized and echoed values equal the action just taken.
+- Its **zone temperatures are one step stale**: they are the room means at the *start* of that step. So an action first shows in the measured temperatures two observations later.
+- Its outside temperature, supply-water temperature and comfort flag are the ones the *next* step will use.
+
+The dynamics model must respect this alignment (§14.3).
 
 ### 6.1 The six fields of every VAV block
 
@@ -287,7 +292,7 @@ The 48 sinusoids are redundant encodings of two numbers (hour of day, day of wee
 | train_7 | 4 | 36 | 334 | 5 | 86 | 91 |
 | train_8 | 3 | 30 | 283 | 4 | 71 | 75 |
 
-A decision involves 75–209 commands chosen from 283–703 observed numbers, for a physical system whose full state is about **10⁵-dimensional** (the thermal grid has 1.2–2.9×10⁵ cells, §9.1). The reduced model of our method has about two states per zone (air and mass) plus a few plant states, i.e. **70–180 states**, with **5–8 parameters per zone** to estimate (§13, §14).
+A decision involves 75–209 commands chosen from 283–703 observed numbers, for a physical system whose full state is about **10⁵-dimensional** (the thermal grid has 1.2–2.9×10⁵ cells, §9.1). The room network of our method has about eight states per room (air, slab, facade, partitions, doors), i.e. **240–750 states**. Its coefficients are fixed by the floor plan up to **six building-level material scalars** to estimate (§14).
 
 ### 7.2 Seven kinds of quantity
 For building a policy the useful split is not just observed versus hidden but *who sets a quantity, how often it changes and where it comes from*:
@@ -298,7 +303,7 @@ For building a policy the useful split is not just observed versus hidden but *w
 | **1. Dynamic, observed every step** | zone temperatures (V), supply-water temperature, outside temperature, total occupants, hour and weekday phase, comfort-mode flags and bounds, the echoes | the observation: `6V+15K+58` values, of which about `V+8` carry information (§13.1) | read each step; the model's states, disturbances and context |
 | **2. Static per building, given** | the 21 metadata keys (§6.5) | `building_meta_data`, once | read, never hard-code; derive K, V, room areas (0.2 m grid cell), types, adjacency, floors and each room's AHU (§14) |
 | **3. Constant across all buildings, not given** | the fixed parameters of §12.2 (43 class-B parameters and 18 generator constants) and the equipment laws in the code: time step 300 s and 8,640 steps; reward weights 0.6/0.2/0.2, $300 productivity bound, 5 K reference, energy scales 80,000 and 205,000 W per AHU (maxima `80,000·K` and `205,000·K`); fan efficiency 0.9, box maximum airflow 2.0 m³/s, air handler sized at 20 m³/s, reheat flow factor 0.108, discharge cap 308.15 K, cooling COP 3.5, pump efficiency, boiler ramps 0.5 and 0.1 K/min; the floors (200 Pa, 0.7, 0.1); internal gains 10 W/m² (standby 0.2) and 70 W per person; occupant arrival 06–12 and departure 13–19; reset state (zones 294 K, water 340 K, supply setpoint 298 K, pressure 1000 Pa) | nothing: the metadata omits them | hard-code in the policy and in the model's known-physics blocks (§13.3); this is what makes the symbolic equations transferable. Assumed equal in the hidden set [I] |
-| **4. Varies by building, not given** | the six envelope materials (which set the lumped resistances and capacitances); occupants per zone (1 or 2); wall-and-slab thermal mass; per climate, the convection coefficient (8.8–26.7 W/m²K) | nothing: the metadata omits materials, and the observation omits weather beyond temperature | **estimate online** or from priors on the floor plan (§17.3): the θ of the method, about 5–8 numbers per zone. Occupants per zone are bounded by the largest occupant count seen divided by V [I] |
+| **4. Varies by building, not given** | the six envelope materials (which set the lumped resistances and capacitances); occupants per zone (1 or 2); wall-and-slab thermal mass; per climate, the convection coefficient (8.8–26.7 W/m²K) | nothing: the metadata omits materials, and the observation omits weather beyond temperature | **estimate online** or from priors on the floor plan (§17.3): the θ of the method: six building-level scalars, four or five of them identifiable (§14.4). Occupants per zone are bounded by the largest occupant count seen divided by V [I] |
 | **5. Hidden state, dynamic** | slab, wall and envelope temperatures; per-room occupancy and internal gains; the boiler tank temperature; the factor by which an air handler caps total flow; the physical supply-air temperature `min(mixed air, setpoint)` | not observed (the boiler tank only partly, through the water sensor) | estimate (§18.3); the model carries them as latent states |
 | **6. The policy's own memory** | its previous action, the estimator, the history of temperatures and weather | built by the policy | store (§4.2); required to drop the echoed setpoints (§13.1) |
 
@@ -332,7 +337,7 @@ C_z · dT_z/dt =  Σ_{j ∈ nbrs(z)} (T_j − T_z)/R_zj          (conduction thr
 C_mass · dT_mass/dt = (T_z − T_mass)/R_mass
 ```
 
-The capacitances and resistances are what the six sampled material properties and the floor geometry determine. **Internal gains** (a configurable heat per square metre, a standby fraction, and 70 W of sensible heat per person) make occupied rooms run warmer. Only the zone-*average* air temperature is observed; slab and wall temperatures are hidden.
+The capacitances and resistances are what the six sampled material properties and the floor geometry determine; §14 derives each of them in closed form. **Internal gains** (a configurable heat per square metre, a standby fraction, and 70 W of sensible heat per person) make occupied rooms run warmer. Only the zone-*average* air temperature is observed; slab and wall temperatures are hidden.
 
 **B. VAV box and reheat coil: fast, algebraic, nonlinear.** The airflow a box demands scales with its damper opening and the square root of the fan's static pressure (`V̇ ≈ damper · V̇_max · √(P / 2000 Pa)`), scaled down if the air handler cannot supply everyone. The coil's effectiveness is `ε = min(1, water capacity-rate ÷ air capacity-rate)`, further capped so discharge air does not exceed 308.15 K. Discharge temperature is `T_sa + ε (T_water − T_sa)` and the heat delivered is `c_air ρ_air V̇ (T_disch − T_zone)`. Water flow to each coil is the pump's total flow shared in proportion to valve openings.
 
@@ -608,12 +613,12 @@ Sensors that mirror setpoints (AHU pressure and supply temperature, hot-water di
 | train_7 | 334 | 44 | 52 | 91 |
 | train_8 | 283 | 38 | 44 | 75 |
 
-Nothing the dynamics need is lost, provided the policy records its own actions. What stays unobserved is the physical supply temperature `min(mixed air, setpoint)`, because the sensor reports the setpoint; the model computes it from the outside temperature, recirculation and return temperature.
+Nothing the dynamics need is lost, provided the policy records its own actions. The physical supply temperature `min(mixed air, setpoint)` is not reported, because the sensor reports the setpoint. The model computes it exactly from the outside temperature, the recirculation and the return temperature, which is the area-weighted mean of the served rooms [X] (§14.3).
 
 ### 13.2 The state-space model
 
 ```
-x_t = [ zone air temperatures T_z (observed, V),  hidden mass temperatures M_z (V),
+x_t = [ zone air temperatures T_z (observed, V),  hidden slab, facade, partition and door nodes (§14.3),
         supply-water temperature (observed, 1),   boiler tank (lagged),
         per-room occupancy and internal gains (hidden) ]
 u_t = [ u_d (K+1),  u_c (3K+2+2V) ]                         commanded
@@ -622,49 +627,198 @@ x_{t+1} = f(x_t, u_t, d_t ; θ)                              one 5-minute step
 y_t     = [ T_z, T_water ]                                  what the model must reproduce
 ```
 
-The identifiable reduced form per zone is the RC balance of §8.2 (block A) driven by the VAV heat of block B: `Q_vav,z = ρ c_p V̇_z(damper_z, P_ahu) (T_disch,z − T_z)` with `T_disch,z = T_sa + ε(reheat_z, water flow)(T_water − T_sa)`. Per zone the observed quantities are `T_z`, the realized damper and reheat and the schedule bounds; the AHU contributes `T_sa` and `P` (from the actions), the loop `T_water`, and `T_out` is the disturbance. Hidden per zone: `M_z`, `q_z` and the parameters `(C_z, R_env,z, R_m, R_zj)`.
+§14 gives `f` in full. It is the RC balance of §8.2 (block A), driven by the VAV heat of block B: the air stream `g_z (T_sa − T_z)` with `g_z = ρ c_p V̇_z(damper_z, P_ahu)`, plus the reheat watts. Every coefficient is a geometry count from the metadata arrays times a function of six material scalars θ. Per zone the observed quantities are `T_z` (one step stale), the realized damper and reheat and the schedule bounds. The AHU contributes `T_sa` and `P`, the loop `T_water`, and `T_out` is the disturbance. Hidden per zone are the slab, facade and partition temperatures and the occupants actually present.
 
 ### 13.3 The regression problems for symbolic discovery
 The map `x_{t+1} = f(x_t, u_t, d_t)` is not one regression. It splits into small, mostly algebraic problems, which suits symbolic regression far better than one large fit. Each row uses one 5-minute step as a sample; "lean" means the `V+8` values of §13.1, "previous action" the policy's stored command.
 
 | # | Target (output) | Inputs | Form | Source of the inputs |
 |---|---|---|---|---|
-| 1 | Zone temperature change `T_z[t+1] − T_z[t]`, one row per zone and step | `T_z`; mean of neighbouring zone temperatures; `T_out`; building occupants; per-zone static features (§14.2); the heat `Q_z` of rows 3–5; slab state (hidden) | the RC balance of §8.2 (block A), linear in its coefficients | lean observation; `Q_z` composed from rows 3–5; static features from the metadata arrays |
+| 1 | Zone temperature change `T_z[t+1] − T_z[t]`, one row per zone and step | `T_z`; neighbouring zone temperatures; `T_out`; building occupants; the heat `Q_z` of rows 3–5; slab, facade and partition states (hidden) | the generic room network of §14.3: every coefficient is a geometry count × a closed form in θ, plus a spreading resistance | lean observation; `Q_z` from rows 3–5; geometry counts from the metadata arrays |
 | 2 | Supply-water temperature `T_w[t+1]` | `T_w[t]`; water setpoint; hot-water run command | ramp toward the setpoint, `T_w + clip(setpoint − T_w, −0.5, +2.5)` K per step [X] | lean observation; previous action |
-| 3 | Zone airflow `V̇_z` | realized damper; AHU static pressure (the `max(a, 200 Pa)` echo, 0 when off); AHU run state; the ratio by which the AHU caps total flow | `damper · V̇_max · √(P / P_design) · ratio` [S: `vav.py`] | realized damper from the observation; pressure from the previous action; the cap ratio needs the AHU's maximum flow, which is not observed and becomes a parameter |
-| 4 | Supply-air temperature at the coil inlet `T_sa` | `T_out`; recirculation; return temperature (mean of the served zones [I]); supply-air setpoint; run state | `min(r·T_ret + (1−r)·T_out, setpoint)` [S: `air_handler.py`] | lean observation; previous action; the sensor itself only echoes the setpoint (§6.2) |
+| 3 | Zone airflow `V̇_z` | realized damper; AHU static pressure (the `max(a, 200 Pa)` echo, 0 when off); AHU run state; the ratio by which the AHU caps total flow | `damper · V̇_max · √(P / P_design) · ratio` [S: `vav.py`] | realized damper and pressure from the observation; the cap ratio `min(1, 20 m³/s ÷ Σ demand)` uses the AHU's maximum flow, a class-B constant [X] |
+| 4 | Supply-air temperature at the coil inlet `T_sa` | `T_out`; recirculation; return temperature (area-weighted mean of the served zones [X]); supply-air setpoint; run state | `min(r·T_ret + (1−r)·T_out, setpoint)` [S: `air_handler.py`] | lean observation; previous action; the sensor itself only echoes the setpoint (§6.2) |
 | 5 | Heat delivered to the zone `Q_z` | `V̇_z`, `T_sa`, `T_z`, `T_w`, reheat valve | `V̇ ρ c_p (T_sa − T_z) + ε ρ c_p V̇ (T_w − T_sa)`, `ε = min(1, water capacity rate ÷ air capacity rate)`, discharge air capped at 308.15 K [S: `vav.py`] | rows 3–4; realized reheat; water temperature |
 | 6 | Occupants `n[t]` | hour and weekday phase; comfort-mode flag | a daily and weekly profile plus noise (the disturbance model) | lean observation |
 | 7 | Outside temperature `T_out[t+k]` | `T_out` history; hour phase | persistence plus a diurnal term (the forecast the controller needs) | lean observation, stored history |
 | 8 | Fan, pump, boiler and cooling power (the reward's energy terms) | `V̇_total`, `P`, recirculation, `T_w`, water flow, head | `flow · pressure ÷ efficiency`, `thermal load ÷ 3.5`, `heat carried by the water` (§8.2 blocks C–D) | **not observed**: targets come from the simulator's internal reward quantities (§17.1), then the equation is expressed in observable inputs |
 
 - **Rows 3, 4, 5 and 8 are known physics.** They are the unit test of the toolchain (§16.3): if the search recovers `√P` and the `min()` form from simulator data, it can be trusted on row 1. Their targets (`V̇_z`, `T_sa`, `Q_z`, powers) are internal to the simulator, so fitting them needs the logging of §17.1.
-- **Row 1 is the hard one**, and the only one with a hidden state. Fit it two ways: directly on observable inputs, and with `Q_z` from rows 3–5 as a derived feature; the second is far better conditioned, because the heat input is then a smooth function of quantities the model already knows.
+- **Row 1 was the hard one.** The audit of §14 turns it from a discovery problem into an identification problem. Its structure is known exactly, its coefficients are closed forms in geometry and θ, and symbolic regression is left with refining the coefficient formulas and the slow residual (§14.4). Rows 3–5 reproduce the solver's inputs to 5 W RMS from observations alone (§14.5).
 - **Rows 6–7 are disturbance models, not building physics**: fitted on pooled data and shared by all buildings.
 
 At run time the model's inputs are, per zone, `T_z`, realized damper and reheat; per AHU the previous pressure, supply-temperature and recirculation commands and run state; the loop's water temperature, setpoint, head and run state; and `T_out`, occupants, hour and weekday phase and the comfort flag. It must reproduce `T_z[t+1]` for every zone and `T_w[t+1]`; the energy terms follow from the same inputs by rows 3–8.
 
 ---
 
-## 14. A hidden state indexed by room type
+## 14. A generic room model built from the floor plan
 
-The number of rooms varies from 30 to 85, so a model that follows the observation changes size with the building. The alternative is a **fixed-size hidden state** indexed by room *type* (corner, edge, interior) rather than by room, with an encoder that pools the zone observations into it and a decoder that returns a temperature for every room. This section establishes that each ingredient is available.
+The number of rooms varies from 30 to 85 and the wall materials are not given, so the model has to be **generic**. It needs one equation per room, the same in every building, with coefficients computed from what the policy receives at run time. An audit of the simulator's thermal code (§14.2) shows this can be done almost exactly. The building is a linear resistor–capacitor network, and every resistance and capacitance in it is a closed-form function of the floor-plan geometry and **six building-level material scalars**. This section states the model (§14.3), what is left to learn (§14.4), the evidence (§14.5) and the limits (§14.7). The room-type state of earlier drafts survives as a coarse summary for planning (§14.6). The code is `code/room_model*.py`, `code/room_inputs.py` and `code/room_coeff_*.py`; the results are in `outputs/room_*.json`.
 
-### 14.1 Room identity and type can be rebuilt from the metadata [X]
-`code/metadata_only_check.py` rebuilds everything from the dict returned by `create_building_meta_data` and compares it with the simulator's own room dictionary:
+### 14.1 Rooms, walls, doors and the whole thermal grid can be rebuilt from the metadata [X]
+
+`code/metadata_only_check.py` and `code/room_model_validate.py` rebuild everything from the dict returned by `create_building_meta_data`. They compare it with the simulator's own room dictionary and with the solver's assembled matrix:
 
 | Check | Result |
 |---|---|
-| Rooms = connected components of `zone_map == 0`, numbered in raster order (`scipy.ndimage.label`), equal to the simulator's `room_N` cell sets | **323 of 323 rooms** identical, all six buildings |
+| Rooms = connected components of `zone_map == 0`, numbered in raster order, equal to the simulator's `room_N` cell sets | **323 of 323 rooms** identical, all six buildings |
 | The `VAV_n` ids in the observation names, the action index map and `ahu_zone_assignments` equal the room numbers 1…V | yes, all six |
-| Floors from the floor plan alone (connected pieces of the non-exterior footprint) | 3, 2, 3, 4, 2, 2, matching `num_floors` |
-| Doors between rooms from `floor_plan` versus `zone_map` | available (cells open in one and closed in the other) |
-| Room type from the metadata arrays versus the simulator's masks | **318 of 323** rooms get the same type; the five differences are boundary cases of the exterior-reach threshold |
+| Floors from the floor plan alone | 3, 2, 3, 4, 2, 2, matching `num_floors` |
+| Each cell's material class (outside, facade, partition, air or door), size and halving at the boundary | **0 mismatched cells**, all six buildings |
+| Each cell's heat capacity, face conductances, conductance to ambient and slab coupling, for given materials | equal to the solver's matrix to 2×10⁻¹⁶ (relative) and 6×10⁻¹⁴ W/K |
 
-So every entry of the observation and action vectors can be assigned to a room, and every room to a type, a floor, an AHU and a set of neighbours, using only what the policy is given. The cell size (0.2 m) is not in the metadata, but only relative areas are needed.
+So the policy can rebuild the simulator's exact thermal network from `floor_plan` and `zone_map`, except for the six material numbers. The 20 cm cell and 3 m floor height are fixed constants in the code. The website states that the floor plan and the AHU-to-zone mapping are "supplied through the building metadata at runtime". The local harness also supplies `zone_map`, but whether the Kaggle gateway does is unverified (§14.7).
 
-### 14.2 The types
-For each room the code counts boundary cells facing an exterior wall within 1.2 m, separately for N, S, E and W, and calls a side a *face* if at least 5 cells (1 m) face it. Zero faces is **interior**, one **edge**, two or more **corner**.
+### 14.2 What the simulator's thermal model actually is [S]
+
+From `building.py`, `building_utils.py`, `finite_difference_solver.py`, `simulator_flexible_floor_plan.py` and `vav.py`:
+
+- **A linear 2-D grid stepped by backward Euler** at 300 s. Each floor is a separate piece of the grid, so there is no vertical exchange, no roof, no ground and no solar gain. Humidity and wind do not enter except through each station's fixed film coefficient `h`.
+- **Five cell classes**, all derived from the two arrays:
+  - *Outside* cells are pinned to `T_out`.
+  - *Facade* is the one-cell shell next to the outside, plus partition cells within 2 cells of it, with conductivity `k_ext` and volumetric capacity `ρc_ext`. The outermost cells are half thickness.
+  - *Partitions* are one-cell walls with `k_iw` and `ρc_iw`.
+  - *Air* cells (room cells and door cells) have an effective `k_air = 50 W/mK`, fixed, which keeps a room nearly isothermal.
+  - Every air cell also carries a *slab node* coupled through `k_m/z`. Per room this is exactly `C_m = ρc_mass·z·A` and `G_m = 5 W/m²K · A`.
+- **Per-face conductances are closed-form.** A facade face (20 cm × 3 m) conducts `0.6/(0.002 + 0.1/k_ext + 1/h)` W/K. A partition cell between two rooms conducts `0.6/(0.004 + 0.2/k_iw)`, about 1.7 W/K per 20 cm of wall. A door is two air cells: 2 × 75 = **150 W/K, as much as about 17 m of partition**. Doors dominate room-to-room exchange.
+- **Heat reaches a room in four ways:**
+  - The VAV air stream, `g_i(T_sa − T_i)`, treated implicitly with `g_i = ρc·V̇_i` (row 3 of §13.3).
+  - The reheat coil's watts (row 5).
+  - Internal gains of 10 W/m² × area, times 1 in comfort mode or 0.2 otherwise.
+  - 70 W per occupant actually in the zone.
+  
+  All of these are spread over the room's cells. The "convection" model only swaps air cells within a room, so the room mean is unchanged.
+- **The sensor** is the mean over the room's cells, delivered one step late (§6).
+
+So the map from inputs to room temperatures is **linear and time-varying only through `g_i`**, which the damper and fan pressure set. Every structural number is a geometry count times a function of
+
+`θ = (k_ext, ρc_ext, k_iw, ρc_iw, ρc_mass, h)`.
+
+The first five are drawn per building (§12.2) and `h` per station. None of them is observed.
+
+### 14.3 The generic room equation
+
+Lumping the grid gives, per room *i*:
+- an air node `T_i` (observed);
+- a slab node `M_i`;
+- a facade node `W_i` (the exterior cells the room faces);
+- a partition node `P_ij` for each wall it shares with room *j*;
+- a door node `D_ij` for each door.
+
+The equations are the same for every room in every building:
+
+```
+C_i dT_i/dt   = G_m,i (M_i − T_i)                                   slab
+              + Σ_j κP_ij (P_ij − T_i) + Σ_j κD_ij (D_ij − T_i)     neighbours, through walls and doors
+              + κW_i (W_i − T_i)                                    outer wall
+              + g_i(t) (T_sa,a(i)(t) − T_i) + q_i(t)                controls: air stream and reheat
+              + 10 A_i f(t) + 70 n_i(t)                             internal gains and people
+C_m,i dM_i/dt = G_m,i (T_i − M_i)
+C_W,i dW_i/dt = κW_i (T_i − W_i) + γ_i (T_out − W_i)
+C_P,ij dP_ij/dt = κP_ij (T_i − P_ij) + κP_ji (T_j − P_ij)           (doors likewise, without the wall)
+```
+
+The "history" terms of an ARX regression are what the hidden nodes `M`, `W`, `P` and `D` become if they are eliminated. Keeping them as states makes the coefficients physical, and lets a Kalman filter carry them.
+
+**Every coefficient is (geometry count) × (closed form in θ)**, with one correction. Heat entering through a short opening has to spread through the room's air, so each air-side link carries a series **spreading resistance**:
+
+`R_s(A, L) = [ c·A/(3L²) + a·ln(1 + √A/L)/π ] / (k_air·z)`
+
+Here `L` is the link length (number of faces × 0.2 m) and `A` the room area. The constants `c`, `a` (doors and partitions) and `a_f` (facade) are global, the same in every building.
+
+| Coefficient | Closed form | Geometry, from the arrays | Material |
+|---|---|---|---|
+| `C_i` | `ρc_air · z · 0.04 · N_i` | cells in room *i* | none |
+| `C_m,i`, `G_m,i` | `ρc_mass · z · A_i`, `5 · A_i` | area | `ρc_mass` |
+| `κW_i` | `1/( 1/(n_f · 0.6/(0.002 + 0.05/k_ext)) + R_s(A_i, 0.2 n_f) )` | facade faces `n_f` | `k_ext` |
+| `γ_i` | `Σ_faces 0.6/(0.05/k_ext + 1/h)` (exact, from the cell sizes) | facade faces | `k_ext`, `h` |
+| `C_W,i` | `ρc_ext · z · Σ_cells u·v` | facade cells (half-thickness at the surface) | `ρc_ext` |
+| `κP_ij` | `1/( 1/(n · 0.6/(0.002 + 0.1/k_iw)) + R_s(A_i, 0.2 n) )` | faces between room *i* and the wall shared with *j* | `k_iw` |
+| `C_P,ij` | `ρc_iw · 0.12 · cells` | wall cells shared by *i* and *j* | `ρc_iw` |
+| `κD_ij` | `1/( 1/(75 n) + R_s(A_i, 0.2 n) )` | door faces | none |
+| `g_i`, `q_i`, `T_sa` | rows 3–5 of §13.3, with the AHU cap of 20 m³/s and the return temperature as the area-weighted mean of the served rooms | observation and previous action (`code/room_inputs.py`) | none |
+
+The network has about **eight states per room**: 237 for `train_8` and 747 for `train_2`. It is stepped exactly as the simulator steps the grid, by backward Euler with the air stream implicit. Because only `g` changes from step to step, one matrix inverse per building plus a V×V Woodbury solve per step is enough. A step costs 0.025 ms for `train_8` (237 states) and 0.08 ms for `train_2` (747 states), and building the network takes 0.02–0.12 s.
+
+**Inputs at run time** (`code/room_inputs.py`), all from the observation, the previous action and the metadata:
+- **From the observation returned after the step:** realized damper and valve, fan pressure, recirculation, supply-air setpoint and run states.
+- **From the observation returned before it:** outside temperature, supply-water temperature and comfort flag.
+- **Return temperature:** from the (stale) zone temperatures.
+- **Occupants:** the building total split equally over zones, because every zone has the same assignment.
+
+Against the solver's own inputs these are exact for `T_out`, `g` and `T_sa`. The heat is within 5 W RMS given the true per-zone occupancy. The equal split adds about **16 W RMS per room**, which is the one input that cannot be observed.
+
+### 14.4 What has to be learned, and from what
+
+1. **The six material scalars θ, per building, online.** They are fitted by open-loop simulation error over the first day from the known reset state; every episode starts at a uniform 294 K. The fit takes 2–11 s on a laptop. Identifiability is uneven:
+   - `ρc_mass` and `k_iw` are recovered within about 10–20 % under excitation.
+   - `k_ext` and `h` enter only in series, so only their combination, the facade U-value, is identifiable.
+   - `ρc_iw` is weak.
+   
+   In practice this means **four or five effective numbers** per building.
+2. **Three global spreading constants** (`c ≈ 0.004`, `a ≈ 0.59`, `a_f ≈ 1.13`), fitted once, offline. The targets are the exact steady-state room conductance matrices of the grid: one sparse solve per building and material vector, with no simulation. So training data for the coefficient formulas is unlimited and noise-free (`code/room_coeff_targets.py`, `code/room_spread_fit.py`).
+3. **Occupancy split per zone.** It is not observable. It is treated as process noise for the Kalman filter.
+
+This changes the job of symbolic regression (§16.2, §17.2). It no longer has to discover the room equation from noisy rollouts. Its jobs become:
+- **(a)** refine the coefficient formulas against exact targets, for example the spreading law, or a geometry term for junction and corner effects;
+- **(b)** find the structure of the remaining slow residual (§14.7);
+- **(c)** verify the algebraic rows of §13.3.
+
+### 14.5 Evidence [X]
+
+**Reproduction and inputs.**
+- A cell-level reimplementation from the arrays reproduces the simulator's room temperatures to **0.0004 K RMS** over 3 days with HVAC off. With HVAC on it reproduces them to 0.19 K, because heat was spread uniformly instead of at the diffusers.
+- The heat inputs rebuilt from observations match the solver's to 5 W RMS, given the true occupancy.
+
+**Coefficient templates against the exact grid.** The constants were fitted on `train_8`, `train_2` and `train_5` (true and random materials), and tested on `train_1`, `train_4` and `train_7`:
+
+| Coefficient | Plain lumped network | With spreading resistance |
+|---|---|---|
+| Inter-room coupling κ_ij (held-out) | R² 0.05, total 1.86× too high | **R² 0.98**, median error 14 %, total 1.03× |
+| Envelope loss ε_i (held-out) | R² 0.84, total 1.24× too high | **R² 0.94**, median error 11 %, total 1.09× |
+
+**Open loop, true θ, oracle inputs.** The table gives RMSE over 3 days from reset, with no correction from measurements. It covers 18 rollouts of 864 steps: six building–weather pairs (four buildings held out from the constant fit) × {all-off, random, pid_water}.
+
+| Model | States | Min | Median | Max |
+|---|---|---|---|---|
+| Lumped network, no spreading | ≈ 8 / room | 0.34 K | 1.08 K | 2.22 K |
+| **Network with spreading** | ≈ 8 / room | **0.17 K** | **0.52 K** | **0.95 K** |
+| … statically condensed to air + slab + facade | 3 / room | 0.33 K | 0.78 K | 2.27 K |
+| … to air + slab | 2 / room | 0.35 K | 1.32 K | 3.19 K |
+| … to air only | 1 / room | 0.63 K | 1.59 K | 4.32 K |
+
+**Inference only: inputs from observations, θ unknown.** Errors are against the temperatures the policy observes. "Open loop" runs over days 2–3. "Forecast" starts from a Kalman-filtered state every hour of days 2–3, using the day-1 θ and the actual future inputs, so it scores the building model rather than weather or occupancy forecasting.
+
+| Rollout (3 days) | Measured spread (K) | Open loop, true θ | Open loop, prior θ | Open loop, θ fitted on day 1 | Forecast 1 h / 3 h / 6 h from filtered state | Persistence 1 h / 3 h / 6 h |
+|---|---|---|---|---|---|---|
+| `train_1` fairbanks_1 · all-off | 4.8 | 1.07 | 9.62 | 0.81 | 0.11 / 0.19 / 0.29 | 0.29 / 0.80 / 1.56 |
+| `train_1` fairbanks_1 · pid_water | 2.5 | 1.03 | 4.53 | 1.33 | 0.30 / 0.45 / 0.63 | 1.59 / 2.00 / 2.66 |
+| `train_1` fairbanks_1 · random | 8.1 | 0.44 | 2.94 | 0.38 | 0.18 / 0.21 / 0.24 | 3.79 / 5.54 / 6.50 |
+| `train_2` atlanta_3 · all-off | 4.6 | 0.81 | 1.98 | 0.32 | 0.10 / 0.16 / 0.22 | 0.44 / 1.20 / 2.17 |
+| `train_2` atlanta_3 · pid_water | 1.7 | 0.29 | 0.56 | 0.21 | 0.09 / 0.13 / 0.16 | 0.70 / 0.87 / 1.37 |
+| `train_2` atlanta_3 · random | 3.6 | 0.28 | 0.55 | 0.27 | 0.16 / 0.20 / 0.23 | 2.19 / 3.78 / 4.57 |
+| `train_4` denver_2 · all-off | 3.1 | 0.75 | 2.54 | 1.11 | 0.15 / 0.27 / 0.41 | 0.35 / 0.93 / 1.66 |
+| `train_4` denver_2 · pid_water | 2.8 | 0.75 | 2.26 | 1.38 | 0.20 / 0.33 / 0.50 | 1.03 / 1.38 / 1.81 |
+| `train_4` denver_2 · random | 3.8 | 0.32 | 0.81 | 0.31 | 0.13 / 0.16 / 0.19 | 2.23 / 3.59 / 4.49 |
+| `train_7` phoenix_3 · all-off | 3.0 | 0.29 | 1.75 | 0.68 | 0.11 / 0.18 / 0.27 | 0.37 / 1.00 / 1.74 |
+| `train_7` phoenix_3 · pid_water | 1.3 | 0.26 | 0.50 | 0.20 | 0.10 / 0.14 / 0.16 | 1.72 / 1.23 / 1.66 |
+| `train_7` phoenix_3 · random | 3.0 | 0.18 | 0.43 | 0.18 | 0.11 / 0.12 / 0.13 | 2.08 / 2.84 / 3.15 |
+| `train_8` atlanta_1 · all-off | 2.5 | 0.75 | 0.77 | 1.11 | 0.17 / 0.29 / 0.45 | 0.27 / 0.70 / 1.23 |
+| `train_8` atlanta_1 · pid_water | 2.7 | 0.78 | 1.07 | 0.83 | 0.19 / 0.28 / 0.38 | 0.86 / 1.09 / 1.41 |
+| `train_8` atlanta_1 · random | 4.0 | 0.35 | 0.48 | 0.31 | 0.19 / 0.23 / 0.25 | 2.09 / 3.00 / 3.40 |
+| `train_8` fairbanks_8 · all-off | 4.0 | 1.12 | 1.61 | 1.33 | 0.21 / 0.35 / 0.53 | 0.26 / 0.68 / 1.26 |
+| `train_8` fairbanks_8 · pid_water | 2.8 | 1.07 | 2.09 | 1.33 | 0.33 / 0.51 / 0.69 | 1.74 / 2.27 / 3.28 |
+| `train_8` fairbanks_8 · random | 4.9 | 0.46 | 0.65 | 0.42 | 0.26 / 0.31 / 0.35 | 3.05 / 4.47 / 4.96 |
+
+What the evidence says:
+- **The structure is right.** With the true materials, the geometry-built network stays within about 0.5 K over three days without a single measurement.
+- **Identification is necessary.** The prior centre of the material ranges is up to 9.6 K wrong in the heavy `train_1` through −42 °C.
+- **One day of data suffices when the actions excite the building.** For the random rollouts, the day-1 fit equals or beats the true θ on the next two days. Closed-loop `pid_water` and all-off days pin θ down less well (open-loop error up to 1.4 K).
+- **Filtering makes this a usable forecaster.** From the filtered state, 3-hour error is 0.12–0.51 K against 0.7–5.5 K for persistence. 17 of 18 rollouts meet the G2 target of 0.5 K at 3 h (§19.1), and the 18th is at 0.51 K.
+
+### 14.6 Room types as a coarse summary
+
+The network makes per-room physics explicit. Room *types* remain useful as a compression: for priors on θ before any data, and for planning over a handful of numbers instead of hundreds (§18.1). For each room the code counts boundary cells facing an exterior wall within 1.2 m on each side; a side is a *face* if at least 1 m faces it. No faces is **interior**, one is **edge**, two or more is **corner**. The type from the arrays matches the simulator's masks for 318 of 323 rooms.
 
 | Building | Rooms | Corner | Edge | Interior | Area range (m²) | Doors |
 |---|---|---|---|---|---|---|
@@ -675,49 +829,18 @@ For each room the code counts boundary cells facing an exterior wall within 1.2 
 | train_7 | 36 | 14 | 11 | 11 | 50.9 – 176.4 | 20 |
 | train_8 | 30 | 13 | 12 | 5 | 23.6 – 203.0 | 20 |
 
-`outputs/building_train_N_rooms.png` draws each building with rooms coloured by type. The footprints are composite and notched, so many irregular rooms touch the exterior on two or more sides and count as corner (25 of 39 in `train_1`); the three-way split is **threshold-dependent**, and the mix differs strongly between buildings. The continuous quantities behind the label (exterior contact per side, exterior cells per m², neighbours through walls and doors) are in `outputs/building_train_N_rooms.csv` and are the better inputs.
+In three-day all-off runs (`code/all_off_response.py`), a one-step regression `T[t+1] − T[t] = a·(T_out − T) + n·(T̄_nbr − T) + g·occ + c` gives an envelope coefficient ordered corner > edge > interior. For `train_8` the median time constants are 22 h, 66 h and none; for `train_2` they are 10 h, 21 h and 83 h. Across rooms, `a` correlates with exterior cells per m² at r = 0.81 and 0.97. The type is the coarse shadow of `κW_i` in §14.3.
 
-### 14.3 Types predict how strongly a room follows the weather [X]
-`code/all_off_response.py` switches every AHU and the boiler off for 864 steps (three days; `train_8` / `atlanta_1` and `train_2` / `atlanta_3`) and regresses each room's one-step change on outside-minus-room temperature, neighbour-mean-minus-room temperature, total occupancy and a constant: `T[t+1] − T[t] = a·(T_out − T) + n·(T̄_nbr − T) + g·occ + c`. The envelope coefficient `a` (per 5-minute step) by type:
+For a fixed-size planner, the per-room network can be pooled into a state of about 12–15 numbers: three components per type plus a plant block. A shared encoder `h_c = Pool_{type(z)=c} φ(T_z, damper_z, reheat_z, s_z)` feeds a decoder `T̂_z = G(h_type(z), s_z)`, and the static features `s_z` are the geometry counts of §14.3. Plant couplings (shared AHU air, one water loop, AHUs that straddle floors) are not type-local and enter explicitly.
 
-| Building | Type | Rooms | Mean `a` | Std | Implied time constant 1/a (median) |
-|---|---|---|---|---|---|
-| train_8 | corner | 13 | 0.0033 | 0.0010 | 22 h |
-| train_8 | edge | 12 | 0.0011 | 0.0007 | 66 h |
-| train_8 | interior | 5 | −0.0001 | 0.0001 | none (≈ 0) |
-| train_2 | corner | 8 | 0.0080 | 0.0012 | 10 h |
-| train_2 | edge | 37 | 0.0041 | 0.0015 | 21 h |
-| train_2 | interior | 40 | 0.0008 | 0.0007 | 83 h |
+### 14.7 Limits and open questions
 
-The ordering corner > edge > interior holds in both buildings, and across all rooms `a` correlates with exterior cells per m² at **r = 0.81** (`train_8`) and **0.97** (`train_2`). The median R² of the one-step regressions is only 0.26 and 0.33 (one-step differences are small and noisy), so the coefficients are reliable as group differences rather than per-room values. The all-off drift also contains internal gains, which the occupancy term only partly absorbs.
-
-### 14.4 What the model contains
-
-```
-per zone z (set by metadata, same for every building)
-    static features   s_z = [ log area, exterior cells per m² (N, S, E, W), n wall neighbours, n door neighbours, type ]
-    dynamic inputs    w_z,t = [ T_z, realized damper, realized reheat ]                      (from the lean observation)
-
-encoder   h_c,t = Pool_{z : type(z) = c} φ( w_z,t , s_z )        c ∈ {corner, edge, interior}; φ shared by all zones
-          h_p,t = ψ( T_water, AHU on/off, pressure, supply setpoint, recirculation )          (plant block; from the actions)
-          h_t   = [ h_corner, h_edge, h_interior, h_p ]                                          size independent of V and K
-
-dynamics  h_{t+1} = F( h_t, ū_t, d_t ; building descriptor )     ū_t = per-type mean damper and reheat, plant commands
-                                                                   d_t = outside temperature, occupants, comfort flag, clock
-decoder   T̂_z,t+1 = G( h_type(z),t+1 , s_z )                      one temperature per room
-
-action    u_z,t = π( h_type(z),t , s_z ) + δ_z                    a per-type plan expanded to every room
-```
-
-With three components per type (air-like, mass-like, gain-like) and a plant block of about three numbers, the hidden state has **about 12–15 values for every building**, against a physical state of 10⁵ and an observation of 283–703. The building descriptor is computed once from the arrays: counts and areas per type, exterior fraction, door and wall adjacency counts between types, zones per AHU. The number of trainable parameters does not depend on V or K, so the model applies unchanged to a held-out building of any size.
-
-### 14.5 Limits
-- **Plant couplings are not type-local.** Zones on one AHU compete for its air (all boxes scale down if the fan cannot supply them), all coils share one hot-water loop, and AHUs straddle floors. The plant block and the AHU assignment must enter as explicit inputs.
-- **Three types are coarse.** Within a type the coefficient still varies (corner `a` in `train_8` ranges 0.0014–0.0043), so continuous exposure features belong in encoder and decoder, not only the label.
-- **Neighbours matter beyond type.** An interior room beside a corner room behaves differently from one among interior rooms; neighbour-type counts or one round of message passing over door and wall adjacency capture this cheaply.
-- **Per-room hidden state remains.** Mass temperature and internal gains of each room are not observed; the pooled state represents their type-level behaviour.
-- **Floors need no index** in the thermal model (they are independent in the grid); a floor matters only through the serving AHU.
-- **One weather strip per building.** Whether type predicts the response in all regimes (hot, mixed, occupied) needs data from more scenarios.
+- **Slow residual in free float.** With the true θ, open-loop error grows over days when the building drifts unconditioned: 0.6–1.1 K by day 3 in all-off and `pid_water` runs. The candidates are temperature gradients within a room beyond the spreading term, lumping at partition–facade junctions, and slab nodes under non-uniform air. This is target (b) for symbolic regression. A filter hides it at planning horizons (≤ 0.7 K at 6 h).
+- **State count.** About eight states per room is cheap for filtering (≤ 0.08 ms a step). For MPC, 256 candidates × 24 steps on `train_2` is about 3×10⁹ flops even when batched, which is borderline at 0.1 s per step. Static condensation was tested and loses the fast modes: 3 per room gives a median of 0.78 K against 0.52 K, and 2.3 K under random actions. The next step is a projection reduction of the identified network (balanced truncation or Krylov moment matching, linearized at nominal airflow), computed once after θ is fitted. The per-type pooled state of §14.6 is the fallback.
+- **Is `zone_map` in the gateway's metadata?** The website names the floor plan and the AHU mapping. Locally `create_building_meta_data` also returns `zone_map`. If it is missing, rooms must be recovered from the floor plan by closing the door gaps. A naive morphological closing reproduces the rooms exactly for only 2 of 6 buildings, so a proper door detector would be needed. The room count V from the observation is a strong check. To be confirmed with the `kaggle_evaluation` package (§20.3).
+- **"HVAC system" may vary in the hidden set.** The website says the unseen buildings "vary in size, layout, weather, material properties, and HVAC system". The code contains an air-source heat-pump variant that the shipped scenarios do not use. The room network would be unaffected, but the input layer (rows 3–5 and the water side) would change.
+- **Fixed constants assumed.** The model hard-codes the kind-3 constants of §7.2 (`k_air`, slab conductivity and heat capacity, cell size, gains). The online checks of §7.2 and a free θ-fit residual monitor guard this.
+- **Excitation.** θ is identified best when dampers, valves and plant settings move. A controller should dither gently during the first day (§18.3); closed-loop baseline data alone identifies θ less well.
 
 # Part V. Our method
 
@@ -812,7 +935,7 @@ The governing principle is **parsimony**: among models of similar accuracy, the 
 ### 16.3 What to discover, and what to leave known
 Using the blocks of §8.2 we divide the work so the search stays small and the result physical.
 
-- **Discover the structure and fit the parameters** for the core, building-dependent, hardest part: the **zone RC dynamics** (block A) and **inter-zone coupling** (restricted to floor-plan neighbours). Discover the **occupancy gain** as a low-order function of occupancy, schedule flags and hour, and the **weather-to-envelope** link as an effective loss coefficient plus convection coupling.
+- **Zone RC dynamics** (block A) and **inter-zone coupling**: originally the part to discover. The audit of §14 found the structure exactly in the code (a linear network over room air, slab, facade, partitions and doors). What is left is to refine the closed-form coefficient formulas against exact grid targets, model the slow residual, and identify six material scalars online. The **occupancy gain** is known (70 W per person in the zone); only its split across zones is unobserved.
 - **Seed with the known form and refine** the **VAV airflow and coil heat** (block B): symbolic regression confirms the saturations and fits the constants.
 - **Keep the known form and fit only constants** for the **air handler** (block C) and **boiler and pump** (block D): COP, efficiency, dissipation and tank constants. Gas is about half of the energy reward, so these matter.
 
@@ -870,7 +993,7 @@ There is no logged dataset (Appendix A), so the simulator is the data source, an
 **Speed.** One episode on the smallest building takes about 90 s [R] (≈100 steps/s); larger buildings are slower and unmeasured (§20.3). Measuring all six is the first task of the plan (§19.3), because it fixes the real size of Tier B.
 
 ### 17.2 Designing the library
-Whether SINDy or genetic programming, we choose the *inputs, operators and constraints*: this is where physical knowledge goes in. Variables: zone temperature, outside temperature, neighbouring zone temperatures (or their mean), supply-air and water temperatures, damper, valve, pressure and recirculation settings, occupancy, schedule flags, sine/cosine of time. **Derived physical features** do much of the work: airflow `V̇ ∝ d·√P`, air capacity rate `c_a ρ_a V̇`, temperature differences `(T_sa − T_z)`, `(T_w − T_z)`, `(T_out − T_z)`, and the mixed-air temperature `r·T_ret + (1−r)·T_out`. Operators are `+ − × ÷ √ min max clip`, possibly `tanh` for smooth saturation, with `sin/cos` only for time and `exp` avoided for equipment maps. **Constraints** enforce dimensional consistency, non-negative gains, sign and monotonicity (more reheat means more zone heat; higher outside temperature means more heat gain) and conservation (the coil's heat to the air equals the heat charged to the boiler, which the simulator's own regression tests check). A complexity penalty is tuned so the final model is read from the *elbow* of the Pareto front, not its most accurate end.
+Whether SINDy or genetic programming, we choose the *inputs, operators and constraints*: this is where physical knowledge goes in. Variables: zone temperature, outside temperature, neighbouring zone temperatures (or their mean), supply-air and water temperatures, damper, valve, pressure and recirculation settings, occupancy, schedule flags, sine/cosine of time. **Derived physical features** do much of the work: airflow `V̇ ∝ d·√P`, air capacity rate `c_a ρ_a V̇`, temperature differences `(T_sa − T_z)`, `(T_w − T_z)`, `(T_out − T_z)`, and the mixed-air temperature `r·T_ret + (1−r)·T_out`. Operators are `+ − × ÷ √ min max clip`, possibly `tanh` for smooth saturation, with `sin/cos` only for time and `exp` avoided for equipment maps. **Constraints** enforce dimensional consistency, non-negative gains, sign and monotonicity (more reheat means more zone heat; higher outside temperature means more heat gain) and conservation (the coil's heat to the air equals the heat charged to the boiler, which the simulator's own regression tests check). A complexity penalty is tuned so the final model is read from the *elbow* of the Pareto front, not its most accurate end. For the room equation the library is already fixed by §14.3. The search instead targets the coefficient formulas, whose exact values come from steady-state solves of the rebuilt grid, so supervision is unlimited and needs no simulation. It also targets the slow residual (§14.7).
 
 ### 17.3 The generalization trick: structure versus parameters
 This is the heart of the method. We write each model as
@@ -881,7 +1004,7 @@ dT_z/dt = F( x_z, u_z, d_t ; θ_building )
 
 where **F, the symbolic structure, is discovered once on pooled data from many buildings**, and **θ, a small vector of lumped capacitances, conductances and gains, is specific to each building and estimated online.** This differs from "fit a separate model per building offline," impossible for held-out buildings, and from "one global model with no parameters," which cannot represent different constructions. The six buildings of §9 are simply six values of θ: what separates `train_1` from `train_7` is a handful of numbers, not a different kind of physics.
 
-Two ways to obtain θ for a new building. **Online estimation** from the first hours or days (recursive least squares, an extended Kalman filter or moving-horizon estimation) is fast and well posed, because RC models are linear in their parameters. **Priors from metadata** use the floor-plan and zone-map arrays, which give zone area, perimeter and adjacency and so predict capacitance and exterior exposure; we can learn a symbolic map `θ = g(metadata)` as a starting point and refine it online. Since materials are not exposed (§6.5), θ must otherwise be inferred from behaviour alone. §14 shows that room type, exposure and adjacency are rebuilt exactly from those arrays and that exposure predicts envelope coupling, so the prior has a concrete form.
+Two ways to obtain θ for a new building. **Online estimation** from the first hours or days (recursive least squares, an extended Kalman filter or moving-horizon estimation) is fast and well posed, because RC models are linear in their parameters. **Priors from metadata** use the floor-plan and zone-map arrays, which give zone area, perimeter and adjacency and so predict capacitance and exterior exposure; we can learn a symbolic map `θ = g(metadata)` as a starting point and refine it online. Since materials are not exposed (§6.5), θ must otherwise be inferred from behaviour alone. §14 goes further than a prior. The arrays fix every coefficient up to six material scalars (four or five identifiable), and one day of excited data identifies them well enough for 3-hour forecasts within 0.5 K (§14.5).
 
 ### 17.4 Noise, hidden states and identifiability
 - **Hidden states.** A one-state-per-zone model shows systematic hour-scale error because slab and walls store heat the sensor cannot see. Add one or two latent states per zone and estimate them; use lagged temperatures or moving averages as a proxy; or fit a two-time-constant structure and let sparsity prune it.
@@ -911,7 +1034,7 @@ The same model powers three increasingly ambitious controllers. Each must fit th
 
 **Controller 1: model-based feed-forward (lowest risk, first real target).** Keep the `pid_water` structure and replace hand-set choices with model outputs: the required heat per zone from the discovered balance becomes the damper and reheat commands; hot-water temperature is the minimum that satisfies the *largest* zone demand; fan pressure the minimum that delivers the required airflow; the pre-heat start follows from the identified time constant. Feedback trims the rest. Cost is a few vectorized NumPy operations, well under 10 ms, and a wrong model can only be modestly worse than the baseline since it computes setpoints rather than being trusted blindly.
 
-**Controller 2: sampling-based MPC over a reduced action (main target).** The full action has up to 209 entries, too many to search. The decision is reduced to a few numbers per step: per AHU a pressure, supply temperature, recirculation setpoint and on/off bit; for the loop a water temperature, head and on/off bit; and, instead of free per-zone dampers and reheat, a **per-zone allocation rule** (deliver each zone's predicted need at minimum airflow) with one shared aggressiveness parameter per type. Candidates are sampled around the previous plan (CEM or MPPI), rolled forward with the **fixed-size model of §14.4** (about 15 states per building, as a vectorized batch) and scored with the competition reward on the predicted trajectory plus a comfort margin. Sizing [I]: 128–256 candidates over a 12–24 step horizon in coarse 15–30-minute blocks is on the order of 10–40 ms in NumPy, inside the budget; Numba is an optional speed-up (its compile time goes into the 15-minute first-step allowance). Each step: (1) **estimate** the state and update θ; (2) **forecast** disturbances (outside temperature by persistence plus a diurnal pattern fitted from the day so far, occupancy from the schedule flags and time-of-day profile); (3) **optimize**; (4) **apply** the first action, expand it to every zone and enforce the floors. Because the comfort term is unbounded, aim at the band centre plus a buffer proportional to predicted uncertainty. Equipment on/off is decided by rule from the model's coast-time prediction, not searched.
+**Controller 2: sampling-based MPC over a reduced action (main target).** The full action has up to 209 entries, too many to search. The decision is reduced to a few numbers per step: per AHU a pressure, supply temperature, recirculation setpoint and on/off bit; for the loop a water temperature, head and on/off bit; and, instead of free per-zone dampers and reheat, a **per-zone allocation rule** (deliver each zone's predicted need at minimum airflow) with one shared aggressiveness parameter per type. Candidates are sampled around the previous plan (CEM or MPPI), rolled forward with a **reduced form of the room network** (a projection of the identified network, or the pooled per-type state of §14.6) (about 15 states per building, as a vectorized batch) and scored with the competition reward on the predicted trajectory plus a comfort margin. Sizing [I]: 128–256 candidates over a 12–24 step horizon in coarse 15–30-minute blocks is on the order of 10–40 ms in NumPy, inside the budget; Numba is an optional speed-up (its compile time goes into the 15-minute first-step allowance). Each step: (1) **estimate** the state and update θ; (2) **forecast** disturbances (outside temperature by persistence plus a diurnal pattern fitted from the day so far, occupancy from the schedule flags and time-of-day profile); (3) **optimize**; (4) **apply** the first action, expand it to every zone and enforce the floors. Because the comfort term is unbounded, aim at the band centre plus a buffer proportional to predicted uncertainty. Equipment on/off is decided by rule from the model's coast-time prediction, not searched.
 
 **Controller 3: distillation or a learned residual (optional, last).** Use Controller 2 as a teacher for a small, fast network, or learn a residual on its action, only if the time budget or a systematic model bias demands it.
 
@@ -927,7 +1050,10 @@ Layer by layer (§15.1):
 - **Pre-conditioning and setback** timed so the building reaches the comfort band at `morning_start_hour` and drifts to the eco band at `evening_start_hour`.
 
 ### 18.3 Estimating the unobserved, and handling model error
-**Estimation.** The controller needs the hidden states and building parameters. In rough order of simplicity: **recursive least squares** on the linear-in-parameter form with a simple observer for hidden states; an **augmented-state Kalman filter** over zone temperatures, slab temperatures and parameters with the symbolic model as process model; **moving-horizon estimation**, which fits state and parameters to the last N steps (more robust to nonlinearity, higher cost); and a **warm-start phase** in which the first hours run safe baseline-like behaviour with small deliberate dithering to learn θ before switching to MPC. There is no warm-up exemption (every step is scored), so dithering must stay gentle and band-respecting. The 15-minute first-step allowance is free time for loading weights, compiling, building the room-type descriptor from the floor plan and fitting the metadata priors on θ.
+**Estimation.** The controller needs the hidden states and building parameters. In rough order of simplicity: **recursive least squares** on the linear-in-parameter form with a simple observer for hidden states; an **augmented-state Kalman filter** over zone temperatures, slab temperatures and parameters with the symbolic model as process model; **moving-horizon estimation**, which fits state and parameters to the last N steps (more robust to nonlinearity, higher cost); and a **warm-start phase** in which the first hours run safe baseline-like behaviour with small deliberate dithering to learn θ before switching to MPC. There is no warm-up exemption (every step is scored), so dithering must stay gentle and band-respecting. The 15-minute first-step allowance is free time for loading weights, compiling, building the room network from the floor plan (0.02–0.12 s) and setting the priors on θ. **Tested design (§14.5):**
+- A Kalman filter over the full room network, with only the stale zone temperatures as measurements, plus an open-loop least-squares fit of θ on the first day.
+- From the filtered state, 3-hour forecast error is 0.12–0.51 K across 18 test rollouts.
+- The fit is best when the first day is excited, so the warm-start dithering is worth its small comfort cost.
 
 **Safety.** Models are wrong and the comfort penalty is unforgiving, so safety is layered: an **integral-like correction** on the one-step prediction error (offset-free MPC) cancels persistent bias; **uncertainty-aware margins** widen the comfort buffer when parameter variance is high or the regime is poorly covered by training data; a **fallback controller** (for instance `pid_water` logic) takes over if an occupied zone leaves a safe inner band or recent prediction error exceeds a threshold, until the model recovers; the known **floors** (200 Pa, 0.7 recirculation, 10 % damper) are enforced inside the optimizer so planned actions are realizable; and **rate limits** protect against the thermostat's hysteretic loop and equipment transients. Online checks of the kind-3 constants (§7.2) trigger the fallback if the hidden set differs from the shipped one.
 
@@ -947,7 +1073,7 @@ class SymbolicMPCPolicy:
     def get_action(self, obs):
         # a. Parse obs -> measurements (undo normalization); update estimator (state, theta).
         # b. Forecast disturbances (outside temp, occupancy, schedule flags).
-        # c. Sample candidates over a reduced action (§18.1), roll the fixed-size model
+        # c. Sample candidates over a reduced action (§18.1), roll the reduced room model
         #    forward as one vectorized batch, score with the reward -> best first action.
         # d. Expand to every zone; safety layer: floors, bounds and finiteness check,
         #    rate limits, fallback if in danger.
@@ -979,7 +1105,7 @@ We want six questions answered:
 |---|---|
 | G0 packaging | Controller 0, assembled as a Kaggle notebook, runs end to end and scores on the leaderboard |
 | G1 toolchain | symbolic regression recovers `√P`, the coil effectiveness and `min(mixed, setpoint)` from simulator data (§13.3 rows 3–5) to within noise |
-| G2 zone model | multi-hour rollout error on held-out buildings and a held-out station is small enough to plan with (target: 3-hour mean error under 0.5 K) |
+| G2 zone model | multi-hour rollout error on held-out buildings and a held-out station is small enough to plan with (target: 3-hour mean error under 0.5 K). The network of §14 already meets it in 17 of 18 test rollouts from a filtered state, with the 18th at 0.51 K (§14.5); a held-out *station* is still to be shown |
 | G3 feed-forward | Controller 1 beats −0.054 on the 30 shipped scenarios and does not lose to Controller 0 in the worst scenario |
 | G4 MPC | Controller 2 beats Controller 1 by a clear margin on the shipped set and the hold-out, within 0.1 s per step |
 
@@ -1001,9 +1127,9 @@ Today is 17 November 2026. The final deadline is 15 January 2027 and entry and t
 |---|---|---|
 | 1 (from 17 Nov) | Accept the rules; read the `kaggle_evaluation` package and the Code-tab notebook (closes §20.3 item 7). Build Controller 0 as a notebook and submit it. Measure simulator speed on all six buildings (item 5). Write the collection loop and logging of §17.1 and run Tier A. | G0 |
 | 2 | Run Tier B in parallel. Run Appendix B's profiling set (items 1 and 2). Validate the toolchain on the known-physics rows of §13.3. | G1 |
-| 3–4 | Discover the zone thermal structure (row 1) on pooled data with the room-type model of §14.4; compare with the hand-derived RC reference and black-box baselines (§19.1 question 2). Fit the disturbance models (rows 6–7). | G2 |
+| 3–4 | Harden the room network of §14: symbolic regression on the coefficient formulas against exact grid targets and on the slow free-float residual. Add a projection reduction for MPC. Test on generated buildings and a held-out station. Compare with black-box baselines (§19.1 question 2). Fit the disturbance models (rows 6–7). | G2 |
 | 4–5 | Online identification of θ (§18.3). Build Controller 1; evaluate on the 30 shipped scenarios and the hold-out; submit. | G3 |
-| 5–7 | Build Controller 2 around the fixed-size model; tune horizon, candidates and margin to the 0.1 s budget. Collect Tier C data under the controller and refit. Stress tests: a cold snap, a heat wave, larger K. | G4 |
+| 5–7 | Build Controller 2 around the reduced room model; tune horizon, candidates and margin to the 0.1 s budget. Collect Tier C data under the controller and refit. Stress tests: a cold snap, a heat wave, larger K. | G4 |
 | 7–8 (to 15 Jan) | Freeze. Choose the two finals by hold-out score and worst-case behaviour (Controller 1 and the best of Controller 2). Package, rerun on Kaggle, write the method description the rules require of winners (§4.3). | — |
 
 If a gate fails, the plan falls back to the previous controller and spends the remaining weeks improving the model that failed rather than adding a stage. The first submission is made in week 1 because every later risk (package, time limit, imports) is easier to find on the real gateway than in a local notebook.
@@ -1015,7 +1141,7 @@ If a gate fails, the plan falls back to the previous controller and spends the r
 ## 20. What has been verified and what is still unknown
 
 ### 20.1 How this report was checked
-Most numbers come from reading configs and source and computing over the shipped data files. Everything tagged [R] or [X] comes from running code in `code/`, which imports the starter kit, calls only `reset` and `step` on the environments, and writes only into `outputs/` (the starter-kit checkout stayed unchanged on `main`). The scripts: `dump_vectors.py` (field and action names for all six buildings), `rollout_checks.py` (600 random-action steps, `train_8`), `explore_zone_map.py`, `floors_and_ahus.py` and `plot_rooms.py` (room geometry), `metadata_only_check.py` (§14.1), `all_off_response.py` (§14.3), and `annotate_vectors.py` and `build_appendix.py` for the listings.
+Most numbers come from reading configs and source and computing over the shipped data files. Everything tagged [R] or [X] comes from running code in `code/`, which imports the starter kit, calls only `reset` and `step` on the environments, and writes only into `outputs/` (the starter-kit checkout stayed unchanged on `main`). The scripts: `dump_vectors.py` (field and action names for all six buildings), `rollout_checks.py` (600 random-action steps, `train_8`), `explore_zone_map.py`, `floors_and_ahus.py` and `plot_rooms.py` (room geometry), `metadata_only_check.py` (§14.1), `all_off_response.py` (§14.6), the room-model suite of §14 (`room_model.py`, `room_model_validate.py`, `room_model_data.py`, `room_inputs.py`, `room_coeff_targets.py`, `room_coeff_fit.py`, `room_spread_fit.py`, `room_model_eval.py`, `room_model_identify.py`, `room_model_forecast.py`), and `annotate_vectors.py` and `build_appendix.py` for the listings.
 
 ### 20.2 Confirmed
 **By instantiating the environments [R].** Vector lengths, specs, index layout and metadata keys (§5–§6) were read from all six buildings (a docstring's 271 for the smallest observation is stale; it is 283). Also:
@@ -1025,21 +1151,30 @@ Most numbers come from reading configs and source and computing over the shipped
 
 **By the 600-step rollout [X].** `rollout_checks.py` runs `train_8` / `atlanta_1` for about 50 simulated hours, crossing the Monday 06:00 switch, with piecewise-random actions resampled every 12 steps and each AHU and the water loop switched off about 15 % of the time. It is the source of every "relation found [X]" in §6.1–§6.3 (duplicates, mirrors, constants, floored echoes, signals with memory); results are in `outputs/rollout_train_8_checks.json`. Zone temperatures ranged over 283.0–304.0 K; occupants were nonzero on 30 % of steps (0–57 of 60; comfort mode on 30.2 %).
 
-**Geometry and hidden-state checks [X].** §14.1 (room numbering, types and floors from metadata alone) and §14.3 (envelope coupling by type).
+**Geometry and hidden-state checks [X].** §14.1 (rooms, floors and the whole thermal grid from the metadata alone) and §14.6 (envelope coupling by type).
 
-Caveats: the rollouts use one or two buildings, one weather strip each and non-tuned actions, so they do not reach every regime; the airflow signals were not tested for memory.
+**Thermal model [X].** All of these come from 18 rollouts of 3 days on four buildings (§14.5):
+- The grid rebuilt from the arrays matches the solver cell for cell, and reproduces its room temperatures to 0.0004 K with HVAC off.
+- The heat inputs rebuilt from observations match the solver's to 5 W RMS given true occupancy.
+- The zone temperature sensors are one step stale (§6).
+- No vertical heat exchange, no sensor noise.
+- Internal gains are 10 W/m² (0.2 outside comfort hours) plus 70 W per occupant, the same in every building.
+
+Caveats: the vector rollouts use one or two buildings, one weather strip each and non-tuned actions; the room-model rollouts cover four buildings and three climates over three days, not whole episodes.
 
 ### 20.3 Still unknown
 1. The **value ranges and variability over a full episode** under each baseline: zone-temperature spread, actuator saturation, how often the supply-air setpoint is inert, the occupancy profile.
 2. The **reward decomposition per baseline and climate** (comfort versus electricity, gas and carbon), which would show where the headroom is.
 3. Whether the **US/Pacific schedule on non-Pacific weather** has any effect.
-4. **Sensor noise or delay**, if any; initial readings and rollouts look noise-free.
+4. ~~Sensor noise or delay~~: closed. No noise; zone temperatures are one step stale (§6, §14.5).
 5. **Simulation speed across all building sizes**, which bounds how much data generation and in-simulation MPC is affordable.
-6. The exact **internal-gain parameters** in the scenario configs and whether they vary by building.
+6. ~~Internal-gain parameters~~: closed. 10 W/m², standby fraction 0.2 and 70 W per occupant, identical in all scenarios (§14.2).
 7. Whether **solver libraries** (CasADi, JAX, PySR with Julia) are in the Kaggle image, whether the 30 scenarios run sequentially or in parallel (which sets the real per-step budget of §4.3) and what the `kaggle_evaluation` package adds to the base class. The files are not visible without accepting the rules.
-8. Whether the **airflow and outside-air-flow signals have memory**, and whether the physical supply temperature `min(mixed air, setpoint)` is observable anywhere.
-9. Whether **room type predicts the response in all regimes** (§14.5) and whether the exterior-reach threshold of §14.2 is right; the all-off rollouts cover two buildings.
-10. Whether the **solver couples floors** (§9.3); the layout suggests not.
+8. ~~Physical supply temperature~~: closed. It is computable exactly from the observation (§13.3 row 4, §14.5).
+9. Whether the room network's **slow free-float residual** (§14.7) shrinks with refined coefficient formulas, and how well θ is identified on **generated buildings and unseen stations**.
+10. ~~Whether the solver couples floors~~: closed. It does not; each floor is a separate piece of the 2-D grid (§14.2).
+11. Whether the gateway's metadata includes **`zone_map`**. The website names only the floor plan and the AHU mapping (§14.7).
+12. Whether the hidden set varies the **HVAC system** (the website says it may), for example by using the heat-pump variant in the code.
 
 Items 1, 2 and 5 can be closed with the repo's existing commands; Appendix B is a recipe for doing that on another machine.
 
@@ -1073,7 +1208,9 @@ Items 1, 2 and 5 can be closed with the repo's existing commands; Appendix B is 
 | `outputs/building_train_N_rooms.csv`, `…_rooms.png` | per-room area, exterior contact per side, type, neighbours, AHU and floor |
 | `outputs/building_train_N_meta.json`, `zone_map_summary.json`, `floors_and_ahus.json` | metadata and geometry summaries |
 | `outputs/rollout_train_8.npz`, `rollout_train_8_checks.json` | raw data and results of the 600-step rollout |
-| `outputs/metadata_only_check.json`, `building_train_N_alloff_response.csv`, `alloff_response_summary.json` | results of §14.1 and §14.3 |
+| `outputs/metadata_only_check.json`, `building_train_N_alloff_response.csv`, `alloff_response_summary.json` | results of §14.1 and §14.6 |
+| `outputs/roomdata_<building>_<weather>_<policy>.npz` | 3-day rollouts with the solver's exact per-room inputs logged beside the observations (§14.5) |
+| `outputs/room_model_validate.json`, `room_coeff_targets.npz`, `room_coeff_fit.json`, `room_spread_fit.json`, `room_model_eval.json`, `room_model_identify.json`, `room_model_forecast.json` | results of §14.1 and §14.5 |
 | `code/` | the scripts listed in §20.1 |
 
 The scripts run from the starter-kit root (the gin configs use relative paths) with the environment in `.venv/` (Python 3.12, dependencies pinned in the starter kit's `pyproject.toml`), for example `cd smart-buildings-starter-kit && PYTHONDONTWRITEBYTECODE=1 ../working-code/.venv/bin/python ../working-code/code/rollout_checks.py 600`.
