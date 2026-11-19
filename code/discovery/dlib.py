@@ -64,3 +64,46 @@ def pairs(M):
 
 def softplus(x):
     return np.log1p(np.exp(-np.abs(x))) + np.maximum(x, 0)
+
+
+def filtered_forecast(net, T_out, g, T_supply, Q, T_meas, T0, horizons=(12, 36, 72), every=12, start=288,
+                      q_air=0.05, q_hidden=0.01, r=0.01, max_steps=None):
+    """k-step forecast error of a LinearNetwork from a Kalman-filtered state.
+
+    The filter uses only the measured room temperatures (T_meas[k] = x_{k+1}).  From every
+    `every`-th step after `start` the filtered state is rolled forward open loop with the
+    actual future inputs, and compared with the measurement `h` steps later.
+    Returns {h: (model_rmse, persistence_rmse)} in K.
+    """
+    V, N = net.V, net.N
+    n = len(T_meas) if max_steps is None else min(len(T_meas), max_steps)
+    I = np.eye(V)
+
+    def Minv(gt):
+        K = np.linalg.solve(I + gt[:, None] * net.S, gt[:, None] * net.W.T)
+        return net.A0inv - net.W @ K
+
+    def step(x, t, Mi=None):
+        Mi = Minv(g[t]) if Mi is None else Mi
+        rhs = net.Cdt * x + net.G_amb * T_out[t]
+        rhs[:V] += Q[t] + g[t] * T_supply[t]
+        return Mi @ rhs, Mi
+
+    Qn = np.r_[np.full(V, q_air ** 2), np.full(N - V, q_hidden ** 2)]
+    x = np.full(N, float(T0)); P = np.diag(np.full(N, 1e-6)); filt = np.zeros((n, N))
+    for t in range(n):
+        x, Mi = step(x, t)
+        A = Mi * net.Cdt[None, :]
+        P = A @ P @ A.T + np.diag(Qn)
+        Kg = np.linalg.solve(P[:V, :V] + r ** 2 * I, P[:V, :]).T
+        x = x + Kg @ (T_meas[t] - x[:V]); P = P - Kg @ P[:V, :]
+        filt[t] = x
+    errs = {h: [] for h in horizons}; pers = {h: [] for h in horizons}
+    for t0 in range(start, n - max(horizons), every):
+        xx = filt[t0].copy()
+        for k in range(1, max(horizons) + 1):
+            xx, _ = step(xx, t0 + k)
+            if k in horizons:
+                errs[k].append(xx[:V] - T_meas[t0 + k]); pers[k].append(T_meas[t0] - T_meas[t0 + k])
+    return {h: (float(np.sqrt(np.mean(np.square(errs[h])))) if errs[h] else float("nan"),
+                float(np.sqrt(np.mean(np.square(pers[h])))) if pers[h] else float("nan")) for h in horizons}

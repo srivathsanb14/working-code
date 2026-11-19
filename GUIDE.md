@@ -76,55 +76,55 @@ Template (`split_example.json`). Patterns are globs: with `/` they match `buildi
 
 The test score is looked at once, at the end, never while choosing models.
 
-### A.4 Commands (run from the starter-kit root)
+### A.4 Commands
 
-Set up the environment once:
+**The driver (recommended).** `code/generate_data.py` runs the starter kit's three tools with exactly the settings above. It writes everything under `working-code/data` (or `$SB_DATA`), creates `plan.json` and `split.json`, resumes after interruption, and records seeds the scenario generator rejects (a `.failed` marker; the building is skipped):
+
+```bash
+python code/generate_data.py --train-seeds 500:600 --val-seeds 700:720 --test-seeds 800:820 --steps 2016 --workers 8
+```
+
+Add `--dry-run` to print the plan, its size and its cost without running anything. The options are listed in `docs/RUNBOOK.md` step 2.
+
+**By hand (the same thing, run from the starter-kit root).** Set up the environment once:
 
 ```bash
 export NUMBA_CACHE_DIR=../working-code/.numba_cache PYTHONDONTWRITEBYTECODE=1 MPLBACKEND=Agg
 D=../working-code/data
 ```
 
-**Buildings:** one batch per split.
+Buildings, one batch per split (repeat for `--start-seed 700 --count 20 … /val` and `800 … /test`):
 
 ```bash
 python -m smart_buildings.run_floor_generator --start-seed 500 --count 100 --output-dir $D/buildings/train --no-pdf
 ```
 
-```bash
-python -m smart_buildings.run_floor_generator --start-seed 700 --count 20 --output-dir $D/buildings/val --no-pdf
-```
-
-```bash
-python -m smart_buildings.run_floor_generator --start-seed 800 --count 20 --output-dir $D/buildings/test --no-pdf
-```
-
-**Scenarios:** train and val buildings get one strip from each non-Minneapolis station (rotate the indices between buildings); test buildings get Minneapolis only.
+Scenarios, one call per building (rotate strip indices between buildings; test buildings get Minneapolis strips only):
 
 ```bash
 for b in $D/buildings/train/*.yaml $D/buildings/val/*.yaml; do python -m smart_buildings.run_scenario_generator --buildings $b --weathers fairbanks_1 denver_3 atlanta_5 phoenix_7 singapore_2 --output-dir $D/scenarios || true; done
 ```
 
-```bash
-for b in $D/buildings/test/*.yaml; do python -m smart_buildings.run_scenario_generator --buildings $b --weathers minneapolis_1 minneapolis_4 minneapolis_7 --output-dir $D/scenarios || true; done
-```
-
-**Runs:** all five shipped policies.
+Runs, with all five shipped policies:
 
 ```bash
 python -m smart_buildings.evaluate --scenarios-dir $D/scenarios --policies all_off bang_bang fixed_setpoint pid pid_water --steps 2016 --results-dir $D/results
 ```
 
-**Cost.** Roughly 100 steps/s on a small building, slower on large ones; runs are independent, so run them in parallel. Start small: fewer buildings and `--steps 864`.
+By hand you must write `split.json` yourself (A.3) and delete partial scenario folders of rejected seeds.
+
+**Cost.** Roughly 100 steps/s on a small building, slower on large ones (generated buildings reach 120+ rooms); runs are independent, so run them in parallel. Start small.
 
 **Resulting layout** (what the working code reads):
 
 ```
-data/scenarios/<building>/<weather>/config.gin, floor_plan.npy, zone_map.npy
+data/buildings/{train,val,test}/building_NNNN.yaml
+data/scenarios/<building>/<weather>/config.gin, floor_plan.npy, zone_map.npy     (+ <building>/.failed if rejected)
 data/results/<building>/<weather>/<policy>/timeseries.csv, ahu_log.csv, reward_components.csv, summary.json
+data/plan.json, data/split.json, data/logs/
 ```
 
-### A.5 What the code recovers, and the check to read
+### A.5 Recovering what the files do not hold, and auditing
 
 The CSVs hold, per step:
 - every room's temperature sensor;
@@ -132,15 +132,17 @@ The CSVs hold, per step:
 - each AHU's supply temperature, run command and total airflow;
 - building occupancy, energy and carbon.
 
-They do not hold the per-room damper and valve commands or the plant setpoints. `code/discovery/starterkit_data.py` recovers them by **replaying** the unmodified policy on observations rebuilt from the CSVs. It then checks the replay against the logged per-AHU airflow and run commands.
+They do not hold the per-room damper and valve commands or the plant setpoints. `code/build_dataset.py` recovers them by **replaying** the unmodified policy on observations rebuilt from the CSVs. It checks each replay against the logged per-AHU airflow and run commands, then writes the dataset (B.8).
 
-**Always open `outputs/discovery/<run>/data_report.json` first.** Every run must be `ok`; a "replay mismatch" means that run's inputs are unknown, and it is dropped.
+`code/audit_data.py` checks the data before you trust it:
+- the kit is untouched;
+- layout and step counts are complete;
+- the reset state and Sunday start hold;
+- coverage against the generator's own ranges and the station × season matrix;
+- no leakage between splits;
+- after the build, the replay status and how much each policy excites the building.
 
-Run the loop:
-
-```bash
-.venv/bin/python code/run_discovery.py --run main --scenarios-dir data/scenarios --results-dir data/results --split split_example.json --generations 0 --test
-```
+Run it after generation and again after the build. It exits non-zero on hard failures.
 
 ---
 
@@ -233,10 +235,32 @@ The room air receives the air stream `g_i (T_sa,i − T_i)`, which must be integ
 - **Inputs:** G, the B.5 inputs, `T_out`, the clock.
 - **Constants:** a few global p and per-building θ.
 - **Output:** room temperatures.
+- **Optional:** `network(geo, inputs, theta, p)` returning the `dlib.LinearNetwork` and its per-step forcing. This exposes the state, so a Kalman filter can be run and forecasts scored (B.7).
 
 ### B.7 How a model is judged
 
 1. **Physics checks:** no drift at equilibrium; bounded cooling; heating warms the room and never cools its neighbours; stable under a full air stream (at the initial values and at both bounds of every constant).
 2. **Fit:** p and one θ per training scenario, by least squares on open-loop simulation error.
 3. **Held-out score:** with p frozen, θ is fitted on day 1 of each val/test scenario, then the score is the open-loop RMSE of room temperature on the following days, plus a small price per AST node.
-4. **For the controller:** also check 1-, 3- and 6-hour forecast error from a Kalman-filtered state; the target is under 0.5 K at 3 h (Gate G2, STATE_SPACE.md §19.1). This is not yet ported to starter-kit data.
+4. **For the controller:** also check the 1-, 3- and 6-hour forecast error from a Kalman-filtered state; the target is under 0.5 K at 3 h (Gate G2, STATE_SPACE.md §19.1). `code/test_model.py` does this for any model that defines `network()` (B.6).
+
+### B.8 The dataset on disk
+
+`code/build_dataset.py` writes one `data/dataset/<building>__<weather>__<policy>.npz` per run. It also writes `index.json` (per run: split, replay check, V, K) and `schema.json`. Rooms are in **VAV order** (`VAV_1, VAV_10, VAV_11, …`), the order of the observation and of the CSV zone columns. In the starter kit's `timeseries.csv`, **row k shows `x_k`** (row 0 is the reset state), because the sensors are stale by one step.
+
+| Array | Shape | Symbol (B.3) | Meaning |
+|---|---|---|---|
+| `T_meas` | (n, V) | y | `x_{k+1}`, room temperatures after step k |
+| `y_sensor` | (n+1, V) | y | all sensor rows; row k is `x_k` |
+| `obs_lean` | (n, V+8) | o (lean) | before step k: room temperatures `x_k`, `T_w`, `T_out`, occupants, hour sin/cos, weekday sin/cos, comfort (`obs_lean_names`) |
+| `u_cont_native`, `u_disc` | (n, 3K+2+2V), (n, K+1) | a | the full action vector the policy sent, in native units (`u_cont_names`, `u_disc_names`) |
+| `act__damper`, `act__reheat` | (n, V) | u | realized per-room damper (≥ 0.1) and reheat valve |
+| `act__ahu_on`, `act__ahu_pressure`, `act__ahu_sat_setpoint`, `act__ahu_recirculation`, `act__ahu_flow` | (n, K) | u | realized AHU controls and the resulting flow (`ahu_ids` order) |
+| `act__hws_on`, `act__hws_water_setpoint`, `act__hws_dp`, `act__T_water` | (n) | u, `T_w` | hot-water loop controls and the tank temperature used in step k |
+| `in__g`, `in__T_supply`, `in__Q_reheat`, `in__Q_gain` | (n, V) | B.5 | physical inputs each room receives |
+| `in__T_out`, `in__occupants`, `in__comfort`, `in__hour_*`, `in__dow_*` | (n) | d | disturbances of step k |
+| `geo__*` | (V), (V,V) | G | geometry (B.3) |
+| `meta`, `check` | JSON | — | run identity, `T0` = 294 K; replay check |
+
+Load one with `np.load(path)`, or as an Episode with `discovery.episodes._load_cached(path)`. A model of your own can use any of these arrays during training, but at run time it may only use what B.3 lists as available.
+

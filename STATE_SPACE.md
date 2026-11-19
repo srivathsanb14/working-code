@@ -1025,7 +1025,7 @@ One-step accuracy is misleading, since nearly any model predicts `T_{t+1} ≈ T_
 
 ### 17.7 The LLM discovery loop
 
-`code/discovery/` implements symbolic discovery with an LLM as the proposer. The LLM writes small simulation programs, numerical optimization fits every constant, and a held-out simulation decides. The LLM only proposes structure; numbers and verdicts never come from it. No LLM is called unless `--proposer claude` is chosen. Run it from `working-code/` with `.venv/bin/python code/run_discovery.py`; usage is in `code/discovery/loop.py`.
+`code/discovery/` implements symbolic discovery with an LLM as the proposer. The LLM writes small simulation programs, numerical optimization fits every constant, and a held-out simulation decides. The LLM only proposes structure; numbers and verdicts never come from it. No LLM is called unless `--proposer claude` is chosen. Run it from `working-code/` with `.venv/bin/python code/run_discovery.py`; usage is in `docs/LLM_DISCOVERY.md` and `docs/RUNBOOK.md`.
 
 ```
  starter-kit outputs (evaluate.py results + scenario folders) ──► replay ──► episodes: inference-time inputs + geometry + measured T
@@ -1107,23 +1107,33 @@ Two traps showed up in testing:
 
 As a cross-check, the full §14 network with the true materials, driven by these inputs, matches the accuracy it reached with the solver's own inputs: 0.26–0.72 K over 3 days for all-off and `pid_water`.
 
-**Demo run [X]** (`outputs/discovery/skdemo/`). The data is 6 scenarios × the 5 shipped policies × 864 steps, generated with `evaluate.py --results-dir working-code/data/results`; all 30 runs passed the replay check. Train on `train_8` (×2), `train_2` and `train_4`; validate on `train_7` (a held-out building and the only Phoenix scenario); test on `train_1` (Fairbanks).
+**Demo run [X]** (`outputs/discovery/demo_shipped/`, `outputs/test/seed_slab_wall_network_val/`). The data is 6 shipped scenarios × the 5 shipped policies × 864 steps, made with `evaluate.py --results-dir working-code/data/results` and built with `build_dataset.py`; all 30 runs passed the replay check. Train on `train_8` (×2), `train_2` and `train_4`; validate on `train_7` (a held-out building and the only Phoenix scenario).
 
-| Candidate | Held-out days 2–3 RMSE | Train RMSE | Note |
-|---|---|---|---|
-| `seed_slab_wall_network` | **0.366 K** | 0.485 K | test (`train_1`) 0.888 K |
-| ablation without the spreading resistance | 0.512 K | 0.700 K | the loop recovers that spreading matters |
-| `seed_rc_one_node` | 1.780 K | 1.285 K | naive baseline |
-| explicit-Euler single node | rejected | — | unstable at the lower capacity bound; the reason is fed back |
+| Candidate | Held-out RMSE after day 1 | Train RMSE |
+|---|---|---|
+| `seed_slab_wall_network` | **0.286 K** | 0.380 K |
+| `seed_rc_one_node` (naive baseline) | 1.766 K | 1.275 K |
 
-The shipped policies excite the building less than random actuator moves do, so these errors are higher than the §14.5 figures. The seed, being a geometry-only approximation of the §14 network, also sits above the full network. Closing that gap is the loop's job.
+With `test_model.py`, the network seed's filtered forecasts on the held-out building are:
 
-A seed evaluation takes 20–140 s on 20 training runs. To scale up, follow `GUIDE.md` Part A, which also lists what may and may not be changed in data generation and defines the model's variables (Part B):
-- generate buildings with `run_floor_generator`;
-- make scenarios across all six stations with `run_scenario_generator`;
-- run `evaluate.py` with the five shipped policies.
+| Horizon | Model | Persistence |
+|---|---|---|
+| 1 h | 0.13 K | 1.71 K |
+| 3 h | 0.17 K | 2.06 K |
+| 6 h | 0.21 K | 2.46 K |
 
-Then point `--scenarios-dir`, `--results-dir` and `--split` at them, holding out whole buildings *and* whole stations.
+Gate G2 (under 0.5 K at 3 h) holds on this building. An earlier pass that took the return-air temperature one step too old scored 0.37 K. An ablation run on that earlier data recovered that the spreading resistance matters (0.51 K without it), and an unstable explicit-Euler candidate was rejected at its lower capacity bound with the reason fed back.
+
+**The full workflow on a fresh computer** is in `docs/RUNBOOK.md`:
+1. `setup_check.py`;
+2. `generate_data.py`, which drives the kit's three tools to the A.2 settings and writes `plan.json` and `split.json`;
+3. `audit_data.py`, covering layout, conventions, coverage against the generator's own ranges, and leakage;
+4. `build_dataset.py`, the replay, its check, and the room inputs;
+5. `audit_data.py` again, adding replay status and excitation per policy;
+6. `run_discovery.py`;
+7. `test_model.py`.
+
+The data rules and the model's variables are in `GUIDE.md`; how to use the LLM is in `docs/LLM_DISCOVERY.md`.
 
 
 ---
@@ -1315,7 +1325,7 @@ Items 1, 2 and 5 can be closed with the repo's existing commands; Appendix B is 
 | `outputs/roomdata_<building>_<weather>_<policy>.npz` | 3-day rollouts with the solver's exact per-room inputs logged beside the observations (§14.5) |
 | `outputs/room_model_validate.json`, `room_coeff_targets.npz`, `room_coeff_fit.json`, `room_spread_fit.json`, `room_model_eval.json`, `room_model_identify.json`, `room_model_forecast.json` | results of §14.1 and §14.5 |
 | `code/` | the scripts listed in §20.1 |
-| `code/discovery/`, `code/run_discovery.py`; `outputs/discovery/<run>/`; `GUIDE.md`, `split_example.json`, `data/` | the LLM discovery loop, its runs, the data-generation rules and model variable definitions, and the starter-kit data it reads (§17.7) |
+| `README.md`, `docs/RUNBOOK.md`, `docs/LLM_DISCOVERY.md`, `GUIDE.md`; `code/setup_check.py`, `generate_data.py`, `audit_data.py`, `build_dataset.py`, `run_discovery.py`, `test_model.py`, `code/discovery/`; `outputs/discovery/<run>/`, `outputs/test/`; `split_example.json`, `data/` | the LLM discovery loop, its runs, the data-generation rules and model variable definitions, and the starter-kit data it reads (§17.7) |
 
 The scripts run from the starter-kit root (the gin configs use relative paths) with the environment in `.venv/` (Python 3.12, dependencies pinned in the starter kit's `pyproject.toml`), for example `cd smart-buildings-starter-kit && PYTHONDONTWRITEBYTECODE=1 ../working-code/.venv/bin/python ../working-code/code/rollout_checks.py 600`.
 

@@ -19,11 +19,17 @@ THETA = {
 }
 
 
-def simulate(geo, inputs, theta, p, T0):
+def network(geo, inputs, theta, p):
+    """The RC network and its per-step forcing (lets test_model.py run a Kalman filter)."""
     V = geo["V"]
     C = theta["cap"] * geo["area"]
     G = p["k_wall"] * geo["wall_cells"] + p["k_door"] * geo["door_cells"]
     G_amb = theta["u_facade"] * geo["facade_faces"]
     net = dlib.LinearNetwork(C, G, G_amb, V)
     Q = inputs["Q_reheat"] + inputs["Q_gain"] + 70.0 * inputs["occupants"][:, None] / V
-    return net.simulate(inputs["T_out"], inputs["g"], inputs["T_supply"], Q, T0)
+    return net, dict(T_out=inputs["T_out"], g=inputs["g"], T_supply=inputs["T_supply"], Q=Q)
+
+
+def simulate(geo, inputs, theta, p, T0):
+    net, f = network(geo, inputs, theta, p)
+    return net.simulate(f["T_out"], f["g"], f["T_supply"], f["Q"], T0)

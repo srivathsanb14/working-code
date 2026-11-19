@@ -140,14 +140,26 @@ def make_proposer(kind, run_dir, model, effort):
 def run(args):
     run_dir = OUTD / "discovery" / args.run
     db = Database(run_dir)
-    split = json.loads(Path(args.split).read_text()) if args.split else DEFAULT_SPLIT
     cache = run_dir / "episodes"
-    print(f"loading starter-kit runs from {args.results_dir} (scenarios: {args.scenarios_dir})")
-    eps, report = load_all(args.scenarios_dir, args.results_dir, args.policies, cache)
+    ds = Path(args.dataset) if args.dataset else None
+    if ds is not None and (ds / "index.json").exists():
+        # the usual path: the dataset built by code/build_dataset.py (replay already done and checked)
+        idx = json.loads((ds / "index.json").read_text())
+        split_file = Path(args.split) if args.split else ds / "split.json"
+        split = json.loads(split_file.read_text())
+        paths = [ds / v["file"] for v in idx.values()
+                 if v.get("status") == "ok" and (not args.policies or v["policy"] in args.policies)]
+        report = {k: {kk: v.get(kk) for kk in ("status", "split", "flow_max_rel_err")} for k, v in idx.items()}
+        print(f"dataset {ds}: {len(paths)} usable runs of {len(idx)}")
+    else:
+        # fallback: replay directly from a results folder (no dataset built)
+        split = json.loads(Path(args.split).read_text()) if args.split else DEFAULT_SPLIT
+        print(f"no dataset at {ds}; replaying starter-kit runs from {args.results_dir} (scenarios: {args.scenarios_dir})")
+        eps, report = load_all(args.scenarios_dir, args.results_dir, args.policies, cache)
+        paths = [cache / f"episode_{e.name}.npz" for e in eps]
     (run_dir / "data_report.json").write_text(json.dumps(report, indent=1))
-    if not eps:
-        raise SystemExit("no usable runs; generate them with the starter kit (see GUIDE.md, Part A)")
-    paths = [cache / f"episode_{e.name}.npz" for e in eps]
+    if not paths:
+        raise SystemExit("no usable runs; generate data and build the dataset (see docs/RUNBOOK.md)")
     (run_dir / "config.json").write_text(json.dumps({**vars(args), "split": split, "n_runs": len(paths)}, indent=1, default=str))
     kw = dict(max_nfev=args.max_nfev, stride=args.stride, complexity_weight=args.complexity_weight)
 
@@ -208,6 +220,8 @@ def run(args):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--run", default="default")
+    ap.add_argument("--dataset", type=Path, default=ROOT / "data/dataset",
+                    help="dataset from code/build_dataset.py (default); its split.json is used unless --split is given")
     ap.add_argument("--scenarios-dir", type=Path, default=KIT / "smart_buildings/training_scenarios",
                     help="scenario folders <building>/<weather>/config.gin (run_scenario_generator --output-dir)")
     ap.add_argument("--results-dir", type=Path, default=ROOT / "data/results",

@@ -130,6 +130,15 @@ class ScenarioContext:
         return o
 
 
+def resolve(token: str, data_root: Path) -> Path:
+    """'data:<rel>' -> data_root/<rel>;  'kit:<rel>' -> starter kit/<rel>;  anything else -> path."""
+    if token.startswith("data:"):
+        return Path(data_root) / token[5:]
+    if token.startswith("kit:"):
+        return KIT / token[4:]
+    return Path(token)
+
+
 def read_results(policy_dir: Path):
     ts = pd.read_csv(policy_dir / "timeseries.csv")
     ahu = pd.read_csv(policy_dir / "ahu_log.csv")
@@ -149,7 +158,9 @@ def replay(ctx: ScenarioContext, policy_key: str, R: dict):
     n = len(R["temps"])
     C = np.zeros((n, len(ctx.cont))); Dd = np.zeros((n, len(ctx.disc)))
     for k in range(n):
-        a = ev.validate_action(ev.get_policy_action(policy, ctx.rebuild_obs(k, R["timestamps"], R["temps"], R["oat"])), ctx.env.action_spec())
+        # the environment hands policies float32 observations; near a deadband threshold float64 would flip decisions
+        o = ctx.rebuild_obs(k, R["timestamps"], R["temps"], R["oat"]).astype(np.float32)
+        a = ev.validate_action(ev.get_policy_action(policy, o), ctx.env.action_spec())
         c = np.clip(a["continuous_action"].astype(float), -1, 1)
         C[k] = ctx.lo + (c + 1) / 2 * (ctx.hi - ctx.lo)
         Dd[k] = a["discrete_action"]
@@ -160,7 +171,7 @@ def episode_inputs(ctx: ScenarioContext, R: dict, C: np.ndarray, Dd: np.ndarray)
     """Per-step room inputs from replayed native actions + logged sensors (same physics as room_inputs.py)."""
     m = ctx.meta; V = ctx.geo["V"]; K = len(ctx.ahu_names); area = ctx.geo["area"]
     n = len(R["temps"]) - 1                      # step k's result is seen in row k+1
-    temps_start = np.vstack([np.full(V, T_RESET), R["temps"][:-1]])     # sensor rows are start-of-step values
+    temps_start = R["temps"][:n]          # CSV row k = room temperatures x_k at the start of step k (row 0 = reset)
     oat_step = np.concatenate([[ctx.obs0[ctx.ix[f"ahs_{ctx.ahu_names[0]}_outside_air_temperature_sensor"]]], R["oat"][:-1]])
     damper_ix = np.array([ctx.za[v]["supply_air_damper_percentage_command"] for v in ctx.vav_ids])
     reheat_ix = np.array([ctx.za[v]["reheat_valve_percentage_command"] for v in ctx.vav_ids])
@@ -170,6 +181,9 @@ def episode_inputs(ctx: ScenarioContext, R: dict, C: np.ndarray, Dd: np.ndarray)
     for k in ("g", "T_supply", "Q_reheat", "Q_gain"):
         out[k] = np.zeros((n, V))
     check = np.zeros((n, K))
+    act = {k: np.zeros((n, V)) for k in ("damper", "reheat")}
+    act.update({k: np.zeros((n, K)) for k in ("ahu_on", "ahu_pressure", "ahu_sat_setpoint", "ahu_recirculation", "ahu_flow")})
+    act.update({k: np.zeros(n) for k in ("hws_on", "hws_water_setpoint", "hws_dp", "T_water")})
     tw = TW_RESET
     for k in range(n):
         on = R["run"][k] > 0.5            # logged AHU run state (the first command takes effect one step late)
@@ -192,6 +206,10 @@ def episode_inputs(ctx: ScenarioContext, R: dict, C: np.ndarray, Dd: np.ndarray)
         gap = tw - Tsa; head = T_DISCHARGE_MAX - Tsa
         eff = np.where(gap > 0, np.where(head <= 0, 0.0, np.minimum(eff, head / np.where(gap > 0, gap, 1))), eff)
         out["Q_reheat"][k] = eff * g * gap
+        act["damper"][k] = damper; act["reheat"][k] = reheat
+        act["ahu_on"][k] = on; act["ahu_pressure"][k] = P; act["ahu_sat_setpoint"][k] = sp
+        act["ahu_recirculation"][k] = rec; act["ahu_flow"][k] = check[k]
+        act["hws_on"][k] = hws_on; act["hws_water_setpoint"][k] = C[k, water_ix]; act["hws_dp"][k] = dp; act["T_water"][k] = tw
         start_ts = ctx.start + k * ctx.dt
         comfort = bool(ctx.schedule.is_comfort_mode(start_ts))
         out["Q_gain"][k] = GAIN_W_M2 * area * (1.0 if comfort else STANDBY)
@@ -206,10 +224,11 @@ def episode_inputs(ctx: ScenarioContext, R: dict, C: np.ndarray, Dd: np.ndarray)
     check = np.where(logged > 0, check, 0.0)       # an AHU that is off reports 0 flow (the 1e-5 floor is not logged)
     rel = np.abs(check - logged) / np.maximum(logged, 0.05)
     run_ok = float(np.mean((Dd[1:n][:, ahu_disc] > 0.5) == (R["run"][1:n] > 0.5)))   # step 0 excluded, see above
-    return out, T_meas, dict(flow_max_rel_err=float(rel.max()), flow_median_rel_err=float(np.median(rel)), run_cmd_agreement=run_ok)
+    return out, T_meas, dict(flow_max_rel_err=float(rel.max()), flow_median_rel_err=float(np.median(rel)), run_cmd_agreement=run_ok), act
 
 
-def load_starterkit_episode(scenarios_dir: Path, results_dir: Path, building: str, weather: str, policy: str, ctx_cache=None):
+def load_starterkit_episode(scenarios_dir: Path, results_dir: Path, building: str, weather: str, policy: str, ctx_cache=None,
+                            full=False):
     sdir = Path(scenarios_dir) / building / weather
     key = str(sdir)
     ctx = (ctx_cache or {}).get(key) or ScenarioContext(sdir)
@@ -217,9 +236,11 @@ def load_starterkit_episode(scenarios_dir: Path, results_dir: Path, building: st
         ctx_cache[key] = ctx
     R = read_results(Path(results_dir) / building / weather / policy)
     C, Dd = replay(ctx, policy, R)
-    inputs, T_meas, chk = episode_inputs(ctx, R, C, Dd)
+    inputs, T_meas, chk, act = episode_inputs(ctx, R, C, Dd)
     ep = Episode(name=f"{building}_{weather}_{policy}", building=building, weather=weather, policy=policy,
                  scenario=f"{building}/{weather}", geo=ctx.geo, inputs=inputs, T_meas=T_meas)
+    if full:
+        return ep, chk, dict(ctx=ctx, R=R, C=C, Dd=Dd, act=act)
     return ep, chk
 
 

@@ -60,6 +60,11 @@ Write one Python module:
     def simulate(geo, inputs, theta, p, T0):
         """Return predicted room air temperatures, array (n, V), after each step."""
 
+    # optional but recommended: lets the tester run a Kalman filter and score multi-hour forecasts
+    def network(geo, inputs, theta, p):
+        """Return (dlib.LinearNetwork, dict(T_out=..., g=..., T_supply=..., Q=...)) with simulate() equal to
+        net.simulate(T_out, g, T_supply, Q, T0)."""
+
 Rules:
   - imports: numpy, math, dlib only; no files, no globals across calls; must be deterministic.
   - theta and p are dicts of floats keyed like THETA and PARAMS. Bounds must be finite; positive constants

@@ -31,7 +31,8 @@ def spread(area, length, a):
     return a * np.log1p(np.sqrt(area) / np.maximum(length, 1e-9)) / (np.pi * K_AIR * dlib.HEIGHT)
 
 
-def simulate(geo, inputs, theta, p, T0):
+def network(geo, inputs, theta, p):
+    """The RC network and its per-step forcing (lets test_model.py run a Kalman filter)."""
     V = geo["V"]; A = geo["area"]; H = dlib.HEIGHT; c = dlib.CELL
     face = H * c                                                     # m2 of one 0.2 m segment
     wi, wj, wn = dlib.pairs(geo["wall_cells"])
@@ -61,4 +62,9 @@ def simulate(geo, inputs, theta, p, T0):
         G[i, j] = G[j, i] = G[i, j] + 1 / (1 / g_door + spread(A[i], n * c, p["a_spread"]) + spread(A[j], n * c, p["a_spread"]))
     net = dlib.LinearNetwork(C, G, G_amb, V)
     Q = inputs["Q_reheat"] + inputs["Q_gain"] + 70.0 * inputs["occupants"][:, None] / V
-    return net.simulate(inputs["T_out"], inputs["g"], inputs["T_supply"], Q, T0)
+    return net, dict(T_out=inputs["T_out"], g=inputs["g"], T_supply=inputs["T_supply"], Q=Q)
+
+
+def simulate(geo, inputs, theta, p, T0):
+    net, f = network(geo, inputs, theta, p)
+    return net.simulate(f["T_out"], f["g"], f["T_supply"], f["Q"], T0)

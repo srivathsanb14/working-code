@@ -1,0 +1,152 @@
+{
+ "building_train_7__phoenix_3__all_off": {
+  "status": "ok",
+  "split": "val",
+  "flow_max_rel_err": 0.0
+ },
+ "building_train_7__phoenix_3__bang_bang": {
+  "status": "ok",
+  "split": "val",
+  "flow_max_rel_err": 0.0
+ },
+ "building_train_7__phoenix_3__fixed_setpoint": {
+  "status": "ok",
+  "split": "val",
+  "flow_max_rel_err": 0.00013910022697660637
+ },
+ "building_train_7__phoenix_3__pid": {
+  "status": "ok",
+  "split": "val",
+  "flow_max_rel_err": 0.00011515732706987115
+ },
+ "building_train_7__phoenix_3__pid_water": {
+  "status": "ok",
+  "split": "val",
+  "flow_max_rel_err": 0.00011515732706987115
+ },
+ "building_train_1__fairbanks_1__all_off": {
+  "status": "ok",
+  "split": "test",
+  "flow_max_rel_err": 0.0
+ },
+ "building_train_1__fairbanks_1__bang_bang": {
+  "status": "ok",
+  "split": "test",
+  "flow_max_rel_err": 0.0
+ },
+ "building_train_1__fairbanks_1__fixed_setpoint": {
+  "status": "ok",
+  "split": "test",
+  "flow_max_rel_err": 0.0001122838081177775
+ },
+ "building_train_1__fairbanks_1__pid": {
+  "status": "ok",
+  "split": "test",
+  "flow_max_rel_err": 0.00012664396769934293
+ },
+ "building_train_1__fairbanks_1__pid_water": {
+  "status": "ok",
+  "split": "test",
+  "flow_max_rel_err": 8.928367028766937e-05
+ },
+ "building_train_4__denver_2__all_off": {
+  "status": "ok",
+  "split": "train",
+  "flow_max_rel_err": 0.0
+ },
+ "building_train_4__denver_2__bang_bang": {
+  "status": "ok",
+  "split": "train",
+  "flow_max_rel_err": 0.0
+ },
+ "building_train_4__denver_2__fixed_setpoint": {
+  "status": "ok",
+  "split": "train",
+  "flow_max_rel_err": 0.00013328725510323964
+ },
+ "building_train_4__denver_2__pid": {
+  "status": "ok",
+  "split": "train",
+  "flow_max_rel_err": 0.00010198789078608468
+ },
+ "building_train_4__denver_2__pid_water": {
+  "status": "ok",
+  "split": "train",
+  "flow_max_rel_err": 0.00013130863784403842
+ },
+ "building_train_2__atlanta_3__all_off": {
+  "status": "ok",
+  "split": "train",
+  "flow_max_rel_err": 0.0
+ },
+ "building_train_2__atlanta_3__bang_bang": {
+  "status": "ok",
+  "split": "train",
+  "flow_max_rel_err": 0.0
+ },
+ "building_train_2__atlanta_3__fixed_setpoint": {
+  "status": "ok",
+  "split": "train",
+  "flow_max_rel_err": 0.00012289915630536594
+ },
+ "building_train_2__atlanta_3__pid": {
+  "status": "ok",
+  "split": "train",
+  "flow_max_rel_err": 0.00014188505908765086
+ },
+ "building_train_2__atlanta_3__pid_water": {
+  "status": "ok",
+  "split": "train",
+  "flow_max_rel_err": 0.00013528606785335966
+ },
+ "building_train_8__atlanta_1__all_off": {
+  "status": "ok",
+  "split": "train",
+  "flow_max_rel_err": 0.0
+ },
+ "building_train_8__atlanta_1__bang_bang": {
+  "status": "ok",
+  "split": "train",
+  "flow_max_rel_err": 0.0
+ },
+ "building_train_8__atlanta_1__fixed_setpoint": {
+  "status": "ok",
+  "split": "train",
+  "flow_max_rel_err": 0.00014292865749065598
+ },
+ "building_train_8__atlanta_1__pid": {
+  "status": "ok",
+  "split": "train",
+  "flow_max_rel_err": 6.454575071410378e-05
+ },
+ "building_train_8__atlanta_1__pid_water": {
+  "status": "ok",
+  "split": "train",
+  "flow_max_rel_err": 0.00016061432376446666
+ },
+ "building_train_8__fairbanks_8__all_off": {
+  "status": "ok",
+  "split": "train",
+  "flow_max_rel_err": 0.0
+ },
+ "building_train_8__fairbanks_8__bang_bang": {
+  "status": "ok",
+  "split": "train",
+  "flow_max_rel_err": 0.0
+ },
+ "building_train_8__fairbanks_8__fixed_setpoint": {
+  "status": "ok",
+  "split": "train",
+  "flow_max_rel_err": 0.0001350529090084608
+ },
+ "building_train_8__fairbanks_8__pid": {
+  "status": "ok",
+  "split": "train",
+  "flow_max_rel_err": 0.00011365384984900464
+ },
+ "building_train_8__fairbanks_8__pid_water": {
+  "status": "ok",
+  "split": "train",
+  "flow_max_rel_err": 0.00012134728634041541
+ }
+}

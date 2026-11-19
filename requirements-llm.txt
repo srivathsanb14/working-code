@@ -1,0 +1,2 @@
+# Only for `run_discovery.py --proposer claude`.
+anthropic
