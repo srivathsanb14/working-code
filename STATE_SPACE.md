@@ -759,7 +759,7 @@ Against the solver's own inputs these are exact for `T_out`, `g` and `T_sa`. The
 2. **Three global spreading constants** (`c ≈ 0.004`, `a ≈ 0.59`, `a_f ≈ 1.13`), fitted once, offline. The targets are the exact steady-state room conductance matrices of the grid: one sparse solve per building and material vector, with no simulation. So training data for the coefficient formulas is unlimited and noise-free (`code/room_coeff_targets.py`, `code/room_spread_fit.py`).
 3. **Occupancy split per zone.** It is not observable. It is treated as process noise for the Kalman filter.
 
-This changes the job of symbolic regression (§16.2, §17.2). It no longer has to discover the room equation from noisy rollouts. Its jobs become:
+This changes the job of symbolic regression (§16.2, §17.2). It no longer has to discover the room equation from noisy rollouts. Its jobs, run through the loop of §17.7, become:
 - **(a)** refine the coefficient formulas against exact targets, for example the spreading law, or a geometry term for junction and corner effects;
 - **(b)** find the structure of the remaining slow residual (§14.7);
 - **(c)** verify the algebraic rows of §13.3.
@@ -1023,6 +1023,82 @@ One-step accuracy is misleading, since nearly any model predicts `T_{t+1} ≈ T_
 - **Reproducibility.** Winners must deliver training and inference code (Rules §2.8), so data-generation scripts, seeds, discovery configuration and the notebook builder are versioned together; trajectories are regenerable from seeds, not stored.
 - **Fallbacks.** The notebook includes the PID-like fallback of §18.3 in the same file, so a bad model cannot take the policy off the leaderboard.
 
+### 17.7 The LLM discovery loop
+
+`code/discovery/` implements symbolic discovery with an LLM as the proposer. The LLM writes small simulation programs, numerical optimization fits every constant, and a held-out simulation decides. The LLM only proposes structure; numbers and verdicts never come from it. No LLM is called unless `--proposer claude` is chosen. Run it from `working-code/` with `.venv/bin/python code/run_discovery.py`; usage is in `code/discovery/loop.py`.
+
+```
+ rollouts (room_model_data.py) ──► episodes: inference-time inputs + geometry + measured T
+                                          │
+  proposer ──► candidate programs ──► contract check ─► physics checks ─► nested fit ─► held-out score ─► diagnostics
+     ▲            (LLM, inbox,                                  (PARAMS global, THETA per scenario)        │
+     │             seeds)                                                                                  │
+     └──────────── prompt: best programs + their diagnostics + recent failures ◄───────────────────────────┘
+```
+
+**What goes into the LLM** (`code/discovery/prompts.py`; the exact text of every generation is saved as `prompts/prompt_genNNN.md`):
+
+| Part | Content | Changes per generation? |
+|---|---|---|
+| Task and rules | Discover room dynamics as interpretable programs. In blind mode there is no simulator source and there are no config values. Coefficients must come from geometry and a few constants, never per-room fits | no (cached system prompt) |
+| Data dictionary | The arrays a candidate receives, with units. **Geometry** from the floor-plan arrays: area, facade segments, shared-wall cells and door cells per pair, doors, bounding box, AHU, floor. **Inputs** rebuilt from observations: `T_out`, air-stream conductance `g`, `T_supply`, `Q_reheat`, `Q_gain`, building occupants, comfort flag, time of day and week. **Target**: measured room temperatures from a uniform 294 K start | no |
+| Contract | `PARAMS` (global constants), `THETA` (per-building constants), `simulate(geo, inputs, theta, p, T0) -> (n, V)`; allowed imports; the `dlib.LinearNetwork` helper (implicit RC network solver) | no |
+| Scoring rules | The checks, the nested fit, the held-out day-1/days-2–3 protocol and the complexity price | no |
+| Physics notes | A short summary of the §14 audit | only with `--informed` |
+| Elites | The best *k* programs so far: full source, score, held-out and train RMSE, and **diagnostics** (error by facade exposure, door count and room size; worst rooms; HVAC on/off; time of day; growth over days; spread of fitted θ across buildings) | yes |
+| Failures | Recently rejected or crashed programs with the reason (failed check, exception, timeout) | yes |
+| Request | Write *n* new candidates, at least *m* of them structurally new | yes |
+
+**What comes out of the LLM.** Structured JSON (`RESPONSE_SCHEMA`):
+
+`{"candidates": [{"name", "hypothesis", "code"}]}`
+
+Each `code` is a complete Python module:
+- a table of global constants with bounds;
+- a table of per-building constants with bounds;
+- a `simulate` function that builds the model from geometry and returns predicted room temperatures.
+
+That module **is** the discovered dynamics equation. It is directly deployable, because it reads only inference-time quantities.
+
+**What the loop outputs** (`outputs/discovery/<run>/`):
+- `database.jsonl`: one record per candidate with its status, score, fitted constants, held-out errors and diagnostics.
+- `candidates/*.py`: every program evaluated.
+- `best.py`: the winning equation.
+- `summary.json`: the leaderboard, the best program's fitted global constants, its per-building θ, and its test score with `--test`.
+
+**How a candidate is judged** (`code/discovery/evaluate.py`):
+1. **Contract check:** allowed imports only, bounded constants, at most 16 constants in total.
+2. **Physics checks**, at the initial values, the lower bounds and the upper bounds:
+   - no drift at equilibrium;
+   - bounded cooling toward a colder outside;
+   - a room warms when heated, and its neighbours never cool;
+   - a strong air stream is stable.
+3. **Fit:** global constants and one θ per training scenario, jointly, by sparse-Jacobian least squares on 3-day open-loop error.
+4. **Held out:** with the global constants frozen, θ is fitted on **day 1 only**, then scored on **days 2–3**, plus a small price per AST node. Candidates run in a child process with a timeout. The contract check is a filter, not a security boundary, so run untrusted code in a container.
+
+Proposers:
+- `dry`: write the prompt only.
+- `dir`: candidates dropped into `inbox/` by any LLM or person.
+- `claude`: Claude Opus 5.5, adaptive thinking, structured output, cached system prompt, refusal fallbacks.
+
+Seeds (generation 0):
+- `seed_rc_one_node`: the naive baseline.
+- `seed_slab_wall_network`: the §14 structure written in geometry terms.
+
+`--seeds naive` keeps blind runs free of the audited structure.
+
+**Demo run [X]** (`outputs/discovery/demo/`): 18 rollouts; train `train_8`, `train_2`, `train_4`; validate on `train_7` (a held-out building and the only Phoenix scenario); test on `train_1`.
+
+| Candidate | Held-out days 2–3 RMSE | Train RMSE | Note |
+|---|---|---|---|
+| `seed_slab_wall_network` | **0.230 K** | 0.316 K | test (`train_1`, Fairbanks) 0.654 K |
+| ablation without the spreading resistance | 0.338 K | 0.591 K | the loop recovers that spreading matters |
+| `seed_rc_one_node` | 1.667 K | 1.408 K | naive baseline |
+| explicit-Euler single node | rejected | — | unstable at the lower capacity bound; the reason is fed back |
+
+A seed evaluation takes 10–80 s on a laptop, so a generation of six candidates takes a few minutes. The cost grows with the number of training rollouts. To scale up, generate rollouts with `code/room_model_data.py`: more buildings from `run_floor_generator`, more stations, all three behaviour policies. Then point `--data` and `--split` at them, holding out whole buildings *and* whole stations.
+
+
 ---
 
 ## 18. Stage two: wrapping the model in a controller
@@ -1212,6 +1288,7 @@ Items 1, 2 and 5 can be closed with the repo's existing commands; Appendix B is 
 | `outputs/roomdata_<building>_<weather>_<policy>.npz` | 3-day rollouts with the solver's exact per-room inputs logged beside the observations (§14.5) |
 | `outputs/room_model_validate.json`, `room_coeff_targets.npz`, `room_coeff_fit.json`, `room_spread_fit.json`, `room_model_eval.json`, `room_model_identify.json`, `room_model_forecast.json` | results of §14.1 and §14.5 |
 | `code/` | the scripts listed in §20.1 |
+| `code/discovery/`, `code/run_discovery.py`; `outputs/discovery/<run>/` | the LLM discovery loop and its runs (§17.7) |
 
 The scripts run from the starter-kit root (the gin configs use relative paths) with the environment in `.venv/` (Python 3.12, dependencies pinned in the starter kit's `pyproject.toml`), for example `cd smart-buildings-starter-kit && PYTHONDONTWRITEBYTECODE=1 ../working-code/.venv/bin/python ../working-code/code/rollout_checks.py 600`.
 

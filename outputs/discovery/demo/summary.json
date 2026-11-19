@@ -1,0 +1,54 @@
+{
+ "n_candidates": 4,
+ "n_ok": 3,
+ "best": {
+  "id": "g000_0001",
+  "name": "seed_slab_wall_network",
+  "score": 0.320989283131246,
+  "val_rmse_days23_mean": 0.23038928313124596,
+  "train_rmse_mean": 0.31607974552453993,
+  "complexity": 906,
+  "params": {
+   "h_slab": 6.188502307752966,
+   "a_spread": 1.6577262837721634
+  },
+  "val_theta": {
+   "building_train_7/phoenix_3": {
+    "k_ext": 0.6642506042769281,
+    "h_film": 12.599679343430383,
+    "rc_ext": 243796.3117183265,
+    "k_iw": 0.4310458641014525,
+    "rc_iw": 125752.70747665204,
+    "rc_mass": 38746.68494188305
+   }
+  },
+  "val_rmse_days23": {
+   "building_train_7_phoenix_3_alloff": 0.2889506637352282,
+   "building_train_7_phoenix_3_pidwater": 0.19881238010070948,
+   "building_train_7_phoenix_3_random": 0.20340480555780016
+  }
+ },
+ "leaderboard": [
+  {
+   "id": "g000_0001",
+   "name": "seed_slab_wall_network",
+   "score": 0.320989283131246,
+   "val_rmse_days23_mean": 0.23038928313124596,
+   "complexity": 906
+  },
+  {
+   "id": "g001_0003",
+   "name": "cand_no_spread",
+   "score": 0.4289118268817656,
+   "val_rmse_days23_mean": 0.3383118268817656,
+   "complexity": 906
+  },
+  {
+   "id": "g000_0000",
+   "name": "seed_rc_one_node",
+   "score": 1.6819125879893027,
+   "val_rmse_days23_mean": 1.6669125879893028,
+   "complexity": 150
+  }
+ ]
+}
