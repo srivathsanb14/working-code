@@ -1124,6 +1124,18 @@ With `test_model.py`, the network seed's filtered forecasts on the held-out buil
 
 Gate G2 (under 0.5 K at 3 h) holds on this building. An earlier pass that took the return-air temperature one step too old scored 0.37 K. An ablation run on that earlier data recovered that the spreading resistance matters (0.51 K without it), and an unstable explicit-Euler candidate was rejected at its lower capacity bound with the reason fed back.
 
+**Pilot of the full workflow [X]** (`outputs/discovery/pilot/`, `outputs/test/pilot_best_test/`). Six generated buildings (45–120 rooms, 5–12 AHUs; two more seeds were rejected by the generator) × their strips × 5 policies × 864 steps make 140 runs, made with `generate_data.py` (38 min on 8 cores). The audit found no hard failures and all 140 replays were exact. Train: 3 buildings on 4 stations. Val: 2 buildings on Phoenix. Test: 1 building on Minneapolis (unseen building, unseen station). The network seed scores 0.18 K on val after day 1, against 1.15 K for the naive seed. On test:
+
+| Measure | Model | Persistence |
+|---|---|---|
+| Open loop, day 1 | 0.15 K | — |
+| Open loop, days 2–3 | 0.54 K | — |
+| Filtered forecast, 1 h | 0.13 K | 1.20 K |
+| Filtered forecast, 3 h | 0.18 K | 1.30 K |
+| Filtered forecast, 6 h | 0.26 K | 1.74 K |
+
+The worst policy is `bang_bang`, at 0.30 K for the 3-hour forecast.
+
 **The full workflow on a fresh computer** is in `docs/RUNBOOK.md`:
 1. `setup_check.py`;
 2. `generate_data.py`, which drives the kit's three tools to the A.2 settings and writes `plan.json` and `split.json`;

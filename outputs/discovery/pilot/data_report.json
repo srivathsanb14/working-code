@@ -1,0 +1,702 @@
+{
+ "building_0501__atlanta_4__all_off": {
+  "status": "ok",
+  "split": "train",
+  "flow_max_rel_err": 0.0
+ },
+ "building_0501__atlanta_4__bang_bang": {
+  "status": "ok",
+  "split": "train",
+  "flow_max_rel_err": 0.0
+ },
+ "building_0501__atlanta_4__fixed_setpoint": {
+  "status": "ok",
+  "split": "train",
+  "flow_max_rel_err": 9.636972805597408e-05
+ },
+ "building_0501__atlanta_4__pid": {
+  "status": "ok",
+  "split": "train",
+  "flow_max_rel_err": 9.377799674456561e-05
+ },
+ "building_0501__atlanta_4__pid_water": {
+  "status": "ok",
+  "split": "train",
+  "flow_max_rel_err": 7.489957717004761e-05
+ },
+ "building_0501__fairbanks_6__all_off": {
+  "status": "ok",
+  "split": "train",
+  "flow_max_rel_err": 0.0
+ },
+ "building_0501__fairbanks_6__bang_bang": {
+  "status": "ok",
+  "split": "train",
+  "flow_max_rel_err": 0.0
+ },
+ "building_0501__fairbanks_6__fixed_setpoint": {
+  "status": "ok",
+  "split": "train",
+  "flow_max_rel_err": 9.456477496650954e-05
+ },
+ "building_0501__fairbanks_6__pid": {
+  "status": "ok",
+  "split": "train",
+  "flow_max_rel_err": 8.949697875914975e-05
+ },
+ "building_0501__fairbanks_6__pid_water": {
+  "status": "ok",
+  "split": "train",
+  "flow_max_rel_err": 6.493958584214958e-05
+ },
+ "building_0501__denver_1__all_off": {
+  "status": "ok",
+  "split": "train",
+  "flow_max_rel_err": 0.0
+ },
+ "building_0501__denver_1__bang_bang": {
+  "status": "ok",
+  "split": "train",
+  "flow_max_rel_err": 0.0
+ },
+ "building_0501__denver_1__fixed_setpoint": {
+  "status": "ok",
+  "split": "train",
+  "flow_max_rel_err": 9.083744793046434e-05
+ },
+ "building_0501__denver_1__pid": {
+  "status": "ok",
+  "split": "train",
+  "flow_max_rel_err": 9.076174672310415e-05
+ },
+ "building_0501__denver_1__pid_water": {
+  "status": "ok",
+  "split": "train",
+  "flow_max_rel_err": 9.725027757350984e-06
+ },
+ "building_0500__fairbanks_5__all_off": {
+  "status": "ok",
+  "split": "train",
+  "flow_max_rel_err": 0.0
+ },
+ "building_0500__fairbanks_5__bang_bang": {
+  "status": "ok",
+  "split": "train",
+  "flow_max_rel_err": 0.0
+ },
+ "building_0500__fairbanks_5__fixed_setpoint": {
+  "status": "ok",
+  "split": "train",
+  "flow_max_rel_err": 8.91717263669089e-05
+ },
+ "building_0500__fairbanks_5__pid": {
+  "status": "ok",
+  "split": "train",
+  "flow_max_rel_err": 7.452190714824583e-05
+ },
+ "building_0500__fairbanks_5__pid_water": {
+  "status": "ok",
+  "split": "train",
+  "flow_max_rel_err": 6.622672624476779e-05
+ },
+ "building_0500__denver_8__all_off": {
+  "status": "ok",
+  "split": "train",
+  "flow_max_rel_err": 0.0
+ },
+ "building_0500__denver_8__bang_bang": {
+  "status": "ok",
+  "split": "train",
+  "flow_max_rel_err": 0.0
+ },
+ "building_0500__denver_8__fixed_setpoint": {
+  "status": "ok",
+  "split": "train",
+  "flow_max_rel_err": 0.0001357461310661842
+ },
+ "building_0500__denver_8__pid": {
+  "status": "ok",
+  "split": "train",
+  "flow_max_rel_err": 3.996311681421486e-05
+ },
+ "building_0500__denver_8__pid_water": {
+  "status": "ok",
+  "split": "train",
+  "flow_max_rel_err": 5.01178859303385e-05
+ },
+ "building_0500__atlanta_3__all_off": {
+  "status": "ok",
+  "split": "train",
+  "flow_max_rel_err": 0.0
+ },
+ "building_0500__atlanta_3__bang_bang": {
+  "status": "ok",
+  "split": "train",
+  "flow_max_rel_err": 0.0
+ },
+ "building_0500__atlanta_3__fixed_setpoint": {
+  "status": "ok",
+  "split": "train",
+  "flow_max_rel_err": 9.74895454943463e-05
+ },
+ "building_0500__atlanta_3__pid": {
+  "status": "ok",
+  "split": "train",
+  "flow_max_rel_err": 0.00014158851586314007
+ },
+ "building_0500__atlanta_3__pid_water": {
+  "status": "ok",
+  "split": "train",
+  "flow_max_rel_err": 0.00010801928083427456
+ },
+ "building_0500__phoenix_6__all_off": {
+  "status": "ok",
+  "split": null,
+  "flow_max_rel_err": 0.0
+ },
+ "building_0500__phoenix_6__bang_bang": {
+  "status": "ok",
+  "split": null,
+  "flow_max_rel_err": 0.0
+ },
+ "building_0500__phoenix_6__fixed_setpoint": {
+  "status": "ok",
+  "split": null,
+  "flow_max_rel_err": 0.00013643719667722284
+ },
+ "building_0500__phoenix_6__pid": {
+  "status": "ok",
+  "split": null,
+  "flow_max_rel_err": 8.147635162430798e-05
+ },
+ "building_0500__phoenix_6__pid_water": {
+  "status": "ok",
+  "split": null,
+  "flow_max_rel_err": 7.857422344743571e-05
+ },
+ "building_0500__singapore_1__all_off": {
+  "status": "ok",
+  "split": "train",
+  "flow_max_rel_err": 0.0
+ },
+ "building_0500__singapore_1__bang_bang": {
+  "status": "ok",
+  "split": "train",
+  "flow_max_rel_err": 0.0
+ },
+ "building_0500__singapore_1__fixed_setpoint": {
+  "status": "ok",
+  "split": "train",
+  "flow_max_rel_err": 9.041648496315021e-05
+ },
+ "building_0500__singapore_1__pid": {
+  "status": "ok",
+  "split": "train",
+  "flow_max_rel_err": 0.00010122737111099487
+ },
+ "building_0500__singapore_1__pid_water": {
+  "status": "ok",
+  "split": "train",
+  "flow_max_rel_err": 0.00010122737111099487
+ },
+ "building_0502__atlanta_5__all_off": {
+  "status": "ok",
+  "split": "train",
+  "flow_max_rel_err": 0.0
+ },
+ "building_0502__atlanta_5__bang_bang": {
+  "status": "ok",
+  "split": "train",
+  "flow_max_rel_err": 0.0
+ },
+ "building_0502__atlanta_5__fixed_setpoint": {
+  "status": "ok",
+  "split": "train",
+  "flow_max_rel_err": 9.562959204519266e-05
+ },
+ "building_0502__atlanta_5__pid": {
+  "status": "ok",
+  "split": "train",
+  "flow_max_rel_err": 9.562959204519266e-05
+ },
+ "building_0502__atlanta_5__pid_water": {
+  "status": "ok",
+  "split": "train",
+  "flow_max_rel_err": 9.562959204519266e-05
+ },
+ "building_0501__phoenix_7__all_off": {
+  "status": "ok",
+  "split": null,
+  "flow_max_rel_err": 0.0
+ },
+ "building_0501__phoenix_7__bang_bang": {
+  "status": "ok",
+  "split": null,
+  "flow_max_rel_err": 0.0
+ },
+ "building_0501__phoenix_7__fixed_setpoint": {
+  "status": "ok",
+  "split": null,
+  "flow_max_rel_err": 6.290517022205345e-05
+ },
+ "building_0501__phoenix_7__pid": {
+  "status": "ok",
+  "split": null,
+  "flow_max_rel_err": 0.0001554849332508184
+ },
+ "building_0501__phoenix_7__pid_water": {
+  "status": "ok",
+  "split": null,
+  "flow_max_rel_err": 0.0001554849332508184
+ },
+ "building_0501__singapore_2__all_off": {
+  "status": "ok",
+  "split": "train",
+  "flow_max_rel_err": 0.0
+ },
+ "building_0501__singapore_2__bang_bang": {
+  "status": "ok",
+  "split": "train",
+  "flow_max_rel_err": 0.0
+ },
+ "building_0501__singapore_2__fixed_setpoint": {
+  "status": "ok",
+  "split": "train",
+  "flow_max_rel_err": 8.865617483219721e-05
+ },
+ "building_0501__singapore_2__pid": {
+  "status": "ok",
+  "split": "train",
+  "flow_max_rel_err": 0.00014570409412860866
+ },
+ "building_0501__singapore_2__pid_water": {
+  "status": "ok",
+  "split": "train",
+  "flow_max_rel_err": 0.00014570409412860866
+ },
+ "building_0502__denver_2__all_off": {
+  "status": "ok",
+  "split": "train",
+  "flow_max_rel_err": 0.0
+ },
+ "building_0502__denver_2__bang_bang": {
+  "status": "ok",
+  "split": "train",
+  "flow_max_rel_err": 0.0
+ },
+ "building_0502__denver_2__fixed_setpoint": {
+  "status": "ok",
+  "split": "train",
+  "flow_max_rel_err": 7.538369162100684e-05
+ },
+ "building_0502__denver_2__pid": {
+  "status": "ok",
+  "split": "train",
+  "flow_max_rel_err": 5.2787887625437494e-05
+ },
+ "building_0502__denver_2__pid_water": {
+  "status": "ok",
+  "split": "train",
+  "flow_max_rel_err": 3.356830592903424e-05
+ },
+ "building_0502__fairbanks_7__all_off": {
+  "status": "ok",
+  "split": "train",
+  "flow_max_rel_err": 0.0
+ },
+ "building_0502__fairbanks_7__bang_bang": {
+  "status": "ok",
+  "split": "train",
+  "flow_max_rel_err": 0.0
+ },
+ "building_0502__fairbanks_7__fixed_setpoint": {
+  "status": "ok",
+  "split": "train",
+  "flow_max_rel_err": 7.250894584249091e-06
+ },
+ "building_0502__fairbanks_7__pid": {
+  "status": "ok",
+  "split": "train",
+  "flow_max_rel_err": 8.644621730087848e-05
+ },
+ "building_0502__fairbanks_7__pid_water": {
+  "status": "ok",
+  "split": "train",
+  "flow_max_rel_err": 7.604097212975899e-05
+ },
+ "building_0502__phoenix_8__all_off": {
+  "status": "ok",
+  "split": null,
+  "flow_max_rel_err": 0.0
+ },
+ "building_0502__phoenix_8__bang_bang": {
+  "status": "ok",
+  "split": null,
+  "flow_max_rel_err": 0.0
+ },
+ "building_0502__phoenix_8__fixed_setpoint": {
+  "status": "ok",
+  "split": null,
+  "flow_max_rel_err": 5.2173454133143156e-05
+ },
+ "building_0502__phoenix_8__pid": {
+  "status": "ok",
+  "split": null,
+  "flow_max_rel_err": 8.641959809996546e-05
+ },
+ "building_0502__phoenix_8__pid_water": {
+  "status": "ok",
+  "split": null,
+  "flow_max_rel_err": 9.610590934769014e-05
+ },
+ "building_0502__singapore_3__all_off": {
+  "status": "ok",
+  "split": "train",
+  "flow_max_rel_err": 0.0
+ },
+ "building_0502__singapore_3__bang_bang": {
+  "status": "ok",
+  "split": "train",
+  "flow_max_rel_err": 0.0
+ },
+ "building_0502__singapore_3__fixed_setpoint": {
+  "status": "ok",
+  "split": "train",
+  "flow_max_rel_err": 7.496350932717848e-05
+ },
+ "building_0502__singapore_3__pid": {
+  "status": "ok",
+  "split": "train",
+  "flow_max_rel_err": 7.440924555049212e-05
+ },
+ "building_0502__singapore_3__pid_water": {
+  "status": "ok",
+  "split": "train",
+  "flow_max_rel_err": 7.440924555049212e-05
+ },
+ "building_0700__atlanta_3__all_off": {
+  "status": "ok",
+  "split": null,
+  "flow_max_rel_err": 0.0
+ },
+ "building_0700__atlanta_3__bang_bang": {
+  "status": "ok",
+  "split": null,
+  "flow_max_rel_err": 0.0
+ },
+ "building_0700__atlanta_3__fixed_setpoint": {
+  "status": "ok",
+  "split": null,
+  "flow_max_rel_err": 7.494799904477521e-05
+ },
+ "building_0700__atlanta_3__pid": {
+  "status": "ok",
+  "split": null,
+  "flow_max_rel_err": 3.479400829952938e-05
+ },
+ "building_0700__atlanta_3__pid_water": {
+  "status": "ok",
+  "split": null,
+  "flow_max_rel_err": 7.841974309612028e-05
+ },
+ "building_0700__denver_8__all_off": {
+  "status": "ok",
+  "split": null,
+  "flow_max_rel_err": 0.0
+ },
+ "building_0700__denver_8__bang_bang": {
+  "status": "ok",
+  "split": null,
+  "flow_max_rel_err": 0.0
+ },
+ "building_0700__denver_8__fixed_setpoint": {
+  "status": "ok",
+  "split": null,
+  "flow_max_rel_err": 5.735099139979193e-05
+ },
+ "building_0700__denver_8__pid": {
+  "status": "ok",
+  "split": null,
+  "flow_max_rel_err": 5.999217701991963e-06
+ },
+ "building_0700__denver_8__pid_water": {
+  "status": "ok",
+  "split": null,
+  "flow_max_rel_err": 6.086372421447626e-06
+ },
+ "building_0700__fairbanks_5__all_off": {
+  "status": "ok",
+  "split": null,
+  "flow_max_rel_err": 0.0
+ },
+ "building_0700__fairbanks_5__bang_bang": {
+  "status": "ok",
+  "split": null,
+  "flow_max_rel_err": 0.0
+ },
+ "building_0700__fairbanks_5__fixed_setpoint": {
+  "status": "ok",
+  "split": null,
+  "flow_max_rel_err": 6.968010608974576e-05
+ },
+ "building_0700__fairbanks_5__pid": {
+  "status": "ok",
+  "split": null,
+  "flow_max_rel_err": 5.4497820054639154e-05
+ },
+ "building_0700__fairbanks_5__pid_water": {
+  "status": "ok",
+  "split": null,
+  "flow_max_rel_err": 5.4497820054639154e-05
+ },
+ "building_0700__phoenix_6__all_off": {
+  "status": "ok",
+  "split": "val",
+  "flow_max_rel_err": 0.0
+ },
+ "building_0700__phoenix_6__bang_bang": {
+  "status": "ok",
+  "split": "val",
+  "flow_max_rel_err": 0.0
+ },
+ "building_0700__phoenix_6__fixed_setpoint": {
+  "status": "ok",
+  "split": "val",
+  "flow_max_rel_err": 4.430280086826888e-05
+ },
+ "building_0700__phoenix_6__pid": {
+  "status": "ok",
+  "split": "val",
+  "flow_max_rel_err": 8.609322299095406e-05
+ },
+ "building_0700__phoenix_6__pid_water": {
+  "status": "ok",
+  "split": "val",
+  "flow_max_rel_err": 8.609322299095406e-05
+ },
+ "building_0700__singapore_1__all_off": {
+  "status": "ok",
+  "split": null,
+  "flow_max_rel_err": 0.0
+ },
+ "building_0700__singapore_1__bang_bang": {
+  "status": "ok",
+  "split": null,
+  "flow_max_rel_err": 0.0
+ },
+ "building_0700__singapore_1__fixed_setpoint": {
+  "status": "ok",
+  "split": null,
+  "flow_max_rel_err": 5.1531966684549586e-05
+ },
+ "building_0700__singapore_1__pid": {
+  "status": "ok",
+  "split": null,
+  "flow_max_rel_err": 0.00010345675808857966
+ },
+ "building_0700__singapore_1__pid_water": {
+  "status": "ok",
+  "split": null,
+  "flow_max_rel_err": 0.00010345675808857966
+ },
+ "building_0701__atlanta_4__all_off": {
+  "status": "ok",
+  "split": null,
+  "flow_max_rel_err": 0.0
+ },
+ "building_0701__atlanta_4__bang_bang": {
+  "status": "ok",
+  "split": null,
+  "flow_max_rel_err": 0.0
+ },
+ "building_0701__atlanta_4__fixed_setpoint": {
+  "status": "ok",
+  "split": null,
+  "flow_max_rel_err": 0.00010172384161457395
+ },
+ "building_0701__atlanta_4__pid": {
+  "status": "ok",
+  "split": null,
+  "flow_max_rel_err": 7.055115946704835e-05
+ },
+ "building_0701__atlanta_4__pid_water": {
+  "status": "ok",
+  "split": null,
+  "flow_max_rel_err": 7.055115946704835e-05
+ },
+ "building_0701__denver_1__all_off": {
+  "status": "ok",
+  "split": null,
+  "flow_max_rel_err": 0.0
+ },
+ "building_0701__denver_1__bang_bang": {
+  "status": "ok",
+  "split": null,
+  "flow_max_rel_err": 0.0
+ },
+ "building_0701__denver_1__fixed_setpoint": {
+  "status": "ok",
+  "split": null,
+  "flow_max_rel_err": 5.004048233778154e-05
+ },
+ "building_0701__denver_1__pid": {
+  "status": "ok",
+  "split": null,
+  "flow_max_rel_err": 8.859221769722337e-05
+ },
+ "building_0701__denver_1__pid_water": {
+  "status": "ok",
+  "split": null,
+  "flow_max_rel_err": 5.277155707841437e-05
+ },
+ "building_0701__fairbanks_6__all_off": {
+  "status": "ok",
+  "split": null,
+  "flow_max_rel_err": 0.0
+ },
+ "building_0701__fairbanks_6__bang_bang": {
+  "status": "ok",
+  "split": null,
+  "flow_max_rel_err": 0.0
+ },
+ "building_0701__fairbanks_6__fixed_setpoint": {
+  "status": "ok",
+  "split": null,
+  "flow_max_rel_err": 7.574128414356255e-05
+ },
+ "building_0701__fairbanks_6__pid": {
+  "status": "ok",
+  "split": null,
+  "flow_max_rel_err": 0.00012338576357635267
+ },
+ "building_0701__fairbanks_6__pid_water": {
+  "status": "ok",
+  "split": null,
+  "flow_max_rel_err": 5.502297746758793e-05
+ },
+ "building_0701__phoenix_7__all_off": {
+  "status": "ok",
+  "split": "val",
+  "flow_max_rel_err": 0.0
+ },
+ "building_0701__phoenix_7__bang_bang": {
+  "status": "ok",
+  "split": "val",
+  "flow_max_rel_err": 0.0
+ },
+ "building_0701__phoenix_7__fixed_setpoint": {
+  "status": "ok",
+  "split": "val",
+  "flow_max_rel_err": 0.00015310000873365685
+ },
+ "building_0701__phoenix_7__pid": {
+  "status": "ok",
+  "split": "val",
+  "flow_max_rel_err": 7.883010268231484e-05
+ },
+ "building_0701__phoenix_7__pid_water": {
+  "status": "ok",
+  "split": "val",
+  "flow_max_rel_err": 7.883010268231484e-05
+ },
+ "building_0701__singapore_2__all_off": {
+  "status": "ok",
+  "split": null,
+  "flow_max_rel_err": 0.0
+ },
+ "building_0701__singapore_2__bang_bang": {
+  "status": "ok",
+  "split": null,
+  "flow_max_rel_err": 0.0
+ },
+ "building_0701__singapore_2__fixed_setpoint": {
+  "status": "ok",
+  "split": null,
+  "flow_max_rel_err": 7.718277097637231e-05
+ },
+ "building_0701__singapore_2__pid": {
+  "status": "ok",
+  "split": null,
+  "flow_max_rel_err": 0.00010873669563592515
+ },
+ "building_0701__singapore_2__pid_water": {
+  "status": "ok",
+  "split": null,
+  "flow_max_rel_err": 9.760500262122486e-05
+ },
+ "building_0801__minneapolis_2__all_off": {
+  "status": "ok",
+  "split": "test",
+  "flow_max_rel_err": 0.0
+ },
+ "building_0801__minneapolis_2__bang_bang": {
+  "status": "ok",
+  "split": "test",
+  "flow_max_rel_err": 0.0
+ },
+ "building_0801__minneapolis_2__fixed_setpoint": {
+  "status": "ok",
+  "split": "test",
+  "flow_max_rel_err": 9.570139606514133e-05
+ },
+ "building_0801__minneapolis_2__pid": {
+  "status": "ok",
+  "split": "test",
+  "flow_max_rel_err": 4.738004980542748e-05
+ },
+ "building_0801__minneapolis_2__pid_water": {
+  "status": "ok",
+  "split": "test",
+  "flow_max_rel_err": 8.893171044281565e-05
+ },
+ "building_0801__minneapolis_5__all_off": {
+  "status": "ok",
+  "split": "test",
+  "flow_max_rel_err": 0.0
+ },
+ "building_0801__minneapolis_5__bang_bang": {
+  "status": "ok",
+  "split": "test",
+  "flow_max_rel_err": 0.0
+ },
+ "building_0801__minneapolis_5__fixed_setpoint": {
+  "status": "ok",
+  "split": "test",
+  "flow_max_rel_err": 0.00011142854710913956
+ },
+ "building_0801__minneapolis_5__pid": {
+  "status": "ok",
+  "split": "test",
+  "flow_max_rel_err": 8.31884021081816e-05
+ },
+ "building_0801__minneapolis_5__pid_water": {
+  "status": "ok",
+  "split": "test",
+  "flow_max_rel_err": 6.48526089191918e-05
+ },
+ "building_0801__minneapolis_8__all_off": {
+  "status": "ok",
+  "split": "test",
+  "flow_max_rel_err": 0.0
+ },
+ "building_0801__minneapolis_8__bang_bang": {
+  "status": "ok",
+  "split": "test",
+  "flow_max_rel_err": 0.0
+ },
+ "building_0801__minneapolis_8__fixed_setpoint": {
+  "status": "ok",
+  "split": "test",
+  "flow_max_rel_err": 4.0515567696069e-05
+ },
+ "building_0801__minneapolis_8__pid": {
+  "status": "ok",
+  "split": "test",
+  "flow_max_rel_err": 7.990998938769105e-06
+ },
+ "building_0801__minneapolis_8__pid_water": {
+  "status": "ok",
+  "split": "test",
+  "flow_max_rel_err": 3.7401897704445146e-05
+ }
+}
