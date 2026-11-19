@@ -40,7 +40,7 @@ from pathlib import Path
 
 from . import diagnostics, evaluate, prompts, proposers
 from .episodes import _load_cached
-from .starterkit_data import KIT, load_all
+from .starterkit_data import DATA, KIT, load_all
 
 ROOT = Path(__file__).resolve().parents[2]
 OUTD = ROOT / "outputs"
@@ -233,11 +233,11 @@ def run(args):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--run", default="default")
-    ap.add_argument("--dataset", type=Path, default=ROOT / "data/dataset",
+    ap.add_argument("--dataset", type=Path, default=DATA / "dataset",
                     help="dataset from code/build_dataset.py (default); its split.json is used unless --split is given")
-    ap.add_argument("--scenarios-dir", type=Path, default=KIT / "smart_buildings/training_scenarios",
+    ap.add_argument("--scenarios-dir", type=Path, default=DATA / "scenarios",
                     help="scenario folders <building>/<weather>/config.gin (run_scenario_generator --output-dir)")
-    ap.add_argument("--results-dir", type=Path, default=ROOT / "data/results",
+    ap.add_argument("--results-dir", type=Path, default=DATA / "results",
                     help="evaluate.py --results-dir: <building>/<weather>/<policy>/timeseries.csv, ahu_log.csv, reward_components.csv")
     ap.add_argument("--policies", nargs="*", default=None, help="only these policy folders (default: all found)")
     ap.add_argument("--split", help="JSON file {train: [...], val: [...], test: [...]} of glob patterns (see split_episodes, split_example.json)")

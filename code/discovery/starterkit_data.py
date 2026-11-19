@@ -32,10 +32,8 @@ import numpy as np
 import pandas as pd
 
 HERE = Path(__file__).resolve().parent
-WC = HERE.parents[1]
-KIT = Path(os.environ.get("STARTER_KIT", WC.parent / "smart-buildings-starter-kit"))
-os.environ.setdefault("NUMBA_CACHE_DIR", str(WC / ".numba_cache"))
 sys.path.insert(0, str(HERE.parent))
+from common import DATA, KIT, WC  # noqa: E402,F401  (one definition of every path: code/common.py)
 from discovery.episodes import Episode, geometry  # noqa: E402
 
 RHO_C_AIR = 1.2 * 1006.0

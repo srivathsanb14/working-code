@@ -12,6 +12,31 @@ Every step runs from `working-code/`. The starter kit is only read: imported fro
 | 5. Audit again | `python code/audit_data.py` | `data/audit/` |
 | 6. Discover the dynamics with an LLM | `python code/run_discovery.py …` | `outputs/discovery/<run>/` |
 | 7. Test the model | `python code/test_model.py …` | `outputs/test/<model>_<split>/` |
+| 8. Rehearse the submission | `python code/run_policy.py …` | `outputs/policy/<model>_<base>_<split>/` |
+
+**All of it in one command** (for a big machine; each step resumes or can be started with `FROM=n`):
+
+```bash
+./run_pipeline.sh
+```
+
+```bash
+PROPOSER=claude GENS=20 WORKERS=32 ./run_pipeline.sh
+```
+
+The first writes the LLM prompt without calling anything; the second runs real discovery. Settings are environment variables at the top of `run_pipeline.sh` (seed ranges, stations, policies, steps, workers, deployment, proposer, generations).
+
+**Folder layout.** The only path assumption: one parent folder holds both repositories side by side.
+
+```
+<root>/
+  smart-buildings-starter-kit/     read only (or set STARTER_KIT)
+  working-code/
+    data/          buildings, scenarios, results, plan.json, split.json (step 2); audit/ (3, 5); dataset/ (4)
+    outputs/       discovery/<run>/ (6); test/ (7); policy/ (8)
+```
+
+Put the generated data on another disk with `SB_DATA=/path/to/data`; every script reads it.
 
 Background: `GUIDE.md` covers what may and may not be changed in data generation (Part A) and what the observation, action, state, inputs and outputs of the model are (Part B). `docs/LLM_DISCOVERY.md` covers how the LLM is used.
 
@@ -91,13 +116,7 @@ First look at the plan and its size without running anything:
 python code/generate_data.py --train-seeds 500:600 --val-seeds 700:720 --test-seeds 800:820 --steps 2016 --dry-run
 ```
 
-Start with a pilot. On an 8-core laptop it took 38 minutes for 6 usable buildings × 5 strips × 5 policies × 864 steps (140 runs); generated buildings are large (45–120 rooms):
-
-```bash
-python code/generate_data.py --out data/pilot --train-seeds 500:504 --val-seeds 700:702 --test-seeds 800:802 --steps 864 --workers 8
-```
-
-Then the full set (tens of core-hours; it resumes if interrupted):
+Then the full set. Generated buildings are large (45–120 rooms), so it takes tens to hundreds of core-hours; it resumes if interrupted:
 
 ```bash
 python code/generate_data.py --train-seeds 500:600 --val-seeds 700:720 --test-seeds 800:820 --steps 2016 --workers 16
@@ -269,6 +288,16 @@ These forecasts are fed the true future inputs and weather: they test the model,
 
 Look at the **test** numbers once, at the end. Use `--on val` while iterating.
 
+## 8. Rehearse the submission
+
+The hidden evaluation runs the submitted notebook's Policy class on each unseen (building, weather) scenario: `__init__(building_meta_data, action_spec)` once, then `get_action(obs)` every 5 minutes for 8,640 steps. Step 8 does exactly that with the starter kit's own harness on our held-out split:
+
+```bash
+python code/run_policy.py --params outputs/discovery/main_offline/summary.json --on test
+```
+
+The policy (`code/runtime/model_policy.py`) builds the model from the metadata alone, feeds it every observation and its own action, and keeps a Kalman-filtered state (`code/runtime/online_model.py`). Control still comes from a base policy (`--base pid_water`), so the score must equal that policy's: a check that the model changes nothing yet. The report gives the score, the model's live 1/3/6 h forecast error and its milliseconds per step. Replacing the base policy's decisions with model-based ones is the controller work (STATE_SPACE.md §18.1).
+
 ---
 
 ## Troubleshooting
@@ -280,4 +309,4 @@ Look at the **test** numbers once, at the end. Use `--on val` while iterating.
 | `replay mismatch` | the policy is not deterministic, or reads fields the CSVs do not contain | use the shipped policies (GUIDE.md A.2) |
 | `split 'val' matched no episodes` | the split does not match the data | check `data/split.json` and the audit's split table |
 | the kit shows changes in `git status` | something ran in the kit without the driver's settings | run kit commands only through these scripts, or with `NUMBA_CACHE_DIR` and `--output-dir`/`--results-dir` outside the kit |
-| slow | large generated buildings (100+ rooms) | more `--workers`; `--steps 864`; fewer buildings for a pilot |
+| slow | large generated buildings (100+ rooms) | more `--workers`; `--steps 864` |

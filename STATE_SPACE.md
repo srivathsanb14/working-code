@@ -1114,43 +1114,17 @@ Two traps showed up in testing:
 
 As a cross-check, the full §14 network with the true materials, driven by these inputs, matches the accuracy it reached with the solver's own inputs: 0.26–0.72 K over 3 days for all-off and `pid_water`.
 
-**Demo run [X]** (`outputs/discovery/demo_shipped/`, `outputs/test/seed_slab_wall_network_val/`). The data is 6 shipped scenarios × the 5 shipped policies × 864 steps, made with `evaluate.py --results-dir working-code/data/results` and built with `build_dataset.py`; all 30 runs passed the replay check. Train on `train_8` (×2), `train_2` and `train_4`; validate on `train_7` (a held-out building and the only Phoenix scenario).
+**Status.** No full-scale data has been generated and no LLM generation has run; earlier small trial runs were removed so that every result comes from the full data set. The pipeline below produces them.
 
-| Candidate | Held-out RMSE after day 1 | Train RMSE |
-|---|---|---|
-| `seed_slab_wall_network` | **0.286 K** | 0.380 K |
-| `seed_rc_one_node` (naive baseline) | 1.766 K | 1.275 K |
-
-With `test_model.py`, the network seed's filtered forecasts on the held-out building are:
-
-| Horizon | Model | Persistence |
-|---|---|---|
-| 1 h | 0.13 K | 1.71 K |
-| 3 h | 0.17 K | 2.06 K |
-| 6 h | 0.21 K | 2.46 K |
-
-Gate G2 (under 0.5 K at 3 h) holds on this building. An earlier pass that took the return-air temperature one step too old scored 0.37 K. An ablation run on that earlier data recovered that the spreading resistance matters (0.51 K without it), and an unstable explicit-Euler candidate was rejected at its lower capacity bound with the reason fed back.
-
-**Pilot of the full workflow [X]** (`outputs/discovery/pilot/` (online scoring), `outputs/discovery/pilot_offline/`, `outputs/test/pilot_best_test_theta-*/`). Six generated buildings (45–120 rooms, 5–12 AHUs; two more seeds were rejected by the generator) × their strips × 5 policies × 864 steps make 140 runs, made with `generate_data.py` (38 min on 8 cores). The audit found no hard failures and all 140 replays were exact. Train: 3 buildings on 4 stations. Val: 2 buildings on Phoenix. Test: 1 building on Minneapolis (unseen building, unseen station). The network seed scores 0.18 K on val after day 1, against 1.15 K for the naive seed. On test, with θ fitted on day 1 (online identification; the offline numbers are in §17.8):
-
-| Measure | Model | Persistence |
-|---|---|---|
-| Open loop, day 1 | 0.15 K | — |
-| Open loop, days 2–3 | 0.54 K | — |
-| Filtered forecast, 1 h | 0.13 K | 1.20 K |
-| Filtered forecast, 3 h | 0.18 K | 1.30 K |
-| Filtered forecast, 6 h | 0.26 K | 1.74 K |
-
-The worst policy is `bang_bang`, at 0.30 K for the 3-hour forecast.
-
-**The full workflow on a fresh computer** is in `docs/RUNBOOK.md`:
+**The full workflow** is `run_pipeline.sh` (all steps in order, for a big machine), detailed in `docs/RUNBOOK.md`:
 1. `setup_check.py`;
 2. `generate_data.py`, which drives the kit's three tools to the A.2 settings and writes `plan.json` and `split.json`;
 3. `audit_data.py`, covering layout, conventions, coverage against the generator's own ranges, and leakage;
 4. `build_dataset.py`, the replay, its check, and the room inputs;
 5. `audit_data.py` again, adding replay status and excitation per policy;
-6. `run_discovery.py`;
-7. `test_model.py`.
+6. `run_discovery.py`, offline and online deployment (§17.8);
+7. `test_model.py`, every θ mode on the test split;
+8. `run_policy.py`, the submission's Policy class on the test scenarios (§17.9).
 
 The data rules and the model's variables are in `GUIDE.md`; how to use the LLM is in `docs/LLM_DISCOVERY.md`.
 
@@ -1161,31 +1135,34 @@ The planning sets out a model built **only from geometry, measured history and u
 **1. Deployment: no online fitting by default; day-1 identification permitted but optional.**
 - *Is day-1 identification allowed?* Yes. The policy object persists through a scenario (§4.1, §17.6), so state carried between calls, including a θ estimate, is legitimate. What is disqualifying is hard-coding held-out references or reading the configuration, not learning from the episode's own measurements.
 - *What does it cost?* Every step is scored, so there is no free identification period (§18.3). A poorly excited first day can give a bad θ, which is a robustness risk. The fit takes 2–11 s, affordable inside the 15-minute first-step allowance.
-- *Does it pay?* On the pilot test (unseen `building_0801`, unseen Minneapolis station, 15 runs; `outputs/test/pilot_best_test_theta-*`), with the §14 network seed and PARAMS from training:
-
-| θ for the test building | Fitting on it? | Open loop, day 1 | Open loop, after day 1 | Forecast 1 h | 3 h | 6 h |
-|---|---|---|---|---|---|---|
-| prior (initial values) | none | 0.361 | 0.625 | 0.138 | 0.222 | 0.324 |
-| train mean (geometric mean of per-train-building θ) | none | 0.323 | 0.645 | 0.142 | 0.225 | 0.325 |
-| fitted on its day 1 | online | 0.145 | 0.543 | 0.127 | 0.184 | 0.256 |
-| persistence | — | — | — | 1.196 | 1.300 | 1.743 |
-
-  With the PARAMS and shared θ of the offline discovery run (`outputs/test/pilot_offline_test_compare.md`, a rough fit with 8 function evaluations), the 3 h forecast is 0.26 K with the shared θ and 0.20 K with day-1 θ: the same picture, and a better-converged shared fit is task one of the comparison (`test_model.py --theta all`).
-
-  RMSE in K; forecasts are from a Kalman-filtered state. Day-1 fitting helps the open-loop error most. For the filtered forecasts that MPC uses, the history correction already does most of the work: 3 h error rises from 0.18 to 0.22 K without any per-building fitting, still far inside gate G2 (0.5 K) and six times better than persistence.
+- *Does it pay?* To be measured on the full data: `test_model.py --theta all` compares, on the test split, one shared θ, the train-mean θ, the prior θ (no fitting on the test building) and θ fitted on each building's day 1, by open-loop error and 1/3/6 h filtered-forecast error. The expectation from the simulator audit (§14.5) is that day-1 fitting helps open loop most, while for the filtered forecasts that MPC uses the history correction does most of the work.
 - *Decision.* **Offline deployment is the default** in the code (`--deployment offline` in `run_discovery.py`, `--theta shared` in `test_model.py`): PARAMS and **one shared θ** are fitted on the training buildings, held-out buildings get no fitting, and candidates are ranked by the 3-hour filtered-forecast RMSE. Online day-1 identification stays available (`--deployment online`, `--theta day1`). It is adopted only if it wins in closed loop on the generated hold-out (§19.1 question 3).
-- *The discovery loop in offline mode [X]* (`outputs/discovery/pilot_offline/`, same pilot data, seeds only, rough fit with 8 function evaluations): on val (2 Phoenix buildings, no fitting on them) the network seed's 3-hour filtered forecast is **0.21 K** against 1.00 K for the naive seed. Its open loop is worse than with day-1 θ (1.26 K on val, 0.68 K on test after day 1, against 0.18 and 0.54 K), driven by the all-off rollouts of one val building (up to 3.6 K), where a slightly wrong θ drifts for three days with nothing to correct it. Without per-building fitting, open loop is a poor guide and the filtered forecast is the right score.
-
 **2. State: the hidden nodes are a compressed history buffer.** The plan favours a measured history buffer as the state; the network carries hidden slab, facade, wall and door temperatures. The two are the same information in different coordinates. A Kalman filter on a linear network is, in steady state, a fixed linear filter of past measured temperatures and past inputs, so the filtered hidden state is a weighted sum of the measured history. The filter uses only the stale zone temperatures the controller observes (§13.1), never a hidden truth. We keep the network form because its coefficients follow from the floor plan and its few constants are physical; an explicit history-buffer (ARX) model can be derived from it. A candidate written directly as a history buffer is not yet supported by the contract, because offline scoring requires `network()`.
 
-**3. Discovery status: built, exercised, but no LLM generation has run.** The loop, prompts, checks, fitting, scoring and diagnostics run end to end with the `dry` proposer. Only the two hand-written generation-0 seeds have been evaluated; the pilot's `best.py` is the §14 seed, not an LLM discovery. Any claim that an LLM improves on the seeds is untested until a `--proposer claude` or `dir` run is done.
+**3. Discovery status: built, exercised, but no LLM generation has run.** The loop, prompts, checks, fitting, scoring and diagnostics run end to end with the `dry` proposer. Only the two hand-written generation-0 seeds exist; until an LLM run, any `best.py` is the §14 seed, not an LLM discovery. Any claim that an LLM improves on the seeds is untested until a `--proposer claude` or `dir` run is done.
 
-**4. Test limits: one building, one station, model accuracy only.**
-- The test split is one building on one station (3 weather strips × 5 policies); val is two buildings on Phoenix.
+**4. Test limits.**
+- The default split tests on 20 building seeds on one held-out station (Minneapolis), validated on 20 more on a rotated station; the hidden set has 5 unseen stations, so rotate the val station as well.
 - The forecasts are fed the **true future inputs and weather**, so they measure the model, not a controller; a real controller must forecast weather and occupancy itself.
 - The behaviour policies are the shipped baselines, so states an MPC controller would visit are not covered.
-- *Next:* a test split of at least 10 buildings across the size range on at least 2 held-out stations; forecasts with forecast disturbances (persistence plus diurnal fit for `T_out`); and **closed-loop evaluation**: the model inside Controller 1 and 2 (§18.1), run in the real simulator with `evaluate.py` and scored with the competition reward against `pid_water` (gates G3 and G4, §19.1).
+- *Next:* forecasts with forecast disturbances (persistence plus diurnal fit for `T_out`), and **closed-loop evaluation**: the model inside Controller 1 and 2 (§18.1), run in the real simulator and scored with the competition reward against `pid_water` (gates G3 and G4, §19.1).
 
+### 17.9 Grounded in the evaluation: what runs on a new building
+
+**What the hidden evaluation does** (competition Overview and Data tabs). The submission is one notebook. Its Policy class is instantiated once per unseen scenario (6 buildings × 5 weather stations, never released, same generator and ranges, different weather) with that building's metadata, then `get_action(obs)` is called every 5 minutes for 8,640 steps, every step scored. Nothing is trained there: whatever we learn offline, the model structure and its few universal constants, ships inside the notebook.
+
+**What a policy has on a new building**, and where each part of the model comes from:
+
+| | Content | Used by the model as |
+|---|---|---|
+| Given once (metadata) | floor plan, zone map, zone-to-AHU map, observation and action layout, normalization, schedule | geometry G, hence every coefficient |
+| Observed every 5 min | room temperatures (one step late), outside temperature, occupancy count, comfort flags, clock, echoes of its own commands | measurements y for the Kalman filter; disturbances d |
+| Controlled every 5 min | per AHU on/off, supply temperature, pressure, recirculation; boiler on/off, water temperature, pump; per room damper and reheat | inputs u, turned into airflow, supply temperature and reheat |
+| Never given | materials, future weather, per-room occupancy, the simulator | universal constants learned offline, or noise |
+
+**How we rehearse it.** Generated buildings are named by the generator's random seed (`building_0500` is building number 500, not a time). Seeds 500–599 are training buildings, 700–719 validation, 800–819 test, and the test weather station is one never used in training, so a test scenario is new in both building and weather, like the hidden set. `code/run_policy.py` then plays the submission's Policy class (`code/runtime/model_policy.py`) through the starter kit's own harness on those held-out scenarios. The policy builds the model from the metadata alone (`code/runtime/online_model.py`), feeds it each observation and its own action, and keeps a filtered state. Control still comes from `pid_water`, so the score must equal `pid_water`'s.
+
+**What the rehearsal checks.** The score must equal `pid_water`'s, because the model does not make decisions yet; the report gives the model's live 1/3/6 h forecast error and its time per step, which must fit the roughly 0.125 s per step the 9-hour session allows (§4.3). The live forecasts should equal the offline `test_model.py` numbers for the same constants. Two details only show up inside the real interface: the observation's occupancy is a head count (not normalized), and room temperatures arrive one step late, so the filtered state runs one step behind the sensors.
 
 ---
 
@@ -1215,7 +1192,7 @@ Layer by layer (§15.1):
 
 ### 18.3 Estimating the unobserved, and handling model error
 **Estimation.** The controller needs the hidden states and building parameters. In rough order of simplicity: **recursive least squares** on the linear-in-parameter form with a simple observer for hidden states; an **augmented-state Kalman filter** over zone temperatures, slab temperatures and parameters with the symbolic model as process model; **moving-horizon estimation**, which fits state and parameters to the last N steps (more robust to nonlinearity, higher cost); and, only if online identification is adopted (§17.8), a **warm-start phase** in which the first hours run safe baseline-like behaviour with small deliberate dithering to learn θ before switching to MPC. There is no warm-up exemption (every step is scored), so dithering must stay gentle and band-respecting. The 15-minute first-step allowance is free time for loading weights, compiling, building the room network from the floor plan (0.02–0.12 s) and setting the priors on θ. **Tested design (§14.5):**
-- A Kalman filter over the full room network, with only the stale zone temperatures as measurements. Default (offline): θ is the shared value learned on training buildings, 3-hour forecast 0.22 K on the pilot's unseen building and station. Optional (online): an open-loop least-squares fit of θ on the first day, 0.18 K (§17.8).
+- A Kalman filter over the full room network, with only the stale zone temperatures as measurements. Default (offline): θ is the shared value learned on training buildings. Optional (online): an open-loop least-squares fit of θ on the first day (§17.8).
 - From the filtered state, 3-hour forecast error is 0.12–0.51 K across 18 test rollouts.
 - The fit is best when the first day is excited, so the warm-start dithering is worth its small comfort cost.
 
@@ -1256,7 +1233,7 @@ Develop and score locally with `python -m smart_buildings.evaluate --policies <k
 We want six questions answered:
 1. **Does the discovered structure transfer?** Fit on N buildings and stations; test rollout error on unseen buildings *and* unseen stations.
 2. **How much does symbolic structure help?** Compare with a hand-derived RC model with identical parameters, black-box MLP/GRU dynamics and a linear ARX model.
-3. **Is online identification worth it?** Compare offline deployment (shared θ, no fitting), day-1 identification and a per-building oracle whose parameters are read from the config (§12.3), in closed loop. On forecasts alone the pilot gap is 0.22 versus 0.18 K at 3 h (§17.8).
+3. **Is online identification worth it?** Compare offline deployment (shared θ, no fitting), day-1 identification and a per-building oracle whose parameters are read from the config (§12.3), in closed loop (§17.8).
 4. **What does the model buy the controller?** Ablate in steps: Controller 0 → + feed-forward → + water reset → + pre-conditioning → full MPC (§18.1).
 5. **Where is the headroom per climate?** Break results down by station and season against the levers of §15.3.
 6. **Does it fit the clock?** Mean and worst-case seconds per step on the largest generated building, against the 0.125 s of §4.3.
@@ -1269,7 +1246,7 @@ We want six questions answered:
 |---|---|
 | G0 packaging | Controller 0, assembled as a Kaggle notebook, runs end to end and scores on the leaderboard |
 | G1 toolchain | symbolic regression recovers `√P`, the coil effectiveness and `min(mixed, setpoint)` from simulator data (§13.3 rows 3–5) to within noise |
-| G2 zone model | multi-hour rollout error on held-out buildings and a held-out station is small enough to plan with (target: 3-hour mean error under 0.5 K). The network of §14 already meets it in 17 of 18 test rollouts from a filtered state, with the 18th at 0.51 K (§14.5); the pilot shows it on one held-out building and station: 0.18 K with day-1 θ, 0.22 K with no per-building fitting (§17.8); a larger test is still to be done |
+| G2 zone model | multi-hour rollout error on held-out buildings and a held-out station is small enough to plan with (target: 3-hour mean error under 0.5 K). The network of §14 already meets it in 17 of 18 test rollouts from a filtered state, with the 18th at 0.51 K (§14.5); a held-out building and station on the full data is still to be shown |
 | G3 feed-forward | Controller 1 beats −0.054 on the 30 shipped scenarios and does not lose to Controller 0 in the worst scenario |
 | G4 MPC | Controller 2 beats Controller 1 by a clear margin on the shipped set and the hold-out, within 0.1 s per step |
 

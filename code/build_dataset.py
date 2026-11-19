@@ -118,12 +118,15 @@ def main():
     a = ap.parse_args()
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from discovery.starterkit_data import discover_runs, resolve
-    data = a.data.resolve(); out = (a.out or data / "dataset").resolve(); out.mkdir(parents=True, exist_ok=True)
+    data = a.data.resolve(); out = (a.out or data / "dataset").resolve()
     if a.scenarios and a.results:
         sources = [(a.scenarios.resolve(), a.results.resolve())]
     else:
+        if not (data / "plan.json").exists():
+            raise SystemExit(f"no {data / 'plan.json'}: generate the data first (code/generate_data.py, docs/RUNBOOK.md step 2)")
         plan = json.loads((data / "plan.json").read_text())
         sources = [(resolve(s["scenarios"], data), resolve(s["results"], data)) for s in plan["sources"]]
+    out.mkdir(parents=True, exist_ok=True)
     split_path = a.split or data / "split.json"
     split = json.loads(split_path.read_text()) if split_path.exists() else {}
     jobs, skipped = [], {}

@@ -67,6 +67,10 @@ Write one Python module:
         """Return (dlib.LinearNetwork, dict(T_out=..., g=..., T_supply=..., Q=...)) with simulate() equal to
         net.simulate(T_out, g, T_supply, Q, T0)."""
 
+    # optional: the per-step forcing alone, so a deployed policy can step the model without rebuilding it
+    def forcing(geo, inputs, theta, p):
+        """Return dict(T_out=..., g=..., T_supply=..., Q=...) exactly as network() returns it."""
+
 Rules:
   - imports: numpy, math, dlib only; no files, no globals across calls; must be deterministic.
   - theta and p are dicts of floats keyed like THETA and PARAMS. Bounds must be finite; positive constants

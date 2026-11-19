@@ -42,6 +42,12 @@ from discovery.loop import split_episodes  # noqa: E402
 DAY = 288
 
 
+def model_tag(path):
+    """Report name for a model file: a discovery run's best.py is named after its run (main_offline_best)."""
+    path = Path(path)
+    return f"{path.parent.name}_{path.stem}" if path.stem == "best" else path.stem
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("model", type=Path)
@@ -127,7 +133,7 @@ def main():
     report = dict(model=str(a.model), split=a.on, theta_mode=a.theta, params=p, params_source=src, complexity=cx,
                   theta=res["scenarios"], overall={m: float(np.mean([r[m] for r in rows])) for m in keys},
                   by_station=agg("station"), by_policy=agg("policy"), by_building=agg("building"), runs=rows)
-    out = WC / "outputs" / "test" / f"{a.model.stem}_{a.on}_theta-{a.theta}"
+    out = WC / "outputs" / "test" / f"{model_tag(a.model)}_{a.on}_theta-{a.theta}"
     out.mkdir(parents=True, exist_ok=True)
     (out / "report.json").write_text(json.dumps(report, indent=1, default=float))
     L = [f"# Test of `{a.model}` on `{a.on}`\n", f"PARAMS ({src}): `{json.dumps(p)}`  \ncomplexity {cx} AST nodes\n",
@@ -155,7 +161,7 @@ def compare_all(a):
     for m in modes:
         print(f"\n=== --theta {m}")
         subprocess.run(base + ["--theta", m], check=True)
-        rows[m] = json.loads((WC / "outputs" / "test" / f"{a.model.stem}_{a.on}_theta-{m}" / "report.json").read_text())["overall"]
+        rows[m] = json.loads((WC / "outputs" / "test" / f"{model_tag(a.model)}_{a.on}_theta-{m}" / "report.json").read_text())["overall"]
     keys = [k for k in rows["day1"] if not k.startswith("persistence")] + ["persistence_3h"]
     label = {"shared": "shared θ (offline)", "trainmean": "train-mean θ (offline)", "prior": "prior θ (offline)",
              "day1": "θ fitted on day 1 (online)"}
@@ -165,7 +171,7 @@ def compare_all(a):
          "| θ | " + " | ".join(keys) + " |", "|---|" + "---|" * len(keys)]
     for m in modes:
         L.append(f"| {label[m]} | " + " | ".join(f"{rows[m].get(k, float('nan')):.3f}" for k in keys) + " |")
-    out = WC / "outputs" / "test" / f"{a.model.stem}_{a.on}_compare.md"
+    out = WC / "outputs" / "test" / f"{model_tag(a.model)}_{a.on}_compare.md"
     out.write_text("\n".join(L) + "\n")
     print("\n" + "\n".join(L) + f"\n\nwrote {out}")
 

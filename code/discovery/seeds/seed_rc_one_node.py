@@ -26,8 +26,13 @@ def network(geo, inputs, theta, p):
     G = p["k_wall"] * geo["wall_cells"] + p["k_door"] * geo["door_cells"]
     G_amb = theta["u_facade"] * geo["facade_faces"]
     net = dlib.LinearNetwork(C, G, G_amb, V)
-    Q = inputs["Q_reheat"] + inputs["Q_gain"] + 70.0 * inputs["occupants"][:, None] / V
-    return net, dict(T_out=inputs["T_out"], g=inputs["g"], T_supply=inputs["T_supply"], Q=Q)
+    return net, forcing(geo, inputs, theta, p)
+
+
+def forcing(geo, inputs, theta, p):
+    """Per-step forcing of the network (lets a deployed policy step the model without rebuilding it)."""
+    Q = inputs["Q_reheat"] + inputs["Q_gain"] + 70.0 * inputs["occupants"][:, None] / geo["V"]
+    return dict(T_out=inputs["T_out"], g=inputs["g"], T_supply=inputs["T_supply"], Q=Q)
 
 
 def simulate(geo, inputs, theta, p, T0):

@@ -61,8 +61,13 @@ def network(geo, inputs, theta, p):
         g_door = n * face / (2 * c / K_AIR)
         G[i, j] = G[j, i] = G[i, j] + 1 / (1 / g_door + spread(A[i], n * c, p["a_spread"]) + spread(A[j], n * c, p["a_spread"]))
     net = dlib.LinearNetwork(C, G, G_amb, V)
-    Q = inputs["Q_reheat"] + inputs["Q_gain"] + 70.0 * inputs["occupants"][:, None] / V
-    return net, dict(T_out=inputs["T_out"], g=inputs["g"], T_supply=inputs["T_supply"], Q=Q)
+    return net, forcing(geo, inputs, theta, p)
+
+
+def forcing(geo, inputs, theta, p):
+    """Per-step forcing of the network (lets a deployed policy step the model without rebuilding it)."""
+    Q = inputs["Q_reheat"] + inputs["Q_gain"] + 70.0 * inputs["occupants"][:, None] / geo["V"]
+    return dict(T_out=inputs["T_out"], g=inputs["g"], T_supply=inputs["T_supply"], Q=Q)
 
 
 def simulate(geo, inputs, theta, p, T0):
