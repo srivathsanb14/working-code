@@ -18,6 +18,13 @@ Run from working-code/ (no LLM is called unless --proposer claude):
   # the real thing (needs `pip install anthropic` and credentials)
   .venv/bin/python code/run_discovery.py --run demo --proposer claude --generations 20
 
+Two deployment options (--deployment):
+  offline (default)  no fitting on a new building: PARAMS + ONE shared THETA fitted on train; held-out
+                     buildings scored by the 3 h forecast from a Kalman-filtered state (measured history)
+  online             THETA re-fitted on each held-out building's day 1; scored open loop on days 2+
+  both               runs offline into <run>_offline, then online into <run>_online, and compares them
+                     (with --proposer claude this calls the LLM for each run)
+
 State lives in outputs/discovery/<run>/: database.jsonl (one record per candidate),
 candidates/<id>.py, prompts/prompt_genNNN.md, best.py, summary.json.  Re-running
 with the same --run continues from the database.
@@ -241,10 +248,11 @@ def main():
     ap.add_argument("--elites", type=int, default=4)
     ap.add_argument("--failures", type=int, default=6)
     ap.add_argument("--informed", action="store_true", help="add physics notes from the code audit to the prompt")
-    ap.add_argument("--deployment", choices=["offline", "online"], default="offline",
+    ap.add_argument("--deployment", choices=["offline", "online", "both"], default="offline",
                     help="offline (default): no per-building fitting at deployment; THETA is one universal value fitted on "
                          "train, and held-out buildings are scored by 3 h forecasts from a Kalman-filtered state (measured "
-                         "history). online: THETA fitted per building on day 1, scored open loop on the following days")
+                         "history). online: THETA fitted per building on day 1, scored open loop on the following days. "
+                         "both: run offline into <run>_offline and online into <run>_online, then compare")
     ap.add_argument("--seeds", default="all", choices=["all", "naive", "none"],
                     help="generation-0 seeds: all (incl. the audited physics network), naive (blind runs), none")
     ap.add_argument("--timeout", type=float, default=1200)
@@ -254,7 +262,26 @@ def main():
     ap.add_argument("--test", action="store_true", help="also score the best program on the test split at the end")
     ap.add_argument("--model", default="claude-opus-5-5")
     ap.add_argument("--effort", default="high")
-    run(ap.parse_args())
+    args = ap.parse_args()
+    if args.deployment != "both":
+        run(args)
+        return
+    best = {}
+    for d in ("offline", "online"):
+        b = argparse.Namespace(**vars(args))
+        b.deployment, b.run = d, f"{args.run}_{d}"
+        print(f"\n=== deployment {d}: outputs/discovery/{b.run}/")
+        run(b)
+        f = OUTD / "discovery" / b.run / "summary.json"
+        best[d] = json.loads(f.read_text()).get("best") if f.exists() else None
+    print("\n=== offline vs online (best candidate of each; val, RMSE in K)")
+    print(f"{'deployment':<11}{'best':<28}{'score':>8}{'3 h forecast':>14}{'open loop after day 1':>24}")
+    for d, b in best.items():
+        if b:
+            fc = b.get("val_forecast_3h_mean")
+            print(f"{d:<11}{b['name']:<28}{b['score']:>8.3f}{(f'{fc:.3f}' if fc is not None else '-'):>14}{b['val_rmse_days23_mean']:>24.3f}")
+    print("score = 3 h forecast (offline) or open loop after day 1 (online), plus the complexity price. "
+          "Compare them on test with: code/test_model.py BEST.py --params SUMMARY.json --theta all")
 
 
 if __name__ == "__main__":

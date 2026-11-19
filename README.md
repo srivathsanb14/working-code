@@ -23,6 +23,8 @@ Everything here works **beside** the starter kit, never inside it. The kit is on
  python code/test_model.py MODEL.py ...      7    held-out test: open loop + filtered forecasts     -> outputs/test/
 ```
 
+Two deployment options, both runnable: **offline** (default; no fitting on a new building, only its floor plan, measured history and universal constants) and **online** (θ re-fitted on each building's day 1). Pick with `run_discovery.py --deployment offline|online|both` and `test_model.py --theta shared|day1|all`; see `docs/RUNBOOK.md` step 6 and STATE_SPACE.md §17.8.
+
 ## Layout
 
 ```

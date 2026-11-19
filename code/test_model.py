@@ -51,12 +51,15 @@ def main():
     ap.add_argument("--params", type=Path, help="summary.json of a discovery run, or a JSON dict of PARAMS")
     ap.add_argument("--max-nfev", type=int, default=40)
     ap.add_argument("--no-forecast", action="store_true")
-    ap.add_argument("--theta", choices=["shared", "trainmean", "prior", "day1"], default="shared",
+    ap.add_argument("--theta", choices=["shared", "trainmean", "prior", "day1", "all"], default="shared",
                     help="shared (default, offline): one universal THETA (summary's theta_shared, else fitted with PARAMS on "
                          "train); trainmean: geometric mean of per-train-building THETA; prior: THETA initial values; "
                          "day1: fit THETA per building on its day 1 (online identification). Except day1, only the Kalman "
-                         "filter's state correction adapts to the building")
+                         "filter's state correction adapts to the building. all: run every mode and write a comparison "
+                         "(outputs/test/<model>_<split>_compare.md)")
     a = ap.parse_args()
+    if a.theta == "all":
+        return compare_all(a)
     mod, cx = contract.load(a.model.read_text())
     idx = json.loads((a.dataset / "index.json").read_text())
     split = json.loads((a.split or a.dataset / "split.json").read_text())
@@ -139,6 +142,32 @@ def main():
     (out / "report.md").write_text("\n".join(L) + "\n")
     print("\n".join(L))
     print(f"\nwrote {out / 'report.md'}")
+
+
+def compare_all(a):
+    """Run every THETA mode in turn (offline: shared, trainmean, prior; online: day1) and tabulate them."""
+    import subprocess
+    modes = ["shared", "trainmean", "prior", "day1"]
+    base = [sys.executable, str(Path(__file__).resolve()), str(a.model), "--dataset", str(a.dataset), "--on", a.on,
+            "--max-nfev", str(a.max_nfev)] + (["--split", str(a.split)] if a.split else []) \
+        + (["--params", str(a.params)] if a.params else []) + (["--no-forecast"] if a.no_forecast else [])
+    rows = {}
+    for m in modes:
+        print(f"\n=== --theta {m}")
+        subprocess.run(base + ["--theta", m], check=True)
+        rows[m] = json.loads((WC / "outputs" / "test" / f"{a.model.stem}_{a.on}_theta-{m}" / "report.json").read_text())["overall"]
+    keys = [k for k in rows["day1"] if not k.startswith("persistence")] + ["persistence_3h"]
+    label = {"shared": "shared θ (offline)", "trainmean": "train-mean θ (offline)", "prior": "prior θ (offline)",
+             "day1": "θ fitted on day 1 (online)"}
+    L = [f"# Deployment options for `{a.model}` on `{a.on}`\n",
+         "Offline modes fit nothing on the tested buildings; online fits θ on each building's day 1. "
+         "Forecasts are from a Kalman-filtered state with the true future inputs. RMSE in K.\n",
+         "| θ | " + " | ".join(keys) + " |", "|---|" + "---|" * len(keys)]
+    for m in modes:
+        L.append(f"| {label[m]} | " + " | ".join(f"{rows[m].get(k, float('nan')):.3f}" for k in keys) + " |")
+    out = WC / "outputs" / "test" / f"{a.model.stem}_{a.on}_compare.md"
+    out.write_text("\n".join(L) + "\n")
+    print("\n" + "\n".join(L) + f"\n\nwrote {out}")
 
 
 if __name__ == "__main__":

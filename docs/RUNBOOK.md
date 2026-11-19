@@ -201,6 +201,50 @@ python code/run_discovery.py --run main --proposer dir --generations 1
 
 Results land in `outputs/discovery/main/`: `summary.json` (leaderboard and fitted constants), `best.py`, `database.jsonl`, `candidates/`, `prompts/`.
 
+### Two deployment options
+
+Both are implemented; choose with `--deployment` (STATE_SPACE.md §17.8 explains the choice).
+
+| | Option A: offline (default) | Option B: online |
+|---|---|---|
+| On a new building | no fitting: floor plan + measured history + universal constants | θ re-fitted on its day 1 |
+| Fitted on train | PARAMS + one shared θ | PARAMS + one θ per training building |
+| Val score | 3 h forecast RMSE from a Kalman-filtered state (needs `network()`) | open-loop RMSE after day 1 |
+| Discovery | `--deployment offline` | `--deployment online` |
+| Test | `--theta shared` (also `trainmean`, `prior`) | `--theta day1` |
+
+Option A:
+
+```bash
+python code/run_discovery.py --run main --deployment offline --generations 0
+```
+
+```bash
+python code/test_model.py outputs/discovery/main/best.py --params outputs/discovery/main/summary.json --theta shared
+```
+
+Option B:
+
+```bash
+python code/run_discovery.py --run main --deployment online --generations 0
+```
+
+```bash
+python code/test_model.py outputs/discovery/main/best.py --params outputs/discovery/main/summary.json --theta day1
+```
+
+Both, side by side (writes `outputs/discovery/main_offline/` and `main_online/`, then prints a comparison; with `--proposer claude` the LLM is called for each):
+
+```bash
+python code/run_discovery.py --run main --deployment both --generations 0
+```
+
+```bash
+python code/test_model.py outputs/discovery/main_offline/best.py --params outputs/discovery/main_offline/summary.json --theta all
+```
+
+`--theta all` runs shared, trainmean, prior and day1 and writes `outputs/test/<model>_<split>_compare.md`.
+
 ## 7. Test the model
 
 Test the best discovered model on the test split, with the constants it was fitted with (default `--theta shared`: the shared θ from `summary.json`, no fitting on test buildings):

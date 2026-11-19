@@ -97,7 +97,7 @@ A run continues from its database when re-run with the same `--run`.
 | `--generations`, `--n`, `--explore`, `--elites`, `--failures` | 0, 6, 2, 4, 6 | loop size and prompt content |
 | `--seeds` | all | `all` (naive and audited physics network), `naive` (blind runs), `none` |
 | `--informed` | off | add the audit's physics notes to the prompt |
-| `--deployment` | `offline` | `offline`: no fitting on new buildings, one shared θ, score = val 3 h filtered-forecast RMSE (needs `network()`). `online`: θ per building from day 1, score = open-loop RMSE after day 1 |
+| `--deployment` | `offline` | `offline`: no fitting on new buildings, one shared θ, score = val 3 h filtered-forecast RMSE (needs `network()`). `online`: θ per building from day 1, score = open-loop RMSE after day 1. `both`: runs each into `<run>_offline` and `<run>_online` and compares (calls the LLM twice as often) |
 | `--max-nfev`, `--stride` | 30, 2 | fitting effort (lower = faster, rougher) |
 | `--complexity-weight` | 0.0001 K per AST node | parsimony price |
 | `--timeout` | 1200 s | per candidate |

@@ -1,0 +1,468 @@
+{
+ "model": "outputs/discovery/pilot_offline/best.py",
+ "split": "test",
+ "theta_mode": "trainmean",
+ "params": {
+  "h_slab": 5.189957865558505,
+  "a_spread": 1.3432165317770008
+ },
+ "params_source": "fitted on train (with THETA averaged over train buildings)",
+ "complexity": 963,
+ "theta": {
+  "building_0801/minneapolis_2": {
+   "theta": {
+    "k_ext": 0.3216281248901426,
+    "h_film": 11.05874541047824,
+    "rc_ext": 797334.452220465,
+    "k_iw": 0.4089863382497881,
+    "rc_iw": 266551.8287102589,
+    "rc_mass": 20570.88540127166
+   }
+  },
+  "building_0801/minneapolis_5": {
+   "theta": {
+    "k_ext": 0.3216281248901426,
+    "h_film": 11.05874541047824,
+    "rc_ext": 797334.452220465,
+    "k_iw": 0.4089863382497881,
+    "rc_iw": 266551.8287102589,
+    "rc_mass": 20570.88540127166
+   }
+  },
+  "building_0801/minneapolis_8": {
+   "theta": {
+    "k_ext": 0.3216281248901426,
+    "h_film": 11.05874541047824,
+    "rc_ext": 797334.452220465,
+    "k_iw": 0.4089863382497881,
+    "rc_iw": 266551.8287102589,
+    "rc_mass": 20570.88540127166
+   }
+  }
+ },
+ "overall": {
+  "open_loop_day1": 0.3229366688013065,
+  "open_loop_after_day1": 0.6449520037248552,
+  "forecast_1h": 0.14163912631560752,
+  "forecast_3h": 0.22459157002240623,
+  "forecast_6h": 0.32549875812833406,
+  "persistence_1h": 1.1962282242925597,
+  "persistence_3h": 1.3003771122837715,
+  "persistence_6h": 1.7431908063069204
+ },
+ "by_station": {
+  "minneapolis": {
+   "open_loop_day1": 0.3229366688013065,
+   "open_loop_after_day1": 0.6449520037248552,
+   "forecast_1h": 0.14163912631560752,
+   "forecast_3h": 0.22459157002240623,
+   "forecast_6h": 0.32549875812833406,
+   "persistence_1h": 1.1962282242925597,
+   "persistence_3h": 1.3003771122837715,
+   "persistence_6h": 1.7431908063069204,
+   "runs": 15
+  }
+ },
+ "by_policy": {
+  "all_off": {
+   "open_loop_day1": 0.32612578507413326,
+   "open_loop_after_day1": 0.9661623786820788,
+   "forecast_1h": 0.12181731860103599,
+   "forecast_3h": 0.21651206278347615,
+   "forecast_6h": 0.33854017829736116,
+   "persistence_1h": 0.26298287523198227,
+   "persistence_3h": 0.6507368671110245,
+   "persistence_6h": 1.114087935159972,
+   "runs": 3
+  },
+  "bang_bang": {
+   "open_loop_day1": 0.31307298088213725,
+   "open_loop_after_day1": 0.6081662609937052,
+   "forecast_1h": 0.21115437585342978,
+   "forecast_3h": 0.30233808036501003,
+   "forecast_6h": 0.4120628886861044,
+   "persistence_1h": 3.1357452114939726,
+   "persistence_3h": 2.7809413052749714,
+   "persistence_6h": 3.37566935425731,
+   "runs": 3
+  },
+  "fixed_setpoint": {
+   "open_loop_day1": 0.3300209115308934,
+   "open_loop_after_day1": 0.5563007722145863,
+   "forecast_1h": 0.12024798403406128,
+   "forecast_3h": 0.19708270026534766,
+   "forecast_6h": 0.28576939605894175,
+   "persistence_1h": 0.824178722261547,
+   "persistence_3h": 0.8917370114544402,
+   "persistence_6h": 1.2223485425402798,
+   "runs": 3
+  },
+  "pid": {
+   "open_loop_day1": 0.32281031028099366,
+   "open_loop_after_day1": 0.5497716677039457,
+   "forecast_1h": 0.1295785865819469,
+   "forecast_3h": 0.205344091955349,
+   "forecast_6h": 0.2968195473132138,
+   "persistence_1h": 0.9151151357027127,
+   "persistence_3h": 1.1033570597267268,
+   "persistence_6h": 1.4976818049499168,
+   "runs": 3
+  },
+  "pid_water": {
+   "open_loop_day1": 0.3226533562383751,
+   "open_loop_after_day1": 0.5443589390299591,
+   "forecast_1h": 0.12539736650756372,
+   "forecast_3h": 0.20168091474284833,
+   "forecast_6h": 0.29430178028604925,
+   "persistence_1h": 0.8431191767725821,
+   "persistence_3h": 1.0751133178516927,
+   "persistence_6h": 1.5061663946271207,
+   "runs": 3
+  }
+ },
+ "by_building": {
+  "building_0801": {
+   "open_loop_day1": 0.3229366688013065,
+   "open_loop_after_day1": 0.6449520037248552,
+   "forecast_1h": 0.14163912631560752,
+   "forecast_3h": 0.22459157002240623,
+   "forecast_6h": 0.32549875812833406,
+   "persistence_1h": 1.1962282242925597,
+   "persistence_3h": 1.3003771122837715,
+   "persistence_6h": 1.7431908063069204,
+   "runs": 15
+  }
+ },
+ "runs": [
+  {
+   "run": "building_0801_minneapolis_2_all_off",
+   "building": "building_0801",
+   "station": "minneapolis",
+   "weather": "minneapolis_2",
+   "policy": "all_off",
+   "rooms": 112,
+   "open_loop_day1": 0.4327237855845713,
+   "open_loop_after_day1": 0.9589067182967568,
+   "open_loop_by_day": [
+    0.4327237855845713,
+    0.7622969208162916,
+    1.1220903290466089
+   ],
+   "bias_after_day1": -0.6907873174152417,
+   "forecast_1h": 0.12656360332985764,
+   "forecast_3h": 0.22479007551065155,
+   "forecast_6h": 0.3559227662259014,
+   "persistence_1h": 0.2551823762427014,
+   "persistence_3h": 0.6312239092034438,
+   "persistence_6h": 1.0890279715796005
+  },
+  {
+   "run": "building_0801_minneapolis_2_bang_bang",
+   "building": "building_0801",
+   "station": "minneapolis",
+   "weather": "minneapolis_2",
+   "policy": "bang_bang",
+   "rooms": 112,
+   "open_loop_day1": 0.40603403024811047,
+   "open_loop_after_day1": 0.852970457287011,
+   "open_loop_by_day": [
+    0.40603403024811047,
+    0.610952258272323,
+    1.0407156291441353
+   ],
+   "bias_after_day1": -0.5023601333622963,
+   "forecast_1h": 0.24324639036005027,
+   "forecast_3h": 0.35442079378627594,
+   "forecast_6h": 0.5121985149044718,
+   "persistence_1h": 3.0137183579918196,
+   "persistence_3h": 2.4314398115897835,
+   "persistence_6h": 3.021022860471666
+  },
+  {
+   "run": "building_0801_minneapolis_2_fixed_setpoint",
+   "building": "building_0801",
+   "station": "minneapolis",
+   "weather": "minneapolis_2",
+   "policy": "fixed_setpoint",
+   "rooms": 112,
+   "open_loop_day1": 0.4245711248373814,
+   "open_loop_after_day1": 0.7092232107181725,
+   "open_loop_by_day": [
+    0.4245711248373814,
+    0.5489957718095646,
+    0.8398221305738194
+   ],
+   "bias_after_day1": -0.22668152250046486,
+   "forecast_1h": 0.16691115154152641,
+   "forecast_3h": 0.27030768420053425,
+   "forecast_6h": 0.3997661982217219,
+   "persistence_1h": 1.2268969314379576,
+   "persistence_3h": 1.2511110252515993,
+   "persistence_6h": 1.6302460998287678
+  },
+  {
+   "run": "building_0801_minneapolis_2_pid",
+   "building": "building_0801",
+   "station": "minneapolis",
+   "weather": "minneapolis_2",
+   "policy": "pid",
+   "rooms": 112,
+   "open_loop_day1": 0.42621388767509755,
+   "open_loop_after_day1": 0.6848764212719386,
+   "open_loop_by_day": [
+    0.42621388767509755,
+    0.5185580086138445,
+    0.8184781089333687
+   ],
+   "bias_after_day1": -0.24674995705293895,
+   "forecast_1h": 0.17760941004950898,
+   "forecast_3h": 0.2776007814462466,
+   "forecast_6h": 0.40755472266124476,
+   "persistence_1h": 1.2441023419079247,
+   "persistence_3h": 1.5928604818311196,
+   "persistence_6h": 2.1708338677734824
+  },
+  {
+   "run": "building_0801_minneapolis_2_pid_water",
+   "building": "building_0801",
+   "station": "minneapolis",
+   "weather": "minneapolis_2",
+   "policy": "pid_water",
+   "rooms": 112,
+   "open_loop_day1": 0.42570474996356633,
+   "open_loop_after_day1": 0.678373275768422,
+   "open_loop_by_day": [
+    0.42570474996356633,
+    0.5020064964473173,
+    0.817982545755825
+   ],
+   "bias_after_day1": -0.2774572475298028,
+   "forecast_1h": 0.1712772713307585,
+   "forecast_3h": 0.2711866449066929,
+   "forecast_6h": 0.4031594713705515,
+   "persistence_1h": 1.0964428991979644,
+   "persistence_3h": 1.501961070962829,
+   "persistence_6h": 2.107200754260229
+  },
+  {
+   "run": "building_0801_minneapolis_5_all_off",
+   "building": "building_0801",
+   "station": "minneapolis",
+   "weather": "minneapolis_5",
+   "policy": "all_off",
+   "rooms": 112,
+   "open_loop_day1": 0.1816118384215222,
+   "open_loop_after_day1": 1.3787160310656352,
+   "open_loop_by_day": [
+    0.1816118384215222,
+    0.9724016165035502,
+    1.6909995363279668
+   ],
+   "bias_after_day1": 1.1975866626934635,
+   "forecast_1h": 0.13775066676360642,
+   "forecast_3h": 0.24652922936972338,
+   "forecast_6h": 0.38734228738024057,
+   "persistence_1h": 0.29138889561735754,
+   "persistence_3h": 0.7423334508320586,
+   "persistence_6h": 1.2947457435393557
+  },
+  {
+   "run": "building_0801_minneapolis_5_bang_bang",
+   "building": "building_0801",
+   "station": "minneapolis",
+   "weather": "minneapolis_5",
+   "policy": "bang_bang",
+   "rooms": 112,
+   "open_loop_day1": 0.1816118384215222,
+   "open_loop_after_day1": 0.3175295574392277,
+   "open_loop_by_day": [
+    0.1816118384215222,
+    0.32168475422805787,
+    0.31330449090861145
+   ],
+   "bias_after_day1": -0.010123794449977675,
+   "forecast_1h": 0.17155309969423024,
+   "forecast_3h": 0.23799592202889405,
+   "forecast_6h": 0.284124086166893,
+   "persistence_1h": 2.319135457598055,
+   "persistence_3h": 2.870099498340411,
+   "persistence_6h": 3.6579444729420896
+  },
+  {
+   "run": "building_0801_minneapolis_5_fixed_setpoint",
+   "building": "building_0801",
+   "station": "minneapolis",
+   "weather": "minneapolis_5",
+   "policy": "fixed_setpoint",
+   "rooms": 112,
+   "open_loop_day1": 0.19585360869762206,
+   "open_loop_after_day1": 0.4570040666561263,
+   "open_loop_by_day": [
+    0.19585360869762206,
+    0.5861353860464972,
+    0.271443176830857
+   ],
+   "bias_after_day1": 0.38813552651687705,
+   "forecast_1h": 0.07931477416006502,
+   "forecast_3h": 0.1298668599662348,
+   "forecast_6h": 0.1742016649900089,
+   "persistence_1h": 0.5301101309789032,
+   "persistence_3h": 0.5796953122834163,
+   "persistence_6h": 0.8533713155358776
+  },
+  {
+   "run": "building_0801_minneapolis_5_pid",
+   "building": "building_0801",
+   "station": "minneapolis",
+   "weather": "minneapolis_5",
+   "policy": "pid",
+   "rooms": 112,
+   "open_loop_day1": 0.1816118384215222,
+   "open_loop_after_day1": 0.508161101136734,
+   "open_loop_by_day": [
+    0.1816118384215222,
+    0.6318764933288347,
+    0.3416080756272208
+   ],
+   "bias_after_day1": 0.4495134214177615,
+   "forecast_1h": 0.08193728246208598,
+   "forecast_3h": 0.1356022549248083,
+   "forecast_6h": 0.18638500911201275,
+   "persistence_1h": 0.5432224785803604,
+   "persistence_3h": 0.5846168074050364,
+   "persistence_6h": 0.8784101447596812
+  },
+  {
+   "run": "building_0801_minneapolis_5_pid_water",
+   "building": "building_0801",
+   "station": "minneapolis",
+   "weather": "minneapolis_5",
+   "policy": "pid_water",
+   "rooms": 112,
+   "open_loop_day1": 0.1816118384215222,
+   "open_loop_after_day1": 0.5088047761800628,
+   "open_loop_by_day": [
+    0.1816118384215222,
+    0.6325313292760413,
+    0.3423108012083958
+   ],
+   "bias_after_day1": 0.4497705944495912,
+   "forecast_1h": 0.08200226883935911,
+   "forecast_3h": 0.135891550245627,
+   "forecast_6h": 0.18711607924367082,
+   "persistence_1h": 0.5565084641515915,
+   "persistence_3h": 0.6025899311611728,
+   "persistence_6h": 0.8971134254753149
+  },
+  {
+   "run": "building_0801_minneapolis_8_all_off",
+   "building": "building_0801",
+   "station": "minneapolis",
+   "weather": "minneapolis_8",
+   "policy": "all_off",
+   "rooms": 112,
+   "open_loop_day1": 0.3640417312163063,
+   "open_loop_after_day1": 0.5608643866838442,
+   "open_loop_by_day": [
+    0.3640417312163063,
+    0.5490005817751554,
+    0.5725224541722806
+   ],
+   "bias_after_day1": -0.1835711170230332,
+   "forecast_1h": 0.10113768570964385,
+   "forecast_3h": 0.17821688347005352,
+   "forecast_6h": 0.27235548128594145,
+   "persistence_1h": 0.2423773538358879,
+   "persistence_3h": 0.578653241297571,
+   "persistence_6h": 0.9584900903609593
+  },
+  {
+   "run": "building_0801_minneapolis_8_bang_bang",
+   "building": "building_0801",
+   "station": "minneapolis",
+   "weather": "minneapolis_8",
+   "policy": "bang_bang",
+   "rooms": 112,
+   "open_loop_day1": 0.35157307397677917,
+   "open_loop_after_day1": 0.6539987682548767,
+   "open_loop_by_day": [
+    0.35157307397677917,
+    0.5268287462330137,
+    0.760528418862131
+   ],
+   "bias_after_day1": -0.38303181783853535,
+   "forecast_1h": 0.21866363750600887,
+   "forecast_3h": 0.3145975252798602,
+   "forecast_6h": 0.4398660649869486,
+   "persistence_1h": 4.074381818892043,
+   "persistence_3h": 3.0412846058947194,
+   "persistence_6h": 3.448040729358175
+  },
+  {
+   "run": "building_0801_minneapolis_8_fixed_setpoint",
+   "building": "building_0801",
+   "station": "minneapolis",
+   "weather": "minneapolis_8",
+   "policy": "fixed_setpoint",
+   "rooms": 112,
+   "open_loop_day1": 0.3696380010576767,
+   "open_loop_after_day1": 0.5026750392694601,
+   "open_loop_by_day": [
+    0.3696380010576767,
+    0.4723656909866457,
+    0.5313548868575582
+   ],
+   "bias_after_day1": -0.04582363665845326,
+   "forecast_1h": 0.11451802640059243,
+   "forecast_3h": 0.19107355662927394,
+   "forecast_6h": 0.2833403249650944,
+   "persistence_1h": 0.7155291043677804,
+   "persistence_3h": 0.844404696828305,
+   "persistence_6h": 1.183428212256194
+  },
+  {
+   "run": "building_0801_minneapolis_8_pid",
+   "building": "building_0801",
+   "station": "minneapolis",
+   "weather": "minneapolis_8",
+   "policy": "pid",
+   "rooms": 112,
+   "open_loop_day1": 0.3606052047463613,
+   "open_loop_after_day1": 0.4562774807031643,
+   "open_loop_by_day": [
+    0.3606052047463613,
+    0.4313785841029232,
+    0.47996646260688486
+   ],
+   "bias_after_day1": -0.03727043472206447,
+   "forecast_1h": 0.12918906723424578,
+   "forecast_3h": 0.2028292394949921,
+   "forecast_6h": 0.2965189101663838,
+   "persistence_1h": 0.958020586619853,
+   "persistence_3h": 1.1325938899440244,
+   "persistence_6h": 1.4438014023165866
+  },
+  {
+   "run": "building_0801_minneapolis_8_pid_water",
+   "building": "building_0801",
+   "station": "minneapolis",
+   "weather": "minneapolis_8",
+   "policy": "pid_water",
+   "rooms": 112,
+   "open_loop_day1": 0.36064348033003685,
+   "open_loop_after_day1": 0.44589876514139265,
+   "open_loop_by_day": [
+    0.36064348033003685,
+    0.41904529381372796,
+    0.4713102891790189
+   ],
+   "bias_after_day1": -0.0485380381529,
+   "forecast_1h": 0.12291255935257356,
+   "forecast_3h": 0.1979645490762251,
+   "forecast_6h": 0.2926297902439255,
+   "persistence_1h": 0.8764061669681904,
+   "persistence_3h": 1.120788951431077,
+   "persistence_6h": 1.5141850041458178
+  }
+ ]
+}
