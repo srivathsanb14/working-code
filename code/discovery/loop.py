@@ -25,7 +25,6 @@ with the same --run continues from the database.
 from __future__ import annotations
 
 import argparse
-import glob
 import hashlib
 import json
 import multiprocessing as mp
@@ -33,7 +32,8 @@ import time
 from pathlib import Path
 
 from . import diagnostics, evaluate, prompts, proposers
-from .episodes import load_episodes
+from .episodes import _load_cached
+from .starterkit_data import KIT, load_all
 
 ROOT = Path(__file__).resolve().parents[2]
 OUTD = ROOT / "outputs"
@@ -57,7 +57,7 @@ def split_episodes(eps, split):
 
 def _worker(src, paths, cache, split, kw, q):
     try:
-        eps = load_episodes(paths, cache)
+        eps = [_load_cached(p) for p in paths]
         S = split_episodes(eps, split)
         rec = evaluate.evaluate(src, S["train"], S["val"], **kw)
         rec["diagnostics"] = diagnostics.summarize(rec, S["val"])
@@ -127,13 +127,15 @@ def make_proposer(kind, run_dir, model, effort):
 def run(args):
     run_dir = OUTD / "discovery" / args.run
     db = Database(run_dir)
-    paths = sorted(glob.glob(str(ROOT / args.data)))
-    if not paths:
-        raise SystemExit(f"no rollouts match {args.data}; generate them with code/room_model_data.py")
     split = json.loads(Path(args.split).read_text()) if args.split else DEFAULT_SPLIT
     cache = run_dir / "episodes"
-    load_episodes(paths, cache)                       # build the cache once
-    (run_dir / "config.json").write_text(json.dumps({**vars(args), "split": split, "n_rollouts": len(paths)}, indent=1))
+    print(f"loading starter-kit runs from {args.results_dir} (scenarios: {args.scenarios_dir})")
+    eps, report = load_all(args.scenarios_dir, args.results_dir, args.policies, cache)
+    (run_dir / "data_report.json").write_text(json.dumps(report, indent=1))
+    if not eps:
+        raise SystemExit("no usable runs; generate them with the starter kit (see DATA.md)")
+    paths = [cache / f"episode_{e.name}.npz" for e in eps]
+    (run_dir / "config.json").write_text(json.dumps({**vars(args), "split": split, "n_runs": len(paths)}, indent=1, default=str))
     kw = dict(max_nfev=args.max_nfev, stride=args.stride, complexity_weight=args.complexity_weight)
 
     def consider(cands, gen):
@@ -178,8 +180,7 @@ def run(args):
         summary["best"] = {k: b[k] for k in ("id", "name", "score", "val_rmse_days23_mean", "train_rmse_mean", "complexity",
                                              "params", "val_theta", "val_rmse_days23")}
         if args.test:
-            from .episodes import load_episodes as _le
-            S = split_episodes(_le(paths, cache), split)
+            S = split_episodes([_load_cached(p) for p in paths], split)
             if S.get("test"):
                 from . import contract
                 mod, _ = contract.load(b["code"])
@@ -194,7 +195,11 @@ def run(args):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--run", default="default")
-    ap.add_argument("--data", default="outputs/roomdata_*.npz", help="glob of rollouts from room_model_data.py")
+    ap.add_argument("--scenarios-dir", type=Path, default=KIT / "smart_buildings/training_scenarios",
+                    help="scenario folders <building>/<weather>/config.gin (run_scenario_generator --output-dir)")
+    ap.add_argument("--results-dir", type=Path, default=ROOT / "data/results",
+                    help="evaluate.py --results-dir: <building>/<weather>/<policy>/timeseries.csv, ahu_log.csv, reward_components.csv")
+    ap.add_argument("--policies", nargs="*", default=None, help="only these policy folders (default: all found)")
     ap.add_argument("--split", help="JSON file {train: [...], val: [...], test: [...]} of building/scenario prefixes")
     ap.add_argument("--proposer", default="dry", choices=["dry", "dir", "claude"])
     ap.add_argument("--generations", type=int, default=0)

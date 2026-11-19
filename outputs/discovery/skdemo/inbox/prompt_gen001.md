@@ -87,7 +87,7 @@ Generation 1.
 
 The 2 best programs so far (best first):
 
-### Program 1: seed_slab_wall_network  (score 0.3210; held-out days 2-3 RMSE 0.230 K)
+### Program 1: seed_slab_wall_network  (score 0.4561; held-out days 2-3 RMSE 0.366 K)
 Hypothesis: Room air, floor slab, facade wall and partition walls as separate heat stores.
 ```python
 """Room air, floor slab, facade wall and partition walls as separate heat stores.
@@ -156,22 +156,24 @@ def simulate(geo, inputs, theta, p, T0):
     return net.simulate(inputs["T_out"], inputs["g"], inputs["T_supply"], Q, T0)
 ```
 Diagnostics:
-held-out open-loop RMSE, days 2-3 (theta fitted on day 1): mean 0.230 K
-  building_train_7_phoenix_3_alloff: day1 0.272 K, days2-3 0.289 K, bias -0.139 K
-  building_train_7_phoenix_3_pidwater: day1 0.276 K, days2-3 0.199 K, bias +0.086 K
-  building_train_7_phoenix_3_random: day1 0.193 K, days2-3 0.203 K, bias -0.031 K
-train RMSE (whole episodes, theta fitted jointly): mean 0.316 K
-by facade length per m2 of floor (tertiles): low: rmse 0.239, bias -0.068; mid: rmse 0.173, bias -0.015; high: rmse 0.198, bias -0.000
-by number of doors (tertiles): low: rmse 0.169, bias -0.039; mid: rmse 0.238, bias -0.027; high: rmse 0.203, bias -0.017
-by floor area (tertiles): low: rmse 0.245, bias -0.038; mid: rmse 0.205, bias -0.036; high: rmse 0.160, bias -0.010
-worst rooms: building_train_7_phoenix_3_alloff room 6 (rmse 0.85, bias -0.52, facade/m2 0.233, doors 1, area 81 m2); building_train_7_phoenix_3_random room 6 (rmse 0.62, bias -0.41, facade/m2 0.233, doors 1, area 81 m2); building_train_7_phoenix_3_pidwater room 6 (rmse 0.57, bias +0.42, facade/m2 0.233, doors 1, area 81 m2)
-HVAC air stream active: rmse 0.212 bias +0.004; inactive: rmse 0.260 bias -0.036
-by quarter of the day (00-06, 06-12, 12-18, 18-24): 0.226, 0.200, 0.263, 0.263
-rmse by day 1/2/3: 0.247 / 0.196 / 0.251
-theta across scenarios (train + held-out): k_ext 0.195-0.664; h_film 5-12.6; rc_ext 2.44e+05-8.23e+05; k_iw 0.328-0.453; rc_iw 1.26e+05-2.81e+05; rc_mass 1.21e+04-3.87e+04
+held-out open-loop RMSE, days 2-3 (theta fitted on day 1): mean 0.366 K
+  building_train_7_phoenix_3_all_off: day1 0.274 K, days2-3 0.559 K, bias -0.425 K
+  building_train_7_phoenix_3_bang_bang: day1 0.310 K, days2-3 0.444 K, bias -0.102 K
+  building_train_7_phoenix_3_fixed_setpoint: day1 0.264 K, days2-3 0.354 K, bias +0.024 K
+  building_train_7_phoenix_3_pid: day1 0.257 K, days2-3 0.229 K, bias +0.061 K
+  building_train_7_phoenix_3_pid_water: day1 0.257 K, days2-3 0.242 K, bias +0.056 K
+train RMSE (whole episodes, theta fitted jointly): mean 0.485 K
+by facade length per m2 of floor (tertiles): low: rmse 0.357, bias -0.127; mid: rmse 0.310, bias -0.070; high: rmse 0.305, bias -0.036
+by number of doors (tertiles): low: rmse 0.276, bias -0.092; mid: rmse 0.353, bias -0.046; high: rmse 0.342, bias -0.095
+by floor area (tertiles): low: rmse 0.378, bias -0.074; mid: rmse 0.338, bias -0.118; high: rmse 0.256, bias -0.041
+worst rooms: building_train_7_phoenix_3_all_off room 33 (rmse 0.98, bias -0.75, facade/m2 0.233, doors 1, area 81 m2); building_train_7_phoenix_3_all_off room 25 (rmse 0.96, bias -0.91, facade/m2 0.000, doors 0, area 82 m2); building_train_7_phoenix_3_all_off room 17 (rmse 0.94, bias -0.91, facade/m2 0.000, doors 0, area 83 m2)
+HVAC air stream active: rmse 0.375 bias +0.044; inactive: rmse 0.337 bias -0.114
+by quarter of the day (00-06, 06-12, 12-18, 18-24): 0.293, 0.353, 0.397, 0.358
+rmse by day 1/2/3: 0.272 / 0.340 / 0.372
+theta across scenarios (train + held-out): k_ext 0.163-0.527; h_film 5-37.6; rc_ext 2.35e+05-7.31e+05; k_iw 0.289-0.556; rc_iw 1.99e+05-2.99e+05; rc_mass 1.28e+04-3.73e+04
 complexity 906 AST nodes, 2 global + 6 per-scenario constants
 
-### Program 2: seed_rc_one_node  (score 1.6819; held-out days 2-3 RMSE 1.667 K)
+### Program 2: seed_rc_one_node  (score 1.7950; held-out days 2-3 RMSE 1.780 K)
 Hypothesis: One heat store per room: room air and everything in it share one capacity.
 ```python
 """One heat store per room: room air and everything in it share one capacity.
@@ -205,19 +207,21 @@ def simulate(geo, inputs, theta, p, T0):
     return net.simulate(inputs["T_out"], inputs["g"], inputs["T_supply"], Q, T0)
 ```
 Diagnostics:
-held-out open-loop RMSE, days 2-3 (theta fitted on day 1): mean 1.667 K
-  building_train_7_phoenix_3_alloff: day1 0.825 K, days2-3 1.689 K, bias +1.427 K
-  building_train_7_phoenix_3_pidwater: day1 0.711 K, days2-3 1.243 K, bias -0.498 K
-  building_train_7_phoenix_3_random: day1 2.141 K, days2-3 2.069 K, bias -0.224 K
-train RMSE (whole episodes, theta fitted jointly): mean 1.408 K
-by facade length per m2 of floor (tertiles): low: rmse 1.659, bias +0.428; mid: rmse 1.582, bias +0.238; high: rmse 1.620, bias +0.039
-by number of doors (tertiles): low: rmse 1.727, bias +0.166; mid: rmse 1.575, bias +0.150; high: rmse 1.560, bias +0.389
-by floor area (tertiles): low: rmse 1.733, bias +0.150; mid: rmse 1.641, bias +0.264; high: rmse 1.487, bias +0.292
-worst rooms: building_train_7_phoenix_3_random room 30 (rmse 3.01, bias -1.03, facade/m2 0.000, doors 1, area 59 m2); building_train_7_phoenix_3_random room 24 (rmse 2.82, bias -0.41, facade/m2 0.000, doors 0, area 83 m2); building_train_7_phoenix_3_random room 19 (rmse 2.76, bias -0.39, facade/m2 0.290, doors 0, area 55 m2)
-HVAC air stream active: rmse 1.891 bias -0.111; inactive: rmse 1.311 bias +0.378
-by quarter of the day (00-06, 06-12, 12-18, 18-24): 1.674, 1.389, 1.523, 1.796
-rmse by day 1/2/3: 1.226 / 1.743 / 1.558
-theta across scenarios (train + held-out): cap 5.66e+04-1.06e+05; u_facade 0.825-1.54
+held-out open-loop RMSE, days 2-3 (theta fitted on day 1): mean 1.780 K
+  building_train_7_phoenix_3_all_off: day1 0.855 K, days2-3 0.715 K, bias +0.040 K
+  building_train_7_phoenix_3_bang_bang: day1 1.411 K, days2-3 3.874 K, bias -0.344 K
+  building_train_7_phoenix_3_fixed_setpoint: day1 0.732 K, days2-3 2.088 K, bias -0.137 K
+  building_train_7_phoenix_3_pid: day1 0.741 K, days2-3 1.118 K, bias -0.225 K
+  building_train_7_phoenix_3_pid_water: day1 0.741 K, days2-3 1.106 K, bias -0.276 K
+train RMSE (whole episodes, theta fitted jointly): mean 1.285 K
+by facade length per m2 of floor (tertiles): low: rmse 1.296, bias -0.154; mid: rmse 1.612, bias -0.165; high: rmse 1.893, bias -0.246
+by number of doors (tertiles): low: rmse 1.593, bias -0.242; mid: rmse 1.735, bias -0.174; high: rmse 1.473, bias -0.149
+by floor area (tertiles): low: rmse 1.847, bias -0.243; mid: rmse 1.648, bias -0.224; high: rmse 1.306, bias -0.098
+worst rooms: building_train_7_phoenix_3_fixed_setpoint room 1 (rmse 5.24, bias -0.24, facade/m2 0.320, doors 0, area 55 m2); building_train_7_phoenix_3_bang_bang room 4 (rmse 4.79, bias -0.66, facade/m2 0.000, doors 2, area 51 m2); building_train_7_phoenix_3_bang_bang room 3 (rmse 4.75, bias -0.68, facade/m2 0.000, doors 2, area 53 m2)
+HVAC air stream active: rmse 2.692 bias +0.025; inactive: rmse 0.845 bias -0.293
+by quarter of the day (00-06, 06-12, 12-18, 18-24): 1.061, 1.991, 2.352, 1.562
+rmse by day 1/2/3: 0.896 / 1.876 / 1.644  (growing: slow dynamics or a steady-state gain is off)
+theta across scenarios (train + held-out): cap 6.11e+04-1.27e+05; u_facade 0.839-2.24
 complexity 150 AST nodes, 2 global + 2 per-scenario constants
 
 Write 6 new candidates. At least 2 must explore a structurally different hypothesis (new state, new coupling law or new coefficient formula), not a re-tuning; the rest may refine the best programs to address their diagnostics.

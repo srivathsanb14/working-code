@@ -5,10 +5,10 @@ time from the observation vector, its own previous action and the building
 metadata.  Nothing comes from the YAML/gin config or from simulator internals,
 so a model discovered on Episodes is deployable as it stands.
 
-An Episode is built from a rollout written by code/room_model_data.py
-(outputs/roomdata_<building>_<weather>_<policy>.npz).  Generating more rollouts
-(more buildings, stations, behaviour policies) only means running that script
-again; nothing here changes.
+Episodes are built by starterkit_data.py from the starter kit's own outputs
+(evaluate.py results folders and the scenario folders); this module defines the
+container, the geometry a policy can compute from the metadata arrays, and the
+on-disk cache.
 """
 from __future__ import annotations
 
@@ -22,7 +22,6 @@ from scipy import ndimage
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent))
-import room_inputs as ri  # noqa: E402
 import room_model as rm  # noqa: E402
 from room_coeff_targets import features as _pair_features  # noqa: E402
 
@@ -32,7 +31,7 @@ T_RESET = 294.0
 
 @dataclasses.dataclass
 class Episode:
-    name: str                 # e.g. building_train_8_atlanta_1_random
+    name: str                 # e.g. building_train_8_atlanta_1_pid_water
     building: str
     weather: str
     policy: str
@@ -51,10 +50,17 @@ class Episode:
         return self.T_meas.shape[1]
 
 
-def geometry(floor_plan, zone_map, rooms, ahu_rooms):
+def natural_key(s):
+    import re
+    return [int(t) if t.isdigit() else t for t in re.split(r"(\d+)", str(s))]
+
+
+def geometry(floor_plan, zone_map, rooms, ahu_rooms, ahu_order=None):
     """Geometry a policy can compute from the metadata arrays.
 
-    Returns a dict of numpy arrays, rooms in observation order (room_1..room_V):
+    `rooms` fixes the order of every per-room axis (e.g. the VAV order of the
+    observation and of the starter kit's CSVs: room_1, room_10, room_11, ...).
+    Returns a dict of numpy arrays:
       V                  number of rooms
       area   (V)         floor area, m2
       facade_faces (V)   20-cm faces between the room's air and exterior wall
@@ -62,7 +68,7 @@ def geometry(floor_plan, zone_map, rooms, ahu_rooms):
       door_cells (V,V)   door cells touching both rooms (a door is usually 2 cells)
       n_doors (V,V)      number of doors between the two rooms
       bbox_x, bbox_y (V) bounding-box sides of the room, m
-      ahu (V)            index of the air handler serving the room
+      ahu (V)            index of the air handler serving the room (in ahu_order, default natural sort)
       floor (V)          floor index
     """
     G = rm.grid_geometry(floor_plan, zone_map)
@@ -71,78 +77,19 @@ def geometry(floor_plan, zone_map, rooms, ahu_rooms):
     names = list(rooms)
     pos = {r: k for k, r in enumerate(names)}
     ahu = np.zeros(V, int)
-    for a, ah in enumerate(sorted(ahu_rooms)):
+    for a, ah in enumerate(ahu_order or sorted(ahu_rooms, key=natural_key)):
         for r in ahu_rooms[ah]:
             ahu[pos[r]] = a
     lab = G["lab"]
     fl, nf = ndimage.label(G["cls"] != rm.EXT_SPACE)
     floor = np.array([int(np.bincount(fl[lab == i + 1]).argmax()) - 1 for i in range(V)])
-    return dict(V=V, area=f["area"], facade_faces=f["F"], wall_cells=f["P"], door_cells=f["D"], n_doors=f["ndoor"],
-                bbox_x=f["Lx"], bbox_y=f["Ly"], ahu=ahu, floor=floor)
-
-
-def build_inputs(D, geo):
-    """Per-step inputs, rebuilt from observations (room_inputs.InputModel).
-
-    Returns a dict (n = number of scored steps, V rooms):
-      T_out    (n)      outside temperature, K
-      g        (n,V)    VAV air-stream capacity rate rho*c*flow, W/K
-      T_supply (n,V)    supply-air temperature reaching the room, K
-      Q_reheat (n,V)    reheat coil heat, W
-      Q_gain   (n,V)    internal gain from lighting and equipment, W (known schedule)
-      occupants(n)      building-total occupant count (per-room split unknown)
-      comfort  (n)      1 in comfort mode
-      hour_sin, hour_cos, dow_sin, dow_cos (n)
-    The heat a room receives in step t is g*(T_supply - T) + Q_reheat + Q_gain + 70 W per occupant in it.
-    """
-    rooms = list(D["rooms"])
-    IM = ri.InputModel(list(D["names"]), rooms, json.loads(str(D["ahu_json"])), geo["area"])
-    O = D["obs"]
-    n = len(O) - 2                           # last step has no measurement of its result
-    V = len(rooms)
-    out = {k: np.zeros(n) for k in ("T_out", "occupants", "comfort", "hour_sin", "hour_cos", "dow_sin", "dow_cos")}
-    for k in ("g", "T_supply", "Q_reheat", "Q_gain"):
-        out[k] = np.zeros((n, V))
-    ix = {nm: i for i, nm in enumerate(D["names"])}
-    for t in range(n):
-        Tstart = IM.zone_T(O[t + 1])
-        Tout, g, Ts, Q, parts = IM.step_inputs(O[t], O[t + 1], Tstart)
-        out["T_out"][t] = Tout; out["g"][t] = g; out["T_supply"][t] = Ts
-        out["Q_reheat"][t] = parts["Qre"]; out["Q_gain"][t] = parts["Qgain"]
-        out["occupants"][t] = O[t + 1][IM.occ]; out["comfort"][t] = O[t][IM.comfort]
-        out["hour_sin"][t] = O[t][ix["hod_sin_000"]]; out["hour_cos"][t] = O[t][ix["hod_cos_000"]]
-        out["dow_sin"][t] = O[t][ix["dow_sin_000"]]; out["dow_cos"][t] = O[t][ix["dow_cos_000"]]
-    T_meas = np.array([IM.zone_T(O[t + 2]) for t in range(n)])
-    return out, T_meas
-
-
-def load_episode(path: Path) -> Episode:
-    D = np.load(path)
-    stem = path.stem.replace("roomdata_", "")
-    parts = stem.split("_")
-    building = "_".join(parts[:3])
-    policy = parts[-1]
-    weather = "_".join(parts[3:-1])
-    geo = geometry(D["floor_plan"], D["zone_map"], list(D["rooms"]), json.loads(str(D["ahu_json"])))
-    inputs, T_meas = build_inputs(D, geo)
-    return Episode(name=stem, building=building, weather=weather, policy=policy, scenario=f"{building}/{weather}",
-                   geo=geo, inputs=inputs, T_meas=T_meas)
-
-
-def load_episodes(paths, cache_dir: Path | None = None):
-    """Load rollouts, caching the derived Episode as .npz next to the run."""
-    eps = []
-    for p in sorted(map(Path, paths)):
-        if cache_dir is not None:
-            cp = cache_dir / f"episode_{p.stem}.npz"
-            if cp.exists() and cp.stat().st_mtime > p.stat().st_mtime:
-                eps.append(_load_cached(cp)); continue
-        ep = load_episode(p)
-        if cache_dir is not None:
-            cache_dir.mkdir(parents=True, exist_ok=True)
-            _save_cached(ep, cache_dir / f"episode_{p.stem}.npz")
-        eps.append(ep)
-    return eps
+    # feature arrays come in label order (room_1, room_2, ...); permute to the requested order
+    perm = np.array([int(str(r).split("_")[-1]) - 1 for r in names])
+    if sorted(perm.tolist()) != list(range(V)):
+        raise ValueError(f"rooms {names[:5]}... do not match the {V} rooms of the floor plan")
+    pm = np.ix_(perm, perm)
+    return dict(V=V, area=f["area"][perm], facade_faces=f["F"][perm], wall_cells=f["P"][pm], door_cells=f["D"][pm],
+                n_doors=f["ndoor"][pm], bbox_x=f["Lx"][perm], bbox_y=f["Ly"][perm], ahu=ahu, floor=floor[perm])
 
 
 def _save_cached(ep, path):

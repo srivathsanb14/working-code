@@ -1028,7 +1028,7 @@ One-step accuracy is misleading, since nearly any model predicts `T_{t+1} ≈ T_
 `code/discovery/` implements symbolic discovery with an LLM as the proposer. The LLM writes small simulation programs, numerical optimization fits every constant, and a held-out simulation decides. The LLM only proposes structure; numbers and verdicts never come from it. No LLM is called unless `--proposer claude` is chosen. Run it from `working-code/` with `.venv/bin/python code/run_discovery.py`; usage is in `code/discovery/loop.py`.
 
 ```
- rollouts (room_model_data.py) ──► episodes: inference-time inputs + geometry + measured T
+ starter-kit outputs (evaluate.py results + scenario folders) ──► replay ──► episodes: inference-time inputs + geometry + measured T
                                           │
   proposer ──► candidate programs ──► contract check ─► physics checks ─► nested fit ─► held-out score ─► diagnostics
      ▲            (LLM, inbox,                                  (PARAMS global, THETA per scenario)        │
@@ -1041,7 +1041,7 @@ One-step accuracy is misleading, since nearly any model predicts `T_{t+1} ≈ T_
 | Part | Content | Changes per generation? |
 |---|---|---|
 | Task and rules | Discover room dynamics as interpretable programs. In blind mode there is no simulator source and there are no config values. Coefficients must come from geometry and a few constants, never per-room fits | no (cached system prompt) |
-| Data dictionary | The arrays a candidate receives, with units. **Geometry** from the floor-plan arrays: area, facade segments, shared-wall cells and door cells per pair, doors, bounding box, AHU, floor. **Inputs** rebuilt from observations: `T_out`, air-stream conductance `g`, `T_supply`, `Q_reheat`, `Q_gain`, building occupants, comfort flag, time of day and week. **Target**: measured room temperatures from a uniform 294 K start | no |
+| Data dictionary | The arrays a candidate receives, with units (rooms in the starter kit's VAV order). **Geometry** from the floor-plan arrays: area, facade segments, shared-wall cells and door cells per pair, doors, bounding box, AHU, floor. **Inputs** rebuilt from observations: `T_out`, air-stream conductance `g`, `T_supply`, `Q_reheat`, `Q_gain`, building occupants, comfort flag, time of day and week. **Target**: measured room temperatures from a uniform 294 K start | no |
 | Contract | `PARAMS` (global constants), `THETA` (per-building constants), `simulate(geo, inputs, theta, p, T0) -> (n, V)`; allowed imports; the `dlib.LinearNetwork` helper (implicit RC network solver) | no |
 | Scoring rules | The checks, the nested fit, the held-out day-1/days-2–3 protocol and the complexity price | no |
 | Physics notes | A short summary of the §14 audit | only with `--informed` |
@@ -1087,16 +1087,43 @@ Seeds (generation 0):
 
 `--seeds naive` keeps blind runs free of the audited structure.
 
-**Demo run [X]** (`outputs/discovery/demo/`): 18 rollouts; train `train_8`, `train_2`, `train_4`; validate on `train_7` (a held-out building and the only Phoenix scenario); test on `train_1`.
+**Data comes only from the starter kit (`DATA.md`).** Training data is whatever the starter kit's own commands write:
+- `evaluate.py` results folders (`timeseries.csv`, `ahu_log.csv`, `reward_components.csv`) for any policies and scenarios;
+- the scenario folders from `run_scenario_generator`.
+
+Those files lack the per-room damper and valve commands and the plant setpoints. `code/discovery/starterkit_data.py` recovers them by **replay**:
+- The simulator and the shipped policies are deterministic.
+- The policies read only zone temperatures, the clock, the comfort-band sensors and the outside temperature, which can all be rebuilt from the CSVs.
+- So the unmodified policy class is re-run on the rebuilt observations, returning exactly the actions it took.
+
+Each run is checked against the logged per-AHU airflow and run commands, and dropped if they disagree. The room inputs are then computed with the simulator's physics:
+- the air-stream conductance and supply temperature;
+- reheat, with the boiler-tank ramp replayed from the setpoints (exact, 0.0 K error);
+- internal gain and building occupancy.
+
+Two traps showed up in testing:
+- **Zone order.** The CSV zone columns follow the VAV order (`VAV_1, VAV_10, VAV_11, …`), so the geometry is permuted to match.
+- **First command.** At step 0 the AHUs' first run command takes effect one step late. The logged run state is used, not the replayed one.
+
+As a cross-check, the full §14 network with the true materials, driven by these inputs, matches the accuracy it reached with the solver's own inputs: 0.26–0.72 K over 3 days for all-off and `pid_water`.
+
+**Demo run [X]** (`outputs/discovery/skdemo/`). The data is 6 scenarios × the 5 shipped policies × 864 steps, generated with `evaluate.py --results-dir working-code/data/results`; all 30 runs passed the replay check. Train on `train_8` (×2), `train_2` and `train_4`; validate on `train_7` (a held-out building and the only Phoenix scenario); test on `train_1` (Fairbanks).
 
 | Candidate | Held-out days 2–3 RMSE | Train RMSE | Note |
 |---|---|---|---|
-| `seed_slab_wall_network` | **0.230 K** | 0.316 K | test (`train_1`, Fairbanks) 0.654 K |
-| ablation without the spreading resistance | 0.338 K | 0.591 K | the loop recovers that spreading matters |
-| `seed_rc_one_node` | 1.667 K | 1.408 K | naive baseline |
+| `seed_slab_wall_network` | **0.366 K** | 0.485 K | test (`train_1`) 0.888 K |
+| ablation without the spreading resistance | 0.512 K | 0.700 K | the loop recovers that spreading matters |
+| `seed_rc_one_node` | 1.780 K | 1.285 K | naive baseline |
 | explicit-Euler single node | rejected | — | unstable at the lower capacity bound; the reason is fed back |
 
-A seed evaluation takes 10–80 s on a laptop, so a generation of six candidates takes a few minutes. The cost grows with the number of training rollouts. To scale up, generate rollouts with `code/room_model_data.py`: more buildings from `run_floor_generator`, more stations, all three behaviour policies. Then point `--data` and `--split` at them, holding out whole buildings *and* whole stations.
+The shipped policies excite the building less than random actuator moves do, so these errors are higher than the §14.5 figures. The seed, being a geometry-only approximation of the §14 network, also sits above the full network. Closing that gap is the loop's job.
+
+A seed evaluation takes 20–140 s on 20 training runs. To scale up, follow `DATA.md`:
+- generate buildings with `run_floor_generator`;
+- make scenarios across all six stations with `run_scenario_generator`;
+- run `evaluate.py` with the five shipped policies.
+
+Then point `--scenarios-dir`, `--results-dir` and `--split` at them, holding out whole buildings *and* whole stations.
 
 
 ---
@@ -1288,7 +1315,7 @@ Items 1, 2 and 5 can be closed with the repo's existing commands; Appendix B is 
 | `outputs/roomdata_<building>_<weather>_<policy>.npz` | 3-day rollouts with the solver's exact per-room inputs logged beside the observations (§14.5) |
 | `outputs/room_model_validate.json`, `room_coeff_targets.npz`, `room_coeff_fit.json`, `room_spread_fit.json`, `room_model_eval.json`, `room_model_identify.json`, `room_model_forecast.json` | results of §14.1 and §14.5 |
 | `code/` | the scripts listed in §20.1 |
-| `code/discovery/`, `code/run_discovery.py`; `outputs/discovery/<run>/` | the LLM discovery loop and its runs (§17.7) |
+| `code/discovery/`, `code/run_discovery.py`; `outputs/discovery/<run>/`; `DATA.md`, `data/results/` | the LLM discovery loop, its runs, and the starter-kit data it reads (§17.7) |
 
 The scripts run from the starter-kit root (the gin configs use relative paths) with the environment in `.venv/` (Python 3.12, dependencies pinned in the starter kit's `pyproject.toml`), for example `cd smart-buildings-starter-kit && PYTHONDONTWRITEBYTECODE=1 ../working-code/.venv/bin/python ../working-code/code/rollout_checks.py 600`.
 

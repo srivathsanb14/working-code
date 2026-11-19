@@ -1,6 +1,8 @@
 {
- "run": "demo",
- "data": "outputs/roomdata_*.npz",
+ "run": "skdemo",
+ "scenarios_dir": "/Users/srivathsan/Desktop/smart-buildings/smart-buildings-starter-kit/smart_buildings/training_scenarios",
+ "results_dir": "/Users/srivathsan/Desktop/smart-buildings/working-code/data/results",
+ "policies": null,
  "split": {
   "train": [
    "building_train_8",
@@ -14,20 +16,20 @@
    "building_train_1"
   ]
  },
- "proposer": "dry",
+ "proposer": "dir",
  "generations": 1,
  "n": 6,
  "explore": 2,
  "elites": 4,
  "failures": 6,
  "informed": false,
- "no_seeds": false,
+ "seeds": "all",
  "timeout": 1200,
  "max_nfev": 30,
  "stride": 2,
  "complexity_weight": 0.0001,
- "test": false,
+ "test": true,
  "model": "claude-opus-5-5",
  "effort": "high",
- "n_rollouts": 18
+ "n_runs": 30
 }

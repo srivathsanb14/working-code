@@ -1,0 +1,64 @@
+{
+ "n_candidates": 4,
+ "n_ok": 3,
+ "best": {
+  "id": "g000_0001",
+  "name": "seed_slab_wall_network",
+  "score": 0.4561074423645711,
+  "val_rmse_days23_mean": 0.3655074423645711,
+  "train_rmse_mean": 0.48527370867138997,
+  "complexity": 906,
+  "params": {
+   "h_slab": 6.222563845319334,
+   "a_spread": 1.568762178920871
+  },
+  "val_theta": {
+   "building_train_7/phoenix_3": {
+    "k_ext": 0.5266976265300406,
+    "h_film": 36.540666041821154,
+    "rc_ext": 234862.8826135858,
+    "k_iw": 0.5562719265694162,
+    "rc_iw": 271050.95259219024,
+    "rc_mass": 37286.99973740281
+   }
+  },
+  "val_rmse_days23": {
+   "building_train_7_phoenix_3_all_off": 0.5586866692341821,
+   "building_train_7_phoenix_3_bang_bang": 0.4436870698211191,
+   "building_train_7_phoenix_3_fixed_setpoint": 0.3540962791383972,
+   "building_train_7_phoenix_3_pid": 0.2288312752480701,
+   "building_train_7_phoenix_3_pid_water": 0.24223591838108693
+  },
+  "test_rmse_days23": {
+   "building_train_1_fairbanks_1_all_off": 0.6346139455070018,
+   "building_train_1_fairbanks_1_bang_bang": 0.862758920795521,
+   "building_train_1_fairbanks_1_fixed_setpoint": 1.0409874375035035,
+   "building_train_1_fairbanks_1_pid": 0.9809276754313919,
+   "building_train_1_fairbanks_1_pid_water": 0.9183455052653033
+  },
+  "test_rmse_days23_mean": 0.8875266969005444
+ },
+ "leaderboard": [
+  {
+   "id": "g000_0001",
+   "name": "seed_slab_wall_network",
+   "score": 0.4561074423645711,
+   "val_rmse_days23_mean": 0.3655074423645711,
+   "complexity": 906
+  },
+  {
+   "id": "g001_0003",
+   "name": "cand_no_spread",
+   "score": 0.6030564716749275,
+   "val_rmse_days23_mean": 0.5124564716749275,
+   "complexity": 906
+  },
+  {
+   "id": "g000_0000",
+   "name": "seed_rc_one_node",
+   "score": 1.7950343886009617,
+   "val_rmse_days23_mean": 1.7800343886009617,
+   "complexity": 150
+  }
+ ]
+}
