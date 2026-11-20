@@ -202,3 +202,152 @@ def parse_response(text):
     data = json.loads(text)
     cands = data.get("candidates", [])
     return [dict(name=str(c["name"])[:80], hypothesis=str(c.get("hypothesis", "")), code=str(c["code"])) for c in cands]
+
+
+# ============================================================================= closed-form mode (default)
+# No number is fitted anywhere.  One LLM request per (island, operator); the operator decides the user message.
+
+CF_DATA = """\
+GEOMETRY  geo (dict; computed from the building metadata's floor_plan and zone_map, rooms in a fixed order):
+  geo["V"] int rooms;  geo["area"] (V,) m2;  geo["facade_faces"] (V,) 0.2 m boundary segments on the exterior wall;
+  geo["wall_cells"] (V,V) partition cells shared by rooms i and j;  geo["door_cells"] (V,V) door cells joining i and j;
+  geo["n_doors"] (V,V);  geo["bbox_x"], geo["bbox_y"] (V,) m;  geo["ahu"] (V,) air handler index;  geo["floor"] (V,)
+
+INPUTS of one 5-minute step (computed at run time from the observation and the policy's own commands):
+  per room (V,): g = capacity rate of the supply air, W/K (0..~2400); T_supply = its temperature, K;
+                 Q_reheat = reheat coil heat, W; Q_gain = lighting/equipment heat, W (known schedule)
+  building-wide (): T_out K; occupants = people in the whole building (room unknown); comfort 1/0;
+                 hour_sin, hour_cos, dow_sin, dow_cos
+TARGET  every room's measured air temperature at the end of the step.  Every episode starts with every cell at
+  294 K.  The early steps of an episode have a short real history (the buffer is padded with the first values);
+  some error there is acceptable."""
+
+CF_CONTRACT = '''\
+Write one Python module (numpy, math and dlib only; deterministic; no files):
+
+    import numpy as np
+    import dlib
+
+    HISTORY = 36          # steps of measured history your formulas read (1..288)
+
+    def prepare(geo, U):                  # optional: geometry-only templates, computed once per building
+        return coef                       # anything (dict of arrays is typical)
+
+    def step(coef, geo, hist, u, U):      # one 5-minute step for a BATCH of B independent moments
+        return T_next                     # (B, V) room air temperatures at the end of this step
+
+  hist["T"]  (B, HISTORY, V) measured room temperatures, oldest first, hist["T"][:, -1] = now.
+  hist[k]    the HISTORY inputs before this step: per-room (B, HISTORY, V), building-wide (B, HISTORY);
+             input hist[k][:, j] drove hist["T"][:, j-1] -> hist["T"][:, j].
+  u[k]       this step's inputs: per-room (B, V), building-wide (B,).
+  U          universal constants (table below).  geo matrices are (V, V): use T @ M.T for neighbour sums.
+  In rollouts your own predictions are fed back into hist["T"] (free run), so the map must stay stable.
+
+Rules:
+  - NO fitted numbers: no PARAMS/THETA.  Every number in the code is either a universal constant (the same for
+    every building and weather; you may introduce new ones, keep them few and physically sensible), a geometry
+    quantity, or computed from the history buffer.  Values that differ per building (facade and partition
+    conductivity / density / specific heat, slab density, occupants per room, outdoor film coefficient) must be
+    INFERRED from hist by closed-form expressions (e.g. a shrunk least-squares ratio over the buffer).
+  - every room uses the same templates; rooms differ only through their numbers (areas, wall lengths, doors).
+  - conductance between cells = conductivity x contact area / distance (geometry x material); layers in series
+    add resistances (room -> 1-cell wall -> room; room -> facade -> outside film).
+  - assemble each room with dlib.assemble(T, [(w_k, T_k), ...], b): T_next = (T + sum w_k T_k + b)/(1 + sum w_k),
+    w_k = DT * conductance / C >= 0, b = DT * direct heat / C.  It is stable for any weights; the supply air must
+    be one of the terms (implicit), never an explicit Euler step.
+  - checks before scoring: equilibrium (all 294 K, no heat -> no drift), bounded cooling toward a colder outside,
+    positive response to heat, a 2400 W/K stream of 290 K air must pull a room to 290 K and never past it.'''
+
+CF_SCORING = """\
+How candidates are scored (no fitting anywhere):
+  stage 0  the checks above on a real floor plan; failures are rejected with the reason.
+  stage 1  quick screen: one-step (5-minute) RMSE on held-out buildings, from measured history; more than
+           {screen}x the persistence error (T_next = T_now) is screened out.
+  stage 2  decisive: from measured history at many moments, free-run {horizons} ahead with the actual inputs;
+           a rollout leaving [230, 350] K marks the candidate unstable.  One-step accuracy does not guarantee good
+           rollouts.  Score = mean {main} RMSE on held-out buildings + {cw} K per AST node of your code."""
+
+CF_SYSTEM = """\
+You are a scientist discovering the room dynamics of office buildings, as ONE set of closed-form formulas that
+predicts every room's temperature in ANY building from the building's layout and the recent history of measured
+values.  It will be used for model predictive control (heating/cooling plans).  No number is fitted at deployment
+or beforehand; the only estimation allowed is a closed-form expression of the history buffer inside your formulas.
+
+What is known about the physics (treat as hypotheses to test):
+  - heat flow between rooms, to the outside and into heavy materials is linear in temperatures; the nonlinearity is
+    in how commands become heat (products, limits, on/off) and that part is already done for you in the inputs.
+  - one temperature per room is probably not enough: after heating stops a room drops fast, then slowly, because
+    heavy materials (slab, walls, furniture) hold heat.  Instead of hidden states you may summarise the history
+    (lags, differences, window or exponential averages): averaging a linear system gives a linear system.
+  - from one room's view: its own air; a slower store attached to it (slab and furniture); its outside walls;
+    its shared walls; doors to neighbours.
+
+A model is a set of TEMPLATES: small formulas with blanks filled by one room's numbers; a room's equation is the
+sum of its filled templates (a corner room gets an outside-wall term, an interior room does not).  Roles:
+building physics (passive), controls/HVAC, disturbances (people, equipment, weather), bookkeeping.  Keep one
+physical question per template so the pieces can be checked and recombined.
+
+{data}
+
+UNIVERSAL CONSTANTS U (reviewed list; same for every building and weather):
+{constants}
+
+{contract}
+
+{scoring}
+
+Reply only in the JSON format requested: a list of candidates, each with a short name, a one-paragraph hypothesis
+(what changed and which diagnostic motivates it), and the complete module source in "code"."""
+
+
+def cf_system_prompt(constants_raw, screen=5.0, horizons=(12, 36, 72), main_h=36, cw=0.0001):
+    rows = "\n".join(f"  U[\"{k}\"] = {v['value']:<10g} {v['unit']:<7} {v['what']}" for k, v in constants_raw.items() if not k.startswith("_"))
+    hz = ", ".join(f"{h / 12:g} h" for h in horizons)
+    return CF_SYSTEM.format(data=CF_DATA, constants=rows, contract=CF_CONTRACT,
+                            scoring=CF_SCORING.format(screen=screen, horizons=hz, main=f"{main_h / 12:g} h", cw=cw))
+
+
+def _prog(rec, label):
+    return (f"### {label}: {rec['name']}  [{rec['id']}, island {rec['island']}, score {rec['score']:.4f}]\n"
+            f"Hypothesis: {rec.get('hypothesis', '')}\n```python\n{rec['code'].strip()}\n```\n")
+
+
+def _fails(failures):
+    if not failures:
+        return ""
+    return "Recent failures on this island (do not repeat):\n" + "\n".join(
+        f"- {f['name']} [{f['status']}]: {f.get('reason', '')}" + ("".join(f"\n    {x}" for x in f.get("failures", [])[:3])) for f in failures)
+
+
+def cf_user_mutation(gen, island, parent, analysis_text, profile_text, failures, n):
+    return "\n\n".join(x for x in [
+        f"Generation {gen}, island {island}.  Operator: MUTATION.",
+        _prog(parent, "Parent"),
+        "Pre-mutation analysis of the parent (held-out buildings):\n" + analysis_text,
+        ("Measured vs predicted (the parent's 3 h-ahead forecast) for two rooms:\n" + profile_text) if profile_text else "",
+        _fails(failures),
+        f"Write {n} children of this parent.  Each must change ONE thing that the analysis points to (a template's "
+        "formula, a new template, a different history summary, a history-inferred material value) and keep the rest. "
+        "Say in the hypothesis which diagnostic line motivates the change."] if x)
+
+
+def cf_user_crossover(gen, island, a, b, cx_text, failures, n):
+    return "\n\n".join(x for x in [
+        f"Generation {gen}, island {island}.  Operator: CROSSOVER.",
+        _prog(a, "Parent A"), _prog(b, "Parent B"),
+        "Pre-crossover analysis:\n" + cx_text,
+        _fails(failures),
+        f"Write {n} children that COMBINE the parents: take each template from the parent that is better where that "
+        "template matters (e.g. the exterior-wall template from the parent better on exterior rooms), make the pieces "
+        "consistent, and state in the hypothesis which template came from which parent."] if x)
+
+
+def cf_user_explore(gen, island, elites, failures, n):
+    lb = "\n".join(f"- {e['name']} [{e['id']}]: score {e['score']:.4f}; {e.get('hypothesis', '')[:300]}" for e in elites) or "- none yet"
+    return "\n\n".join(x for x in [
+        f"Generation {gen}, island {island}.  Operator: EXPLORE.",
+        "Programs on this island so far (best first):\n" + lb,
+        _fails(failures),
+        f"Write {n} candidates with a STRUCTURALLY different hypothesis from all of the above (a different slow-store "
+        "summary, a different way to infer per-building materials from history, different coupling laws), not a "
+        "re-tuning."] if x)

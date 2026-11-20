@@ -192,35 +192,40 @@ Only go on when the audit has no hard failures.
 
 ## 6. Discover the dynamics with an LLM
 
-Full details are in `docs/LLM_DISCOVERY.md`. In short:
-
-Score the two seed models (no LLM involved):
+The default mode is **closed-form, with no fitting anywhere**. It runs islands, mutation and crossover. Every step, file and check is described in
+[DISCOVERY_WALKTHROUGH.md](DISCOVERY_WALKTHROUGH.md). Before anything else, check the machinery on synthetic data (no simulator data, no LLM, about 4 minutes):
 
 ```bash
-python code/run_discovery.py --run main --generations 0
+python code/run_discovery.py --selftest
 ```
 
-See exactly what the LLM would be sent, without sending it:
+Score the seeds and write every prompt of generation 1 without sending anything:
 
 ```bash
-python code/run_discovery.py --run main --proposer dry --generations 1
+python code/run_discovery.py --run main --proposer dry --generations 1 --ceiling
+```
+
+Exercise islands, mutation and crossover with no LLM (mechanical operators), and read the logs:
+
+```bash
+python code/run_discovery.py --run mock --proposer mock --generations 3
 ```
 
 Run discovery with Claude (needs `requirements-llm.txt` and credentials):
 
 ```bash
-python code/run_discovery.py --run main --proposer claude --generations 20 --n 6
+python code/run_discovery.py --run main --proposer claude --generations 20 --islands 3 --test
 ```
 
-Or answer with any other LLM or by hand: put candidate `.py` files in `outputs/discovery/main/inbox/` and run
+You can also answer with any other LLM or by hand. Put candidate `.py` files in each request's `generations/gNNN/island_K/<operator>/inbox/`, then run:
 
 ```bash
 python code/run_discovery.py --run main --proposer dir --generations 1
 ```
 
-Results land in `outputs/discovery/main/`: `summary.json` (leaderboard and fitted constants), `best.py`, `database.jsonl`, `candidates/`, `prompts/`.
+Results land in `outputs/discovery/main/`. Start with `REPORT.md`, then `log.md`, `generations/`, `candidates/`, `plots/`, `database.jsonl`, `summary.json` and `best.py`.
 
-### Two deployment options
+### The earlier fitted modes (comparison only)
 
 Both are implemented; choose with `--deployment` (STATE_SPACE.md §17.8 explains the choice).
 

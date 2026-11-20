@@ -1,0 +1,5 @@
+{
+ "truth_scores_zero": true,
+ "truth_beats_seeds": true,
+ "loop_and_report": true
+}

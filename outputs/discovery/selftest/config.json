@@ -1,0 +1,51 @@
+{
+ "run": "selftest",
+ "dataset": "/Users/srivathsan/Desktop/smart-buildings/working-code/outputs/discovery/selftest_dataset",
+ "split": {
+  "_note": "SYNTHETIC self-test split",
+  "train": [
+   "building_train_1",
+   "building_train_2",
+   "building_train_4"
+  ],
+  "val": [
+   "building_train_5",
+   "building_train_7"
+  ],
+  "test": [
+   "building_train_8"
+  ]
+ },
+ "policies": null,
+ "proposer": "mock",
+ "generations": 2,
+ "islands": 2,
+ "migrate_every": 1,
+ "mut_requests": 1,
+ "n_mut": 2,
+ "n_cx": 2,
+ "n_exp": 1,
+ "elites": 6,
+ "horizons": [
+  12,
+  36,
+  72
+ ],
+ "main_horizon": 36,
+ "every": 12,
+ "warmup": 36,
+ "screen": 5.0,
+ "complexity_weight": 0.0001,
+ "max_train": 8,
+ "max_val": 30,
+ "ceiling": true,
+ "test": false,
+ "timeout": 1800,
+ "seed": 0,
+ "model": "claude-opus-5-5",
+ "effort": "high",
+ "mode": "closedform",
+ "n_runs": 12,
+ "n_train_used": 6,
+ "n_val_used": 4
+}

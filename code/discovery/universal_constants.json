@@ -1,0 +1,14 @@
+{
+  "_about": "Universal constants given to closed-form candidates as U[...] and listed in the prompt. A universal constant has the same value for every building and weather, so writing it into a formula does not make the model building-specific. Per-building values (facade and partition conductivity, density and specific heat, slab density, occupants per room, outdoor film coefficient) are NOT here: formulas must infer them from the history buffer. Review this file once before a real run and set _reviewed to true (decision: review the constants once before they go into the prompt).",
+  "_reviewed": false,
+  "DT":          {"value": 300.0,     "unit": "s",      "what": "control step"},
+  "CELL":        {"value": 0.2,       "unit": "m",      "what": "grid cell side of floor_plan / zone_map"},
+  "HEIGHT":      {"value": 3.0,       "unit": "m",      "what": "floor-to-ceiling height (cell depth)"},
+  "RHO_AIR":     {"value": 1.2,       "unit": "kg/m3",  "what": "air density"},
+  "C_AIR":       {"value": 1005.0,    "unit": "J/kgK",  "what": "air specific heat"},
+  "RHO_C_AIR":   {"value": 1206.0,    "unit": "J/m3K",  "what": "air volumetric heat capacity (RHO_AIR * C_AIR)"},
+  "RHO_WATER":   {"value": 1000.0,    "unit": "kg/m3",  "what": "water density"},
+  "C_WATER":     {"value": 4180.0,    "unit": "J/kgK",  "what": "water specific heat"},
+  "T0":          {"value": 294.0,     "unit": "K",      "what": "starting temperature of every cell (air, walls, slab)"},
+  "OCC_W":       {"value": 70.0,      "unit": "W",      "what": "heat given to the room by one occupant"}
+}

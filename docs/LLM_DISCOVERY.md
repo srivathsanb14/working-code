@@ -1,5 +1,7 @@
 # Using an LLM for symbolic discovery of the room dynamics
 
+> **Default mode is now closed-form discovery with no fitting anywhere** (islands, mutation, crossover, per-request logs, plots). See [DISCOVERY_WALKTHROUGH.md](DISCOVERY_WALKTHROUGH.md). This page describes the earlier fitted modes (`--deployment offline|online|both`), kept for comparison.
+
 The LLM proposes **structure**: small Python programs that state a hypothesis about how room temperatures evolve. Numerical optimization fits every constant, and a simulation on held-out buildings decides which program is better. The LLM never supplies numbers or verdicts.
 
 **Status.** The loop runs end to end with the `dry` proposer, but only the two hand-written seeds have been evaluated; no LLM generation has run yet. **Default deployment is offline** (`--deployment offline`): no fitting on a new building, only its floor plan, measured history and universal constants (STATE_SPACE.md §17.8).

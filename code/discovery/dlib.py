@@ -56,6 +56,29 @@ class LinearNetwork:
         return out
 
 
+def end_of_step(T, a, T_supply, b):
+    """The assembled room equation for closed-form candidates (air-side heat at the end of the step):
+        T_next = (T + a * T_supply + b) / (1 + a)
+    a = g * DT / C_air (share of supply air over the step, >= 0);  b = DT / C_air * (all other heat, W), in K.
+    Implicit in the supply air, so it stays stable for any airflow; works on any leading batch shape."""
+    a = np.maximum(a, 0.0)
+    return (T + a * T_supply + b) / (1.0 + a)
+
+
+def assemble(T, terms, b=0.0):
+    """General end-of-step room equation: every exchange term pulls the room toward a source temperature.
+        T_next = (T + sum_k w_k * T_k + b) / (1 + sum_k w_k)
+    terms: list of (w_k, T_k) with w_k = DT * conductance_k / C (>= 0), e.g. (a, T_supply), (d, T_neighbours),
+    (e, T_out), (s, T_slow_store);  b = DT / C * (direct heat, W).  A convex mix plus b: stable for any weights."""
+    num = T + b
+    den = 1.0
+    for w, src in terms:
+        w = np.maximum(w, 0.0)
+        num = num + w * src
+        den = den + w
+    return num / den
+
+
 def pairs(M):
     """Upper-triangle (i, j, value) of a symmetric pair matrix where value > 0."""
     i, j = np.nonzero(np.triu(M, 1) > 0)
