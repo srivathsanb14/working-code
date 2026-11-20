@@ -8,20 +8,20 @@ COLS = ["ID", "Epic", "Title", "Description", "Definition of done", "Depends on"
 # Size: S <= 1 day, M 2-4 days, L 1-2 weeks.
 TASKS = [
     # ------------------------------------------------------------------ A. setup (assumes both repositories are already in place on this machine)
-    ("A3", "Setup", "Measure simulator speed on this machine",
+    ("A1", "Setup", "Measure simulator speed on this machine",
      "Run kit evaluate.py for 576 steps on one small, one median and one large generated building; read seconds_per_step from summary.json.",
      "Table of seconds per step by building size in docs/SOURCES_AND_FACTS.md; WORKERS and STEPS in run_pipeline.sh chosen from it.", "", "P1", "S"),
-    ("A4", "Setup", "Set up LLM credentials and a spending cap",
+    ("A2", "Setup", "Set up LLM credentials and a spending cap",
      "Install requirements-llm.txt; configure ANTHROPIC_API_KEY or ant auth; decide a budget per run and per generation.",
      "A one-candidate proposer call succeeds; the budget is written in docs/RUNBOOK.md; key not committed.", "", "P0", "S"),
-    ("A5", "Setup", "Review the universal constants once",
+    ("A3", "Setup", "Review the universal constants once",
      "Check every value in code/discovery/universal_constants.json against the kit code and STATE_SPACE.md; add any missing universal constant the formulas may need (e.g. 10 W/m2 gains, 0.2 standby).",
      "Each constant has a cited source; _reviewed is set to true; the dry-run prompt shows the reviewed table.", "", "P0", "S"),
 
     # ------------------------------------------------------------------ B. data generation
     ("B1", "Data", "Run step 2 of the pipeline: generate buildings, scenarios and runs",
      "./run_pipeline.sh with FROM=1 TO=2 using the default seeds (train 500-599, val 700-719, test 800-819) and the five shipped policies.",
-     "data/plan.json and data/split.json exist; every planned run has summary.json or a recorded failure; kit unchanged.", "A3", "P0", "L"),
+     "data/plan.json and data/split.json exist; every planned run has summary.json or a recorded failure; kit unchanged.", "A1", "P0", "L"),
     ("B2", "Data", "Handle rejected seeds by oversampling",
      "The kit rejects seeds whose plan has a room under 20 m2. Add an option to generate_data.py to top up each split with extra seeds until a target number of accepted buildings is reached.",
      "--target-buildings N (or equivalent) yields N accepted buildings per split; failures listed in plan.json; split sizes reported.", "B1", "P1", "M"),
@@ -72,7 +72,7 @@ TASKS = [
     # ------------------------------------------------------------------ E. prompt and proposer
     ("E1", "Prompt", "Review the dry-run prompts end to end",
      "Run --proposer dry on the real dataset; read the system prompt and every operator prompt; fix unclear wording, missing data-dictionary entries, wrong units.",
-     "Reviewed prompts committed as examples; a reviewer other than the author signs off.", "C2,A5", "P0", "S"),
+     "Reviewed prompts committed as examples; a reviewer other than the author signs off.", "C2,A3", "P0", "S"),
     ("E2", "Prompt", "Decide how much simulator structure goes into the prompt",
      "Open question: graph only, or the full physics chain (informed notes). Run both variants for a few generations.",
      "Comparison of best scores after N generations for both variants; decision recorded.", "G1", "P1", "M"),
@@ -81,7 +81,7 @@ TASKS = [
      "Contract text updated; at least one seed uses each pattern; self-test still passes.", "E1", "P2", "S"),
     ("E4", "Prompt", "Prompt size and cost control",
      "Measure tokens per request; trim parent code and analysis when long; use prompt caching for the system prompt.",
-     "Tokens and cost per generation logged in log.md; requests stay under the chosen limit.", "A4,E1", "P1", "S"),
+     "Tokens and cost per generation logged in log.md; requests stay under the chosen limit.", "A2,E1", "P1", "S"),
     ("E5", "Prompt", "Robust parsing of LLM answers",
      "Handle malformed JSON, missing fields, code fences, duplicate names; retry once with an error message.",
      "Unit tests with malformed responses; a failed parse is logged as a rejected candidate with the reason.", "", "P1", "S"),
@@ -115,7 +115,7 @@ TASKS = [
     # ------------------------------------------------------------------ G. search
     ("G1", "Search", "First real LLM run (small)",
      "3 islands, 3 generations, default operators, on a subset of val episodes, to check cost, failure modes and logs.",
-     "REPORT.md with real LLM candidates; failure reasons reviewed; cost per generation known.", "E1,F2,A4", "P0", "M"),
+     "REPORT.md with real LLM candidates; failure reasons reviewed; cost per generation known.", "E1,F2,A2", "P0", "M"),
     ("G2", "Search", "Full discovery run",
      "Islands, migration and generation count chosen from G1; run until the best score stops improving.",
      "Best candidate beats persistence at 1, 3 and 6 h on val and test; REPORT.md and best.py committed.", "G1", "P0", "L"),
@@ -172,7 +172,7 @@ TASKS = [
      "Unit test comparing tracker inputs with replayed inputs step by step.", "J1", "P0", "S"),
     ("J4", "Runtime", "Time budget check",
      "Measure tracker + forecast time per step on the largest building.",
-     "Below the controller's share of the ~0.125 s per-step budget.", "J1,A3", "P1", "S"),
+     "Below the controller's share of the ~0.125 s per-step budget.", "J1,A1", "P1", "S"),
 
     # ------------------------------------------------------------------ K. controller
     ("K1", "Controller", "Safe baseline submission",
