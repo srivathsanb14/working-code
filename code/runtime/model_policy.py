@@ -44,3 +44,32 @@ def make_model_policy(base_policy_class, model, params, theta, name="model_track
             return action
 
     return ModelPolicy
+
+
+def make_closedform_policy(base_policy_class, src, name="closedform_tracking"):
+    """Same as make_model_policy, for a closed-form candidate (discovery/closedform.py contract): nothing fitted."""
+    from runtime.closedform_tracker import ClosedFormTracker
+
+    class ClosedFormPolicy:
+        instances = []
+
+        def __init__(self, building_meta_data, action_spec):
+            t0 = time.time()
+            self.base = base_policy_class(building_meta_data, action_spec)
+            self.model = ClosedFormTracker(building_meta_data, src)
+            self.init_seconds = time.time() - t0
+            self.step_seconds = []
+            ClosedFormPolicy.instances.append(self)
+
+        def name(self):
+            return name
+
+        def get_action(self, obs):
+            action = self.base.get_action(obs)
+            t0 = time.time()
+            self.model.observe(obs, action)
+            self.model.predict_next()                    # the forecast a controller would use, timed with the rest
+            self.step_seconds.append(time.time() - t0)
+            return action
+
+    return ClosedFormPolicy

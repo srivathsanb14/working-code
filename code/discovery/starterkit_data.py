@@ -167,7 +167,7 @@ def replay(ctx: ScenarioContext, policy_key: str, R: dict):
 
 def episode_inputs(ctx: ScenarioContext, R: dict, C: np.ndarray, Dd: np.ndarray):
     """Per-step room inputs from replayed native actions + logged sensors (same physics as room_inputs.py)."""
-    m = ctx.meta; V = ctx.geo["V"]; K = len(ctx.ahu_names); area = ctx.geo["area"]
+    V = ctx.geo["V"]; K = len(ctx.ahu_names); area = ctx.geo["area"]
     n = len(R["temps"]) - 1                      # step k's result is seen in row k+1
     temps_start = R["temps"][:n]          # CSV row k = room temperatures x_k at the start of step k (row 0 = reset)
     oat_step = np.concatenate([[ctx.obs0[ctx.ix[f"ahs_{ctx.ahu_names[0]}_outside_air_temperature_sensor"]]], R["oat"][:-1]])
@@ -175,7 +175,7 @@ def episode_inputs(ctx: ScenarioContext, R: dict, C: np.ndarray, Dd: np.ndarray)
     reheat_ix = np.array([ctx.za[v]["reheat_valve_percentage_command"] for v in ctx.vav_ids])
     temp_ix, press_ix, rec_ix = ctx.ahu_temp_ix, ctx.ahu_press_ix, ctx.ahu_rec_ix
     water_ix, dp_ix, ahu_disc, hws_disc = ctx.water_ix, ctx.dp_ix, ctx.ahu_run_ix, ctx.hws_run_ix
-    out = {k: np.zeros(n) for k in ("T_out", "occupants", "comfort", "hour_sin", "hour_cos", "dow_sin", "dow_cos")}
+    out = {k: np.zeros(n) for k in ("T_out", "occupants", "comfort", "hour_sin", "hour_cos", "dow_sin", "dow_cos", "T_water")}
     for k in ("g", "T_supply", "Q_reheat", "Q_gain"):
         out[k] = np.zeros((n, V))
     check = np.zeros((n, K))
@@ -208,11 +208,14 @@ def episode_inputs(ctx: ScenarioContext, R: dict, C: np.ndarray, Dd: np.ndarray)
         act["ahu_on"][k] = on; act["ahu_pressure"][k] = P; act["ahu_sat_setpoint"][k] = sp
         act["ahu_recirculation"][k] = rec; act["ahu_flow"][k] = check[k]
         act["hws_on"][k] = hws_on; act["hws_water_setpoint"][k] = C[k, water_ix]; act["hws_dp"][k] = dp; act["T_water"][k] = tw
+        out["T_water"][k] = tw                       # boiler supply-water temperature during step k (observable)
         start_ts = ctx.start + k * ctx.dt
         comfort = bool(ctx.schedule.is_comfort_mode(start_ts))
         out["Q_gain"][k] = GAIN_W_M2 * area * (1.0 if comfort else STANDBY)
         out["g"][k] = g; out["T_supply"][k] = Tsa; out["T_out"][k] = oat_step[k]
-        out["occupants"][k] = R["occupancy"][k]; out["comfort"][k] = comfort
+        # the policy's num_occupants observation runs two steps behind the logged occupancy (checked live against
+        # reward_components.total_occupancy with runtime/closedform_tracker), so use what the policy can see
+        out["occupants"][k] = R["occupancy"][k - 2] if k >= 2 else R["occupancy"][0]; out["comfort"][k] = comfort
         o = ctx.rebuild_obs(k, None, R["temps"], R["oat"]) if k else ctx.obs0
         for a, b in (("hour_sin", "hod_sin_000"), ("hour_cos", "hod_cos_000"), ("dow_sin", "dow_sin_000"), ("dow_cos", "dow_cos_000")):
             out[a][k] = o[ctx.ix[b]]

@@ -3,7 +3,7 @@ Edit the TASKS list and re-run:  python docs/next_tasks.py"""
 import csv
 from pathlib import Path
 
-COLS = ["ID", "Epic", "Title", "Description", "Definition of done", "Depends on", "Priority", "Size"]
+COLS = ["ID", "Epic", "Title", "Description", "Definition of done", "Depends on", "Priority", "Size", "Status", "Notes"]
 # Priority: P0 = blocks the next milestone, P1 = needed for a good submission, P2 = improves it, P3 = later / research.
 # Size: S <= 1 day, M 2-4 days, L 1-2 weeks.
 TASKS = [
@@ -241,9 +241,93 @@ TASKS = [
      "Plan written; filtering method chosen.", "G2", "P3", "S"),
 ]
 
+# Status after the Nov 20, 2026 build session: done / partial / open, with what was built and where.
+STATUS = {
+    "A3": ("partial", "Every constant now cites its kit source (universal_constants.json 'source'); a person still sets _reviewed."),
+    "B2": ("done", "generate_data.py --oversample (run_pipeline.sh OVERSAMPLE=1.3): extra seeds 10000 above each range, first N accepted kept; tested on seeds 905-912 (4 rejected, 4 topped up)."),
+    "C3": ("done", "code/dataset_report.py -> docs/DATASET_REPORT.md; run it after step 4."),
+    "D1": ("done", "code/geometry_cli.py (rooms.csv, pairs.csv); outputs/geometry/ for the six shipped buildings."),
+    "D2": ("done", "geo gains facade_top/bottom/left/right, facade_sides (corner = 2+ sides with >= 2 m), boundary_faces, n_neighbours, aspect; in the prompt."),
+    "D3": ("done", "inputs['T_water'] in offline episodes and in the runtime tracker; in the prompt; physics checks use 340 K."),
+    "E4": ("done", "ClaudeProposer logs tokens and USD per request (log.md, candidates.json) and per run; edit PRICE_PER_MTOK to the current price list."),
+    "E5": ("done", "prompts.parse_response tolerates fences, prose, bare lists, duplicates; ClaudeProposer retries once with the error; tests/test_parse.py."),
+    "F2": ("partial", "prepare() cached per building, per-candidate time logged; full-split timing needs the real dataset."),
+    "F3": ("done", "evolve.py --workers N (forked processes); identical results to serial checked."),
+    "F4": ("done", "New rejection: warmer outside must not cool a room. New warning: uniform temperature shift must shift the forecast."),
+    "F5": ("done", "val_24h_mean and val_24h_drift_mean in every record."),
+    "G6": ("done", "Answers saved to candidates.json before evaluation; in_progress.json resumes an interrupted generation; tested."),
+    "G7": ("done", "tests/ include a planted-truth scorer check on a toy floor plan; runs in CI."),
+    "H2": ("done", "plots/lineage.png in every REPORT.md."),
+    "J1": ("done", "code/runtime/closedform_tracker.py; live forecasts equal offline closedform scores exactly (one-step 0.4584 vs 0.4584 K, 3 h 2.0203 vs 2.0203 K on building_train_8/atlanta_1, 576 steps)."),
+    "J2": ("done", "run_policy.py accepts closed-form best.py; run_pipeline.sh step 8 runs it with --check-replay."),
+    "J3": ("done", "run_policy.py --check-replay compares live and replayed inputs; found and fixed a 2-step lag of the occupancy observation in offline episodes."),
+    "J4": ("partial", "0.7 ms per step on a 30-room building (tracker + one-step forecast); large buildings still to measure."),
+    "L1": ("partial", "kaggle/submission.ipynb + code/submission/ (TransferPolicyCore); uses the MPC when best.py is attached, pid_water otherwise; not yet run on Kaggle."),
+    "L2": ("done", "code/submission/safety.py; fuzz test in tests/test_safety.py."),
+    "L3": ("partial", "code/package_submission.py builds dist/kaggle_dataset and checks it imports without the kit; upload pending."),
+    "L4": ("done", "code/rehearse_submission.py (vendored pid_water reproduces the kit's score exactly: 0.02497)."),
+    "M1": ("done", "tests/ (20 tests, no starter kit needed)."),
+    "M2": ("done", ".github/workflows/ci.yml (lint + tests on every push)."),
+    "M3": ("done", "ruff.toml; code and tests pass."),
+    "O3": ("done", "Decided yes: optional stateful contract (init_state/predict/correct, fixed correction, nothing fitted); scorer, tracker, prompt support it. "
+                   "seed_cf_network_observer (mid-range universal materials) on 12 x 30-day episodes: 0.74/0.93/1.16 K at 1/3/6 h vs history seed 0.99/1.16/1.34, persistence 0.66/0.97/1.47; 5x faster."),
+    "K4": ("done", "code/control/costs.py: comfort exact (kit shortfall), energy/carbon from commands with the kit's price and carbon tables. "
+                   "control/validate_costs.py on 30-day runs: electric power corr 0.999 (within 3-7%), gas corr 0.977, normalized energy corr 0.99+."),
+    "K5": ("done", "code/control/occupancy.py: schedule prior + online workday profile; 3 h ahead RMSE 4-16 people vs persistence 15-43 on four 30-day runs."),
+    "K6": ("partial", "On/off is a mode of the MPC ('off' = every AHU and the boiler off when predicted cheapest); a full ablation vs always-on is still to run at scale."),
+    "K2": ("partial", "code/control/policies.FeedForwardPolicy: pid_water plus model-chosen pre-heat and early set-back. 2-day check: fairbanks_1 0.02268 vs pid_water 0.02309, atlanta_1 equal. Needs the 30-scenario benchmark."),
+    "K3": ("partial", "code/control/policies.MPCPolicy: mode MPC (schedule/comfort/eco/off) over a 2 h horizon, replanned every 3 steps, ~50 ms per plan. "
+                   "2-day check: fairbanks_1 0.02089 vs pid_water 0.02309 (-9.5%), atlanta_1 0.02501 vs 0.02497. Needs the 30-scenario benchmark and large-building timing."),
+    "D4": ("partial", "OccupancyForecaster splits the building total by floor area (default) or equally; comparing the options on model error is still open."),
+}
+TASKS.append(("O3", "Decisions", "Allow a filtered hidden state in closed-form candidates?",
+              "Observed: the hand-built network with a Kalman filter and default constants forecast 0.57 K at 3 h on building_train_8/atlanta_1 "
+              "where the closed-form history seed got 2.02 K. Decide whether candidates may keep a state corrected by measurements "
+              "(still nothing fitted), e.g. a dlib helper for a fixed-gain observer.",
+              "Decision recorded; if yes, contract and runtime tracker support it and a seed uses it.", "G1", "P1", "M"))
+# Deployment-readiness gaps (Nov 20, 2026): building/weather agnostic by construction, not yet shown at scale.
+TASKS += [
+    ("K7", "Controller", "Per-step time guard for the model-based controllers",
+     "The simulator alone takes up to 0.109 s per step on a 203-room building, out of about 0.125 s for the whole 9 h session. "
+     "Track elapsed time per step and per episode; skip planning (use pid_water / the last mode) when the budget would be exceeded; "
+     "lengthen the replanning interval automatically on large buildings.",
+     "On the largest generated building the policy never exceeds its share of the budget; a test forces a slow planner and checks the fallback.",
+     "K3", "P0", "M"),
+    ("K8", "Controller", "Detect unsupported HVAC variants and fall back",
+     "The website says hidden buildings vary in 'HVAC system'; the kit's code contains an air-source heat-pump variant the shipped scenarios do not use. "
+     "Our command-to-heat laws and cost estimate assume a boiler. Detect the variant from the metadata / observation fields and fall back to pid_water "
+     "(or add the heat-pump laws to runtime/inputs.py and control/costs.py).",
+     "A heat-pump scenario generated with the kit runs end to end without wrong forecasts driving decisions; behaviour documented.",
+     "", "P0", "M"),
+    ("I5", "Validation", "Generalisation benchmark for the controllers",
+     "Script and run: pid_water vs feed-forward vs MPC on (a) all 30 shipped scenarios at 8,640 steps and (b) generated hold-out buildings "
+     "(test seeds, including the largest) on the held-out station, recording score, comfort/energy/carbon terms, worst scenario and seconds per step.",
+     "Table in docs/; the MPC beats pid_water on average and in the worst case without breaking the time budget, or the gap is explained.",
+     "B1,K7", "P0", "M"),
+    ("I6", "Validation", "Robustness probes for assumed constants",
+     "Assumed equal in the hidden set: internal gains 10 W/m2 (standby 0.2), 70 W per person, equipment laws, the occupancy pattern before learning. "
+     "In labelled side experiments (copies of scenarios, never in training), perturb each and measure how forecasts and controller scores degrade.",
+     "Degradation table per constant; any fragile assumption gets a mitigation task.", "I5", "P2", "M"),
+    ("K9", "Controller", "Schedule and price gaps: holidays and month",
+     "The clock does not encode the date, so holidays (in the metadata) are ignored and the gas price uses the annual mean. "
+     "Estimate the season from the outdoor temperature history and detect holidays from observed zero occupancy on a workday.",
+     "Pre-heating is not triggered on detected holidays; cost estimate error vs the kit reported with and without the fix.", "K5", "P3", "S"),
+    ("G8", "Search", "Seed with history-inferred materials for the stateful network",
+     "The stateful seed uses mid-range universal materials (3 h forecast 0.93 K, about persistence level). Add closed-form, history-based "
+     "estimates of facade and slab parameters (as seed_cf_history_slab does for the facade U-value) inside the stateful network.",
+     "New seed beats seed_cf_network_observer on the 30-day episodes at 1, 3 and 6 h.", "", "P1", "M"),
+    ("L6", "Submission", "Deployment-readiness gate",
+     "Single checklist before submitting the model-based version: K1 done (pid_water notebook scored on Kaggle), K7 time guard, K8 HVAC variant handling, "
+     "I5 benchmark passed, notebook rehearsed locally with the packaged dataset, fallback to pid_water verified by fault injection.",
+     "All items ticked in docs/RUNBOOK.md; only then is the MPC notebook submitted.", "K1,K7,K8,I5", "P0", "S"),
+]
+STATUS["K1"] = ("open", "Deployable today: the pid_water-only notebook (kaggle/submission.ipynb without best.py). Submit it first to prove the Kaggle interface.")
+STATUS["I4"] = ("open", "Include the controllers: MPC plan time was ~50 ms on 30-39 room buildings; unmeasured on 150-200 rooms (see K7).")
+rows = [list(t) + list(STATUS.get(t[0], ("open", ""))) for t in TASKS]
+
 out = Path(__file__).with_suffix(".csv")
 with out.open("w", newline="") as f:
     w = csv.writer(f)
     w.writerow(COLS)
-    w.writerows(TASKS)
+    w.writerows(rows)
 print(f"wrote {out} ({len(TASKS)} tasks)")

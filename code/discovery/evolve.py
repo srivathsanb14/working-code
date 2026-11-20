@@ -124,7 +124,26 @@ def evaluate(code, train, val, U, args):
         signal.alarm(0)
 
 
-METRICS = ("score", "score_metric", "complexity", "history", "stage", "reason", "failures", "traceback",
+_G = None          # (train, val, U, args) shared with forked workers
+
+
+def _eval_worker(code):
+    tr, va, U, args = _G
+    return evaluate(code, tr, va, U, args)
+
+
+def evaluate_many(codes, train, val, U, args):
+    """Evaluate candidates serially, or in --workers forked processes (backlog F3); same results either way."""
+    global _G
+    if args.workers <= 1 or len(codes) <= 1:
+        return [evaluate(c, train, val, U, args) for c in codes]
+    import multiprocessing as mp
+    _G = (train, val, U, args)
+    with mp.get_context("fork").Pool(min(args.workers, len(codes))) as pool:
+        return pool.map(_eval_worker, codes)
+
+
+METRICS = ("score", "score_metric", "warnings", "complexity", "history", "stage", "reason", "failures", "traceback",
            "stage1_one_step_mean", "stage1_persistence_mean", "val_one_step_mean", "unstable_episodes", "horizons", "main_horizon")
 
 
@@ -213,7 +232,7 @@ def run(a):
     rng = np.random.default_rng(a.seed)
     proposer = make_proposer(a)
     if a.ceiling and not (run_dir / "ceiling.json").exists():
-        log(f"ceiling (diagnostic): per-room linear model fitted on the first half of each held-out episode")
+        log("ceiling (diagnostic): per-room linear model fitted on the first half of each held-out episode")
         C = {e.name: cf.ceiling(e, U, tuple(a.horizons), a.every, a.warmup) for e in val}
         keys = next(iter(C.values())).keys()
         (run_dir / "ceiling.json").write_text(json.dumps({"episodes": C, "mean": {k: float(np.mean([c[k] for c in C.values() if k in c])) for k in keys}}, indent=1))
@@ -229,9 +248,15 @@ def run(a):
                 log(f"- [{r['id']}] seed {s.stem} -> {_fmt(r)}")
 
     start = db.generation() + 1
+    flag = run_dir / "in_progress.json"
+    if flag.exists():                                     # backlog G6: an interrupted generation is finished first
+        start = json.loads(flag.read_text())["generation"]
+        log(f"\nresuming unfinished generation {start} (saved LLM answers are reused; evaluated candidates are skipped)")
     for gen in range(start, start + a.generations):
+        flag.write_text(json.dumps({"generation": gen}))
         log(f"\n## Generation {gen}\n")
         made = 0
+        pending = []                                      # (candidate, island, operator, parent ids, request dir, best parent score)
         for k in range(a.islands):
             pop = [dict(r, code=code_of(db, r)) for r in db.elites(k, a.elites)]
             fails = db.failures(k, 4)
@@ -250,6 +275,12 @@ def run(a):
                 seen_op[op] = seen_op.get(op, 0) + 1
                 rq = run_dir / "generations" / f"g{gen:03d}" / f"island_{k}" / (op if seen_op[op] == 1 else f"{op}_{seen_op[op]}")
                 rq.mkdir(parents=True, exist_ok=True)
+                saved = rq / "candidates.json"
+                if saved.exists():                         # resume: reuse the answer this request already got
+                    S = json.loads(saved.read_text()); cands, pids, best_parent = S["candidates"], S["parents"], S["best_parent"]
+                    log(f"- island {k} **{op}**: reusing saved answer ({len(cands)} candidates)")
+                    pending += [(c, k, op, pids, rq, best_parent) for c in cands]
+                    continue
                 if op == "mutation":
                     p = parents[0]
                     an = p["analysis"]
@@ -266,6 +297,7 @@ def run(a):
                     user = prompts.cf_user_explore(gen, k, pop, fails, n)
                 (rq / "prompt.md").write_text(f"# SYSTEM\n\nsee ../../../../system_prompt.md\n\n# USER\n\n{user}\n")
                 ctx = {"operator": op, "parents": parents, "dir": rq}
+                usage = None
                 if a.proposer == "dry":
                     cands = []
                 elif a.proposer == "dir":
@@ -273,21 +305,33 @@ def run(a):
                 else:
                     try:
                         cands = proposer.propose(system, user, n, gen, ctx)
+                        usage = getattr(proposer, "last_usage", None)
                     except Exception as e:  # noqa: BLE001
                         log(f"- island {k} {op}: proposer failed: {type(e).__name__}: {e}"); cands = []
                 pids = [p["id"] for p in parents] if op != "explore" else []
-                log(f"- island {k} **{op}**" + (f" of {', '.join(pids)}" if pids else "") + f": asked for {n}, got {len(cands)} "
-                    f"([prompt]({rq.relative_to(run_dir)}/prompt.md)" + (f", [analysis]({rq.relative_to(run_dir)}/analysis.md)" if op != "explore" else "") + ")")
                 best_parent = min((p["score"] for p in parents), default=None) if op != "explore" else None
-                for c in cands:
-                    if any(r["hash"] == _hash(c["code"]) for r in db.recs):
-                        log(f"  - skip duplicate {c['name']}"); continue
-                    t0 = time.time()
-                    res = evaluate(c["code"], train, val, U, a)
-                    r = record(db, c["code"], c["name"], c["hypothesis"], gen, k, op, pids, rq, res, val, time.time() - t0)
-                    d = f", Δ {r['score'] - best_parent:+.4f}" if (best_parent is not None and r["status"] == "ok") else ""
-                    log(f"  - [{r['id']}] {c['name']} -> {_fmt(r)}{d}  [{r['wall_sec']} s]")
-                    made += 1
+                if cands:                                  # saved BEFORE evaluation, so a crash never costs a second LLM call
+                    saved.write_text(json.dumps({"candidates": cands, "parents": pids, "best_parent": best_parent, "usage": usage}, indent=1))
+                cost = f"; {usage['input']}+{usage['output']} tokens, ${usage['usd']:.3f}" if usage else ""
+                log(f"- island {k} **{op}**" + (f" of {', '.join(pids)}" if pids else "") + f": asked for {n}, got {len(cands)}{cost} "
+                    f"([prompt]({rq.relative_to(run_dir)}/prompt.md)" + (f", [analysis]({rq.relative_to(run_dir)}/analysis.md)" if op != "explore" else "") + ")")
+                pending += [(c, k, op, pids, rq, best_parent) for c in cands]
+        todo, seen_h = [], {r["hash"] for r in db.recs}
+        for item in pending:
+            h = _hash(item[0]["code"])
+            if h in seen_h:
+                log(f"  - skip duplicate {item[0]['name']}"); continue
+            seen_h.add(h); todo.append(item)
+        t0 = time.time()
+        results = evaluate_many([c["code"] for c, *_ in todo], train, val, U, a)
+        per = (time.time() - t0) / max(len(todo), 1)
+        for (c, k, op, pids, rq, best_parent), res in zip(todo, results):
+            r = record(db, c["code"], c["name"], c["hypothesis"], gen, k, op, pids, rq, res, val, per)
+            d = f", Δ {r['score'] - best_parent:+.4f}" if (best_parent is not None and r["status"] == "ok") else ""
+            log(f"  - [{r['id']}] island {k} {op} {c['name']} -> {_fmt(r)}{d}")
+            made += 1
+        if todo:
+            log(f"  ({len(todo)} candidates evaluated in {time.time() - t0:.0f} s with {a.workers} worker(s))")
         if a.islands > 1 and a.migrate_every and gen % a.migrate_every == 0:
             for k in range(a.islands):
                 el = db.elites(k, 1)
@@ -300,6 +344,7 @@ def run(a):
                     log(f"- migration: [{b['id']}] {b['name']} (score {b['score']:.4f}) island {k} -> island {dst} as [{m['id']}]")
         from . import report
         report.write(run_dir, db, a, val, U)
+        flag.unlink(missing_ok=True)
         if made == 0:
             log(f"\nno candidates came back in generation {gen} ({a.proposer} proposer): every prompt is written under "
                 f"generations/g{gen:03d}/; " + ("drop candidate .py files into each request's inbox/ and re-run" if a.proposer == "dir" else "stopping"))
@@ -314,6 +359,10 @@ def run(a):
         s["best"]["test"] = {k: v for k, v in t.items() if k.startswith("val_") and k != "val_by_episode"}
         (run_dir / "summary.json").write_text(json.dumps(s, indent=1, default=float))
         log(f"\nbest on the test split: 3 h {t.get('val_3h_mean', float('nan')):.3f} K ({t['status']})")
+    if getattr(proposer, "usage", None):
+        u = proposer.usage
+        log(f"\nLLM usage this run: {u.get('input', 0)} input + {u.get('output', 0)} output tokens "
+            f"({u.get('cache_read', 0)} cached), about ${u.get('usd', 0):.2f}")
     print(f"\nreport: {run_dir / 'REPORT.md'}")
 
 
@@ -341,6 +390,7 @@ def build_parser():
     ap.add_argument("--ceiling", action="store_true", help="also compute the per-building fitted ceiling (diagnostic only)")
     ap.add_argument("--test", action="store_true", help="score the final best on the test split")
     ap.add_argument("--timeout", type=float, default=1800)
+    ap.add_argument("--workers", type=int, default=1, help="evaluate candidates in this many forked processes")
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--model", default="claude-opus-5-5"); ap.add_argument("--effort", default="high")
     return ap

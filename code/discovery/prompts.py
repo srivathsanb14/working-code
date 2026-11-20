@@ -198,10 +198,54 @@ def user_prompt(generation, elites, failures, n_candidates, n_explore):
     return "\n\n".join(parts)
 
 
+class ParseError(ValueError):
+    pass
+
+
+def _json_blob(text):
+    """The JSON object in an answer: the whole text, a ```json fenced block, or the outermost {...}."""
+    import re
+    t = (text or "").strip()
+    for cand in [t] + re.findall(r"```(?:json)?\s*(\{.*?\})\s*```", t, re.S):
+        try:
+            return json.loads(cand, strict=False)
+        except Exception:  # noqa: BLE001
+            pass
+    i, j = t.find("{"), t.rfind("}")
+    if i >= 0 and j > i:
+        try:
+            return json.loads(t[i:j + 1], strict=False)
+        except Exception as e:  # noqa: BLE001
+            raise ParseError(f"no valid JSON object in the answer ({e})") from None
+    raise ParseError("no JSON object in the answer")
+
+
+def _strip_fence(code):
+    import re
+    m = re.match(r"^\s*```(?:python)?\s*\n(.*?)\n?```\s*$", code, re.S)
+    return m.group(1) if m else code
+
+
 def parse_response(text):
-    data = json.loads(text)
-    cands = data.get("candidates", [])
-    return [dict(name=str(c["name"])[:80], hypothesis=str(c.get("hypothesis", "")), code=str(c["code"])) for c in cands]
+    """Robust parse of the LLM answer (backlog E5): tolerates code fences, prose around the JSON, a bare list,
+    missing hypotheses and duplicate names.  Raises ParseError with a reason the proposer can send back."""
+    data = _json_blob(text)
+    cands = data.get("candidates", []) if isinstance(data, dict) else data if isinstance(data, list) else []
+    if not isinstance(cands, list) or not cands:
+        raise ParseError('expected {"candidates": [{"name", "hypothesis", "code"}, ...]} with at least one candidate')
+    out, seen = [], {}
+    for k, c in enumerate(cands):
+        if not isinstance(c, dict) or not str(c.get("code", "")).strip():
+            continue
+        name = str(c.get("name") or f"candidate_{k}")[:80]
+        if name in seen:
+            seen[name] += 1; name = f"{name}_{seen[name]}"
+        else:
+            seen[name] = 0
+        out.append(dict(name=name, hypothesis=str(c.get("hypothesis", "")), code=_strip_fence(str(c["code"]))))
+    if not out:
+        raise ParseError("no candidate had non-empty code")
+    return out
 
 
 # ============================================================================= closed-form mode (default)
@@ -212,12 +256,15 @@ GEOMETRY  geo (dict; computed from the building metadata's floor_plan and zone_m
   geo["V"] int rooms;  geo["area"] (V,) m2;  geo["facade_faces"] (V,) 0.2 m boundary segments on the exterior wall;
   geo["wall_cells"] (V,V) partition cells shared by rooms i and j;  geo["door_cells"] (V,V) door cells joining i and j;
   geo["n_doors"] (V,V);  geo["bbox_x"], geo["bbox_y"] (V,) m;  geo["ahu"] (V,) air handler index;  geo["floor"] (V,)
+  geo["facade_top"|"facade_bottom"|"facade_left"|"facade_right"] (V,) exterior-wall faces by side of the drawing (compass unknown);
+  geo["facade_sides"] (V,) sides with >= 2 m of exterior wall (2+ = corner room);  geo["boundary_faces"] (V,) all boundary faces;
+  geo["n_neighbours"] (V,) rooms sharing a wall or door;  geo["aspect"] (V,) long / short bounding-box side
 
 INPUTS of one 5-minute step (computed at run time from the observation and the policy's own commands):
   per room (V,): g = capacity rate of the supply air, W/K (0..~2400); T_supply = its temperature, K;
                  Q_reheat = reheat coil heat, W; Q_gain = lighting/equipment heat, W (known schedule)
   building-wide (): T_out K; occupants = people in the whole building (room unknown); comfort 1/0;
-                 hour_sin, hour_cos, dow_sin, dow_cos
+                 hour_sin, hour_cos, dow_sin, dow_cos; T_water = boiler supply-water temperature, K
 TARGET  every room's measured air temperature at the end of the step.  Every episode starts with every cell at
   294 K.  The early steps of an episode have a short real history (the buffer is padded with the first values);
   some error there is acceptable."""
@@ -242,6 +289,13 @@ Write one Python module (numpy, math and dlib only; deterministic; no files):
   u[k]       this step's inputs: per-room (B, V), building-wide (B,).
   U          universal constants (table below).  geo matrices are (V, V): use T @ M.T for neighbour sums.
   In rollouts your own predictions are fed back into hist["T"] (free run), so the map must stay stable.
+
+Optional STATEFUL form (instead of step): keep hidden stores (slab, walls) as a state corrected by measurements.
+    def init_state(coef, geo, U): return x0            # (N,), the first V entries are the room-air nodes
+    def predict(coef, geo, state, u, U): return state  # (B, N) -> (B, N), one 5-minute step
+    def correct(coef, geo, state, T_measured, U): return state   # fold in measured room temps (B, V); a FIXED rule
+  The scorer runs predict/correct over the measured history, then free-runs predict from the corrected state.
+  dlib.network_predict(net, state, T_out, g, T_supply, Q) and dlib.correct_rooms(state, T_measured, V) help.
 
 Rules:
   - NO fitted numbers: no PARAMS/THETA.  Every number in the code is either a universal constant (the same for

@@ -70,6 +70,8 @@ def geometry(floor_plan, zone_map, rooms, ahu_rooms, ahu_order=None):
       bbox_x, bbox_y (V) bounding-box sides of the room, m
       ahu (V)            index of the air handler serving the room (in ahu_order, default natural sort)
       floor (V)          floor index
+      facade_top/bottom/left/right (V)  exterior-wall faces by side of the drawing; facade_sides (V) sides with >= 2 m of exterior wall (2+ = corner)
+      boundary_faces (V) all 0.2 m faces on the room boundary;  n_neighbours (V);  aspect (V) long / short bbox side
     """
     G = rm.grid_geometry(floor_plan, zone_map)
     f = _pair_features(G)
@@ -88,8 +90,31 @@ def geometry(floor_plan, zone_map, rooms, ahu_rooms, ahu_order=None):
     if sorted(perm.tolist()) != list(range(V)):
         raise ValueError(f"rooms {names[:5]}... do not match the {V} rooms of the floor plan")
     pm = np.ix_(perm, perm)
-    return dict(V=V, area=f["area"][perm], facade_faces=f["F"][perm], wall_cells=f["P"][pm], door_cells=f["D"][pm],
-                n_doors=f["ndoor"][pm], bbox_x=f["Lx"][perm], bbox_y=f["Ly"][perm], ahu=ahu, floor=floor[perm])
+    x = extra_geometry(G)
+    geo = dict(V=V, area=f["area"][perm], facade_faces=f["F"][perm], wall_cells=f["P"][pm], door_cells=f["D"][pm],
+               n_doors=f["ndoor"][pm], bbox_x=f["Lx"][perm], bbox_y=f["Ly"][perm], ahu=ahu, floor=floor[perm])
+    geo.update({k: v[perm] for k, v in x.items()})
+    geo["n_neighbours"] = ((geo["wall_cells"] + geo["door_cells"]) > 0).sum(1)
+    geo["aspect"] = np.maximum(geo["bbox_x"], geo["bbox_y"]) / np.maximum(np.minimum(geo["bbox_x"], geo["bbox_y"]), 1e-9)
+    return geo
+
+
+def extra_geometry(G):
+    """Extra per-room quantities from the grid (label order): exterior-wall faces by side of the drawing (top =
+    row 0; the compass is not given), the number of sides with exterior wall (2+ = corner room), and boundary faces."""
+    lab, cls = G["lab"], G["cls"]; V = int(G["nroom"])
+    ext = cls == rm.SHELL_OR_EXT
+    out = {}
+    for name, sh in (("facade_top", (1, 0)), ("facade_bottom", (-1, 0)), ("facade_left", (0, 1)), ("facade_right", (0, -1))):
+        nb = np.roll(ext, sh, axis=(0, 1)); m = (lab > 0) & nb
+        out[name] = np.bincount(lab[m] - 1, minlength=V).astype(float)
+    out["facade_sides"] = sum((out[k] >= 10).astype(float) for k in ("facade_top", "facade_bottom", "facade_left", "facade_right"))   # a side counts from 2 m of exterior wall
+    room = lab > 0; per = np.zeros(V)
+    for sh in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+        nb = np.roll(lab, sh, axis=(0, 1)); m = room & (nb != lab)
+        per += np.bincount(lab[m] - 1, minlength=V)
+    out["boundary_faces"] = per
+    return out
 
 
 def _save_cached(ep, path):

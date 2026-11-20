@@ -74,7 +74,7 @@ def synthetic_inputs(geo, n, rng):
                 Q_gain=10.0 * geo["area"][None] * np.where(comfort[:, None] > 0, 1.0, 0.2),
                 occupants=comfort * V * 0.6, comfort=comfort,
                 hour_sin=np.sin(2 * np.pi * hour / 24), hour_cos=np.cos(2 * np.pi * hour / 24),
-                dow_sin=np.sin(2 * np.pi * day / 7), dow_cos=np.cos(2 * np.pi * day / 7))
+                dow_sin=np.sin(2 * np.pi * day / 7), dow_cos=np.cos(2 * np.pi * day / 7), T_water=np.full(n, 340.0))
 
 
 def generate(U, n=864, seed=0):

@@ -118,6 +118,49 @@ def _mermaid(db, ids):
     return "```mermaid\ngraph LR\n" + "\n".join(f"  {v}" for v in N.values()) + "\n" + "\n".join(f"  {p} --> {c}" for p, c in sorted(E)) + "\n```"
 
 
+def _lineage_png(run_dir, db, ids, islands):
+    """Static family tree (backlog H2): x = generation, y = island lane; colour = operator; arrows parent -> child."""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    nodes, edges = {}, set()
+
+    def walk(i, d=0):
+        if i in nodes or d > 30:
+            return
+        r = db.get(i); nodes[i] = r
+        for p in r.get("parents", []):
+            edges.add((p, i)); walk(p, d + 1)
+    for i in ids:
+        walk(i)
+    if not nodes:
+        return None
+    col = {"seed": "#13213A", "mutation": "#D9692A", "crossover": "#2F72B5", "explore": "#3a9a5b", "migration": "#8A93A3"}
+    lanes = {}
+    pos = {}
+    for i, r in sorted(nodes.items(), key=lambda kv: (kv[1]["generation"], kv[1]["island"], kv[0])):
+        key = (r["generation"], r["island"]); j = lanes.get(key, 0); lanes[key] = j + 1
+        pos[i] = (r["generation"], r["island"] * 3 + j * 0.6)
+    fig, ax = plt.subplots(figsize=(max(6, 1.8 * (max(p[0] for p in pos.values()) + 1)), max(3, 1.3 * islands + 1)))
+    for p, c in edges:
+        if p in pos and c in pos:
+            ax.annotate("", xy=pos[c], xytext=pos[p], arrowprops=dict(arrowstyle="->", color="#8A93A3", lw=0.8))
+    for i, (x, y) in pos.items():
+        r = nodes[i]
+        ax.scatter([x], [y], s=120, color=col.get(r["operator"], "#555"), zorder=3)
+        lab = f"{r['score']:.3f}" if r["status"] == "ok" else r["status"][:6]
+        ax.text(x + 0.06, y + 0.12, f"{r['name'][:18]}\n{lab}", fontsize=7)
+    for op, c in col.items():
+        ax.scatter([], [], color=c, label=op)
+    ax.legend(frameon=False, fontsize=8, loc="upper left", bbox_to_anchor=(1, 1))
+    ax.set_yticks([k * 3 for k in range(islands)]); ax.set_yticklabels([f"island {k}" for k in range(islands)])
+    ax.set_xlabel("generation"); ax.set_xticks(sorted({p[0] for p in pos.values()}))
+    for s_ in ("top", "right"):
+        ax.spines[s_].set_visible(False)
+    fig.tight_layout(); f = run_dir / "plots" / "lineage.png"; fig.savefig(f, dpi=110, bbox_inches="tight"); plt.close(fig)
+    return f.name
+
+
 def write(run_dir: Path, db, a, val, U, final=False):
     recs = db.recs
     if not recs:
@@ -194,7 +237,9 @@ def write(run_dir: Path, db, a, val, U, final=False):
     L.append("")
     # lineage
     if best:
-        L += ["## Lineage of the best", "", *_lineage(db, best["id"]), "", "Family tree of each island's best (mermaid):", "", _mermaid(db, list(dict.fromkeys(tops + [best["id"]]))), ""]
+        png = _lineage_png(run_dir, db, list(dict.fromkeys(tops + [best["id"]])), a.islands)
+        L += ["## Lineage of the best", "", *_lineage(db, best["id"]), "", "Family tree of each island's best:", "",
+              *( [f"![lineage](plots/{png})", ""] if png else [] ), "Same tree as mermaid:", "", _mermaid(db, list(dict.fromkeys(tops + [best["id"]]))), ""]
     # plots
     L += ["## Measured vs predicted", ""]
     shown = list(dict.fromkeys(([best["id"]] if best else []) + [i for i in tops]))

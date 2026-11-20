@@ -1,14 +1,64 @@
 {
-  "_about": "Universal constants given to closed-form candidates as U[...] and listed in the prompt. A universal constant has the same value for every building and weather, so writing it into a formula does not make the model building-specific. Per-building values (facade and partition conductivity, density and specific heat, slab density, occupants per room, outdoor film coefficient) are NOT here: formulas must infer them from the history buffer. Review this file once before a real run and set _reviewed to true (decision: review the constants once before they go into the prompt).",
+  "_about": "Universal constants given to closed-form candidates as U[...] and listed in the prompt. A universal constant has the same value for every building and weather, so writing it into a formula does not make the model building-specific. Per-building values (facade and partition conductivity, density and specific heat, slab density, occupants per room, outdoor film coefficient) are NOT here: formulas must infer them from the history buffer. Every value cites its source in the kit (checked Nov 20, 2026). A person should still review this file once before a real run and set _reviewed to true (decision: review the constants once before they go into the prompt).",
   "_reviewed": false,
-  "DT":          {"value": 300.0,     "unit": "s",      "what": "control step"},
-  "CELL":        {"value": 0.2,       "unit": "m",      "what": "grid cell side of floor_plan / zone_map"},
-  "HEIGHT":      {"value": 3.0,       "unit": "m",      "what": "floor-to-ceiling height (cell depth)"},
-  "RHO_AIR":     {"value": 1.2,       "unit": "kg/m3",  "what": "air density"},
-  "C_AIR":       {"value": 1005.0,    "unit": "J/kgK",  "what": "air specific heat"},
-  "RHO_C_AIR":   {"value": 1206.0,    "unit": "J/m3K",  "what": "air volumetric heat capacity (RHO_AIR * C_AIR)"},
-  "RHO_WATER":   {"value": 1000.0,    "unit": "kg/m3",  "what": "water density"},
-  "C_WATER":     {"value": 4180.0,    "unit": "J/kgK",  "what": "water specific heat"},
-  "T0":          {"value": 294.0,     "unit": "K",      "what": "starting temperature of every cell (air, walls, slab)"},
-  "OCC_W":       {"value": 70.0,      "unit": "W",      "what": "heat given to the room by one occupant"}
+  "DT": {
+    "value": 300.0,
+    "unit": "s",
+    "what": "control step",
+    "source": "kit config.gin: time_step_sec = 300"
+  },
+  "CELL": {
+    "value": 0.2,
+    "unit": "m",
+    "what": "grid cell side of floor_plan / zone_map",
+    "source": "kit config.gin: control_volume_cm = 20"
+  },
+  "HEIGHT": {
+    "value": 3.0,
+    "unit": "m",
+    "what": "floor-to-ceiling height (cell depth)",
+    "source": "kit config.gin: floor_height_cm = 300.0"
+  },
+  "RHO_AIR": {
+    "value": 1.2,
+    "unit": "kg/m3",
+    "what": "air density",
+    "source": "kit config.gin: interior_cv_density = 1.2"
+  },
+  "C_AIR": {
+    "value": 1005.0,
+    "unit": "J/kgK",
+    "what": "air specific heat",
+    "source": "kit config.gin: interior_cv_heat_capacity = 1005.0"
+  },
+  "RHO_C_AIR": {
+    "value": 1206.0,
+    "unit": "J/m3K",
+    "what": "air volumetric heat capacity (RHO_AIR * C_AIR)",
+    "source": "derived: 1.2 x 1005 = 1206 (kit config.gin interior_cv_*)"
+  },
+  "RHO_WATER": {
+    "value": 1000.0,
+    "unit": "kg/m3",
+    "what": "water density",
+    "source": "kit smart_control/simulator/constants.py: WATER_DENSITY = 1000.0"
+  },
+  "C_WATER": {
+    "value": 4180.0,
+    "unit": "J/kgK",
+    "what": "water specific heat",
+    "source": "kit smart_control/simulator/constants.py: WATER_HEAT_CAPACITY = 4180.0"
+  },
+  "T0": {
+    "value": 294.0,
+    "unit": "K",
+    "what": "starting temperature of every cell (air, walls, slab)",
+    "source": "kit config.gin: initial_temp = 294.0"
+  },
+  "OCC_W": {
+    "value": 70.0,
+    "unit": "W",
+    "what": "heat given to the room by one occupant",
+    "source": "kit simulator_flexible_floor_plan.py: occupant_sensible_heat_w = 70.0"
+  }
 }

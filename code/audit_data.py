@@ -102,10 +102,10 @@ def main():
     if plan is None:
         R.warning("no plan.json (data not made by generate_data.py); using every results folder found under data/results")
         sources = [(data / "scenarios", data / "results")]
-        steps_req, policies = None, None
+        steps_req = None
     else:
         sources = [(resolve(s["scenarios"], data), resolve(s["results"], data)) for s in plan["sources"]]
-        steps_req, policies = plan["steps"], plan["policies"]
+        steps_req = plan["steps"]
 
     # ------------------------------------------------------------------ layout
     R.h("Layout and episode conventions")
@@ -139,8 +139,8 @@ def main():
                   + (f"; results exist for {used[:5]} but they are in no split and are never used" if used else ""))
         runs = [r for r in runs if r[2] not in rejected]
         missing_cfg = [m for m in missing_cfg if m.split("/")[0] not in rejected]
-    (R.fail if missing_cfg else R.ok)(f"scenario folders complete" + (f": missing for {missing_cfg[:5]}" if missing_cfg else f" ({len({(r[2], r[3]) for r in runs})} scenarios)"))
-    (R.fail if missing_csv else R.ok)(f"run folders complete" + (f": incomplete {missing_csv[:5]}" if missing_csv else f" ({len(runs)} runs)"))
+    (R.fail if missing_cfg else R.ok)("scenario folders complete" + (f": missing for {missing_cfg[:5]}" if missing_cfg else f" ({len({(r[2], r[3]) for r in runs})} scenarios)"))
+    (R.fail if missing_csv else R.ok)("run folders complete" + (f": incomplete {missing_csv[:5]}" if missing_csv else f" ({len(runs)} runs)"))
     lengths = []
     for sdir, rdir, b, w, pol in runs[: a.max_csv_checks]:
         ts = pd.read_csv(rdir / b / w / pol / "timeseries.csv")

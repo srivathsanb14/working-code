@@ -293,7 +293,7 @@ These forecasts are fed the true future inputs and weather: they test the model,
 
 Look at the **test** numbers once, at the end. Use `--on val` while iterating.
 
-## 8. Rehearse the submission
+## 8. Rehearse the submission (fitted mode; closed-form: `run_pipeline.sh` step 8 runs `run_policy.py --check-replay`)
 
 The hidden evaluation runs the submitted notebook's Policy class on each unseen (building, weather) scenario: `__init__(building_meta_data, action_spec)` once, then `get_action(obs)` every 5 minutes for 8,640 steps. Step 8 does exactly that with the starter kit's own harness on our held-out split:
 
@@ -304,6 +304,102 @@ python code/run_policy.py --params outputs/discovery/main_offline/summary.json -
 The policy (`code/runtime/model_policy.py`) builds the model from the metadata alone, feeds it every observation and its own action, and keeps a Kalman-filtered state (`code/runtime/online_model.py`). Control still comes from a base policy (`--base pid_water`), so the score must equal that policy's: a check that the model changes nothing yet. The report gives the score, the model's live 1/3/6 h forecast error and its milliseconds per step. Replacing the base policy's decisions with model-based ones is the controller work (STATE_SPACE.md §18.1).
 
 ---
+
+## 9. Build and check the Kaggle submission
+
+The notebook is `kaggle/submission.ipynb`. It wraps `code/submission/transfer_policy.py`:
+- **Control:** the kit's `pid_water` baseline, copied into `code/submission/vendor` under Apache-2.0.
+- **Safety layer:** clips actions into bounds, repairs NaNs and falls back on any exception.
+- **Tracker (optional):** follows the building with the discovered formulas.
+
+1. Rehearse locally through the kit's own harness. With no arguments it runs all 30 shipped scenarios at 8,640 steps, comparable with `baseline_returns.json`:
+
+```bash
+python code/rehearse_submission.py --model outputs/discovery/main/best.py
+```
+
+2. Build the folder for the Kaggle Dataset. The script checks that it imports without the kit:
+
+```bash
+python code/package_submission.py --model outputs/discovery/main/best.py
+```
+
+3. Upload `dist/kaggle_dataset/` as a Kaggle Dataset, attach it to the notebook, run the notebook once (it plays one public scenario), then submit.
+
+## 10. Model-based controllers
+
+These live in `code/control/`, all nothing-fitted:
+- **Cost estimate** (`costs.py`): the reward evaluated on predictions.
+- **Occupancy forecast** (`occupancy.py`).
+- **Schedule and future observations** (`schedule.py`).
+- **Planner** (`planner.py`): simulates pid_water's closed-loop response for a mode with the discovered model and prices it.
+- **Controllers** (`policies.py`):
+  - `FeedForwardPolicy`: pre-heat and early set-back decided by the model;
+  - `MPCPolicy`: picks schedule, comfort, eco or off every 3 steps.
+
+Compare them with pid_water through the kit's harness:
+
+```bash
+python code/rehearse_submission.py --controller mpc --model outputs/discovery/main/best.py
+```
+
+```bash
+python code/rehearse_submission.py --controller ff --model outputs/discovery/main/best.py
+```
+
+```bash
+python code/rehearse_submission.py --controller pid_water
+```
+
+Check the cost estimate against the kit's logged costs:
+
+```bash
+python code/control/validate_costs.py --results <results dir> --runs <building>/<weather>/<policy>
+```
+
+## 11. Is it ready to deploy? (task L6)
+
+The design is building- and weather-agnostic: positions come from the metadata, geometry from the floor plan, nothing is fitted, and occupancy is learned online. It has **not yet been shown** to work at the scale of the hidden test.
+
+**Deployable today:** the pid_water-only notebook (no `best.py` attached, task K1). Submit it first to prove the Kaggle interface.
+
+**Before the model-based (MPC) version:**
+- [ ] K1: the pid_water notebook has been scored on Kaggle.
+- [ ] K7: a per-step time guard. Large generated buildings leave the policy only milliseconds per step.
+- [ ] K8: unsupported HVAC variants, such as the kit's heat pump, are detected and fall back to pid_water.
+- [ ] I5: a benchmark on the 30 shipped scenarios at 8,640 steps and on generated hold-out buildings (including the largest) on the held-out station. The MPC must beat pid_water on average and in the worst case, within the time budget.
+- [ ] The packaged dataset has been rehearsed locally (`rehearse_submission.py`), and the fallback to pid_water verified by injecting faults.
+
+Known gaps that do not block deployment:
+- the model is about persistence level at 3 h (tasks G2, G8);
+- some simulator constants are assumed equal in the hidden set (I6);
+- holidays and the gas price by month are not handled (K9).
+
+## Other tools
+
+- **Geometry of any building** from `floor_plan.npy` and `zone_map.npy`:
+
+  ```bash
+  python code/geometry_cli.py <scenario_dir>
+  ```
+
+  Use `--all-shipped` for the six shipped buildings.
+- **Dataset summary** (after step 4) by split, station, season, policy and building size, written to `docs/DATASET_REPORT.md`:
+
+  ```bash
+  python code/dataset_report.py
+  ```
+
+- **Rejected seeds:** `run_pipeline.sh` passes `--oversample 1.3` to `generate_data.py`, so each split keeps its planned number of buildings even though the kit rejects about 20% of seeds.
+- **Tests and lint:** install with `pip install -r requirements-dev.txt`, then run:
+
+  ```bash
+  pytest -q tests && ruff check code tests
+  ```
+
+  CI runs the same checks on every push. The tests need no starter kit.
+- **Interrupted discovery runs** resume where they stopped. Every LLM answer is saved (`candidates.json`) before it is evaluated, so re-running the same command never pays for the same request twice.
+- **Faster evaluation:** `--workers N` evaluates candidates in N processes, with the same results as serial.
 
 ## Troubleshooting
 

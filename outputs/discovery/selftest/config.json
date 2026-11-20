@@ -41,6 +41,7 @@
  "ceiling": true,
  "test": false,
  "timeout": 1800,
+ "workers": 1,
  "seed": 0,
  "model": "claude-opus-5-5",
  "effort": "high",

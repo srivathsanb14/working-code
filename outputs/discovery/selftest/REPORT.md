@@ -88,7 +88,11 @@ complexity 793 AST nodes, history 288 steps
 
 - [g002_i1_0022] explore `mock_exp_g2_0` (island 1): score 2.3400
 
-Family tree of each island's best (mermaid):
+Family tree of each island's best:
+
+![lineage](plots/lineage.png)
+
+Same tree as mermaid:
 
 ```mermaid
 graph LR

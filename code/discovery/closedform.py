@@ -77,6 +77,7 @@ class Prepared:
 
     def __init__(self, ep, H):
         self.ep, self.H, self.n, self.V = ep, H, ep.n, ep.V
+        self.S = None                                # filtered states of a stateful candidate (filter_states)
         self.X = np.vstack([np.full((1, ep.V), ep.T0), ep.T_meas])
         self.Xp = np.vstack([np.repeat(self.X[:1], H, 0), self.X])                       # Xp[H + k] = X[k]
         self.Ip = {k: np.concatenate([np.repeat(v[:1], H, 0), v]) for k, v in ep.inputs.items()}   # Ip[H + k] = inputs[k]
@@ -91,10 +92,50 @@ class Prepared:
         return self.Xp[ts[:, None] + 1 + np.arange(self.H)[None, :]]       # X[t-H+1 .. t]
 
 
+def is_stateful(mod):
+    return all(hasattr(mod, f) for f in ("init_state", "predict", "correct"))
+
+
+def _u_at(prep, ts):
+    return {k: v[ts] for k, v in prep.ep.inputs.items()}
+
+
+def filter_states(mod, coef, prep, U):
+    """Stateful candidates (backlog O3): state after correcting with each measurement, S[k] <-> X[k].
+    Computed once per episode by the candidate's own fixed predict/correct rules (nothing fitted)."""
+    if getattr(prep, "S", None) is not None:
+        return prep.S
+    geo = prep.ep.geo
+    s = np.atleast_2d(np.asarray(mod.init_state(coef, geo, U), float))
+    s = mod.correct(coef, geo, s, prep.X[0][None], U)
+    S = np.empty((prep.n + 1, s.shape[-1])); S[0] = s[0]
+    for k in range(prep.n):
+        s = mod.predict(coef, geo, s, _u_at(prep, np.array([k])), U)
+        s = mod.correct(coef, geo, s, prep.X[k + 1][None], U)
+        S[k + 1] = s[0]
+    if not np.all(np.isfinite(S)):
+        raise ValueError("stateful candidate produced non-finite states while filtering the measured history")
+    prep.S = S
+    return S
+
+
+def _rollout_stateful(mod, coef, prep, U, starts, horizon):
+    S = filter_states(mod, coef, prep, U)
+    geo, V = prep.ep.geo, prep.V
+    out = np.empty((len(starts), horizon, V))
+    s = S[starts]
+    for k in range(horizon):
+        s = np.asarray(mod.predict(coef, geo, s, _u_at(prep, starts + k), U), float)
+        out[:, k] = s[:, :V]
+    return out
+
+
 def rollout(mod, coef, prep, U, starts, horizon, chunk=None):
     """Free-run every start in `starts` for `horizon` steps from measured history.
     Returns pred (S, horizon, V): pred[s, k] is the forecast of X[starts[s] + k + 1]."""
     starts = np.asarray(starts, int)
+    if is_stateful(mod):
+        return _rollout_stateful(mod, coef, prep, U, starts, horizon)
     chunk = chunk or int(max(8, min(1024, 2e6 // (prep.H * prep.V))))       # bounds the (B, H, V) windows in memory
     out = np.empty((len(starts), horizon, prep.V))
     for a in range(0, len(starts), chunk):
@@ -123,11 +164,43 @@ class _Synth:
         self.T_meas = np.full((self.n, self.V), T0)
 
 
+def shift_warning(mod, coef, ep, U, n=288, c=5.0):
+    """Warning only (backlog F4): shifting every temperature (start, outside, supply, water) by c should shift the
+    forecast by c when no heat is added (the heat flows depend on temperature differences)."""
+    V = ep.V
+    base = {k: np.zeros((n, V)) if v.ndim == 2 else np.zeros(n) for k, v in ep.inputs.items()}
+
+    def run(dT):
+        inp = dict(base); inp["T_out"] = np.full(n, 280.0 + dT); inp["T_supply"] = np.full((n, V), 290.0 + dT)
+        if "T_water" in inp:
+            inp["T_water"] = np.full(n, 340.0 + dT)
+        p = Prepared(_Synth(ep.geo, inp, T0=294.0 + dT), mod.HISTORY)
+        return rollout(mod, coef, p, U, [0], n)[0]
+    try:
+        d = np.abs(run(c) - run(0.0) - c).max()
+        return [f"shift: moving every temperature by {c:g} K moved the forecast by up to {d:.3f} K more or less than {c:g} K"] if d > 0.05 else []
+    except Exception as e:  # noqa: BLE001
+        return [f"shift check failed: {type(e).__name__}: {e}"]
+
+
+def long_run(mod, coef, ep, U, horizon=288, warmup=36):
+    """Diagnostic (backlog F5): 24 h free runs from measured history, one per day; RMSE and mean drift at 24 h."""
+    prep = Prepared(ep, mod.HISTORY)
+    starts = np.arange(max(warmup, 288), ep.n - horizon, 288)
+    if not len(starts):
+        return None
+    pr = rollout(mod, coef, prep, U, starts, horizon)
+    e = pr[:, -1] - prep.X[starts + horizon]
+    return float(np.sqrt(np.mean(e ** 2))), float(e.mean())
+
+
 def physics_checks(mod, coef, ep, U, n=576):
     """Free-run 2 days on a real floor plan under simple conditions; the history starts at 294 K everywhere."""
     V = ep.V
     base = {k: np.zeros((n, V)) if v.ndim == 2 else np.zeros(n) for k, v in ep.inputs.items()}
     base["T_supply"] = np.full((n, V), 290.0)
+    if "T_water" in base:
+        base["T_water"] = np.full(n, 340.0)
 
     def run(T_out=294.0, **over):
         inp = dict(base); inp["T_out"] = np.full(n, T_out); inp.update(over)
@@ -143,6 +216,9 @@ def physics_checks(mod, coef, ep, U, n=576):
             fails.append(f"bounds: cooling from 294 K toward a 274 K outside left [274, 294] K (range {T.min():.2f}-{T.max():.2f})")
         elif not (T[-1] < T[0] + 1e-6).all():
             fails.append("relaxation: some rooms did not cool toward a colder outside")
+        Tw = run(284.0)                                   # backlog F4: a warmer outside never makes a room colder
+        if (Tw[-1] < T[-1] - 1e-6).any():
+            fails.append("monotone: a 10 K warmer outside left some room colder")
         Q = np.zeros((n, V)); Q[:, 0] = 2000.0
         T2 = run(274.0, Q_reheat=Q)
         if not T2[-1, 0] > T[-1, 0] + 1e-3:
@@ -233,6 +309,13 @@ def evaluate(src, train_eps, val_eps, U, complexity_weight=0.0001, horizons=(12,
             for h in horizons:
                 rec[f"{part}_{_hname(h)}_mean"] = float(np.mean([v[f"{h}"] for v in D.values()]))
                 rec[f"{part}_persistence_{_hname(h)}_mean"] = float(np.mean([v[f"persistence_{h}"] for v in D.values()]))
+        lr = [long_run(mod, coef_of(e), e, U) for e in val_eps]
+        lr = [x for x in lr if x is not None and np.isfinite(x[0])]
+        if lr:
+            rec["val_24h_mean"] = float(np.mean([x[0] for x in lr])); rec["val_24h_drift_mean"] = float(np.mean([x[1] for x in lr]))
+        w = shift_warning(mod, coef_of(train_eps[0]), train_eps[0], U)
+        if w:
+            rec["warnings"] = w
         rec["val_by_episode"] = {k: {kk: v[kk] for kk in v if not kk.endswith(("_err", "_t")) and kk != "unstable"} for k, v in val.items()}
         rec["horizons"] = list(horizons); rec["main_horizon"] = main_h
         m = rec[f"val_{_hname(main_h)}_mean"]
@@ -292,7 +375,7 @@ def analysis(rec, val_eps):
         return {"text": "\n".join(lines), "groups": {}}
     hs = rec["horizons"]; mh = _hname(rec["main_horizon"])
     G = _group_stats(rec, val_eps)
-    L = [f"held-out rollout RMSE by horizon (model / persistence), K: " +
+    L = ["held-out rollout RMSE by horizon (model / persistence), K: " +
          ", ".join(f"{_hname(h)} {rec[f'val_{_hname(h)}_mean']:.3f}/{rec[f'val_persistence_{_hname(h)}_mean']:.3f}" for h in hs),
          f"one-step (5 min) RMSE {rec['val_one_step_mean']:.4f} K (persistence {rec['stage1_persistence_mean']:.4f}); "
          f"train buildings {mh} {rec[f'train_{mh}_mean']:.3f} K",

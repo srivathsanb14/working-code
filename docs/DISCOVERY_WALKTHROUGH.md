@@ -35,6 +35,48 @@ by a mechanical proposer. Open `outputs/discovery/selftest/REPORT.md`. Every fil
 | migration | every `--migrate-every` generations each island's best is copied into the next island (a ring) | end of the generation loop in `evolve.run` |
 | report | REPORT.md, plots, summary.json, best.py, rewritten after every generation | `report.write` |
 
+### Added on Nov 20, 2026
+
+- **Parallel evaluation:** `--workers N` evaluates a generation's candidates in forked processes (`evolve.evaluate_many`), with the same results as serial.
+- **Resume:**
+  - each request's answer is saved to `candidates.json` before evaluation;
+  - `in_progress.json` marks an unfinished generation, so the next run finishes it and reuses the saved answers.
+- **LLM cost:** tokens and an estimated cost per request (in `log.md` and `candidates.json`) and per run. Edit `ClaudeProposer.PRICE_PER_MTOK` to match the current price list.
+- **Robust answers:** code fences, prose around the JSON and duplicate names are accepted. A malformed answer is retried once, with the reason sent back to the model.
+- **More checks:**
+  - a rejection when a warmer outside makes a room colder;
+  - a warning, not a rejection, when shifting every temperature by a constant does not shift the forecast by the same amount;
+  - a 24-hour free-run error and drift (`val_24h_mean`, `val_24h_drift_mean`).
+- **More inputs:**
+  - geometry `facade_top/bottom/left/right`, `facade_sides` (2 or more sides = corner room), `boundary_faces`, `n_neighbours`, `aspect`;
+  - the input `T_water`, the boiler supply-water temperature.
+
+  All of them are in the prompt.
+- **Lineage:** `plots/lineage.png` in every report.
+- **Inside the policy:**
+  - `runtime/closedform_tracker.py` runs `best.py` from the metadata, the observations and the policy's own actions;
+  - `run_policy.py --check-replay` shows the live forecasts equal the offline scores;
+  - this check found that the occupancy observation runs two steps behind the logged occupancy, and the offline episodes now use the observable value.
+
+### Stateful candidates (decision O3)
+
+A candidate may instead keep hidden stores (slab, walls) as a **state corrected by measurements**:
+- `init_state` gives the starting state;
+- `predict` advances it one step;
+- `correct` folds in the measured room temperatures, with a fixed rule and nothing fitted.
+
+The scorer filters the measured history this way, then free-runs from the corrected state (`closedform.filter_states`). The runtime tracker does the same live, and its forecasts equal the offline scores exactly.
+
+`seeds_cf/seed_cf_network_observer.py`, the audited network with mid-range universal materials, was scored on 12 thirty-day simulator episodes:
+
+| model | 1 h | 3 h | 6 h |
+|---|---|---|---|
+| network observer seed | 0.74 | 0.93 | 1.16 |
+| history seed | 0.99 | 1.16 | 1.34 |
+| persistence | 0.66 | 0.97 | 1.47 |
+
+RMSE in K. The observer seed is also about 5× faster to score.
+
 ## 3. Where to look in a run folder (`outputs/discovery/<run>/`)
 
 | file | what it tells you |
@@ -50,6 +92,8 @@ by a mechanical proposer. Open `outputs/discovery/selftest/REPORT.md`. Every fil
 | `plots/<id>_profile.png` | measured vs predicted temperature (5 min and 3 h ahead) for the most exposed exterior room and the largest interior room |
 | `plots/<id>_horizon.png` | held-out error vs horizon, against persistence and the fitted ceiling |
 | `plots/progress.png` | best score per island per generation |
+| `plots/lineage.png` | the family tree of each island's best |
+| `generations/.../candidates.json` | the answer of each request (saved before evaluation; used to resume) |
 | `ceiling.json` | `--ceiling`: the per-building fitted reference (diagnostic only) |
 
 ## 4. How to tell whether the LLM can fit at all

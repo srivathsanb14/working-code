@@ -27,6 +27,7 @@ STEPS=${STEPS:-2016}                 # 864 = 3 days (minimum), 2016 = 7 days, 86
 TRAIN=${TRAIN:-500:600}              # building seed ranges (start:stop): disjoint batches = unseen buildings
 VAL=${VAL:-700:720}
 TEST=${TEST:-800:820}
+OVERSAMPLE=${OVERSAMPLE:-1.3}          # extra seeds so each split keeps its planned size (the kit rejects ~20% of seeds)
 VAL_STATION=${VAL_STATION:-phoenix}
 TEST_STATION=${TEST_STATION:-minneapolis}
 POLICIES=${POLICIES:-"all_off bang_bang fixed_setpoint pid pid_water"}
@@ -44,7 +45,7 @@ step() { local n=$1; shift; if (( n >= FROM && n <= TO )); then echo; echo "=== 
 step 1 "$PY" code/setup_check.py
 # shellcheck disable=SC2086
 step 2 "$PY" code/generate_data.py --train-seeds "$TRAIN" --val-seeds "$VAL" --test-seeds "$TEST" \
-        --val-station "$VAL_STATION" --test-station "$TEST_STATION" --policies $POLICIES --steps "$STEPS" --workers "$WORKERS"
+        --val-station "$VAL_STATION" --test-station "$TEST_STATION" --policies $POLICIES --steps "$STEPS" --workers "$WORKERS" --oversample "$OVERSAMPLE"
 step 3 "$PY" code/audit_data.py
 step 4 "$PY" code/build_dataset.py --workers "$WORKERS"
 step 5 "$PY" code/audit_data.py
@@ -52,8 +53,9 @@ if [[ "$DEPLOY" == closedform ]]; then
   # step 6 also scores the final best on the test split (--test); step 7 = the fitted ceiling, a diagnostic
   step 6 "$PY" code/run_discovery.py --run "$RUN" --proposer "$PROPOSER" --generations "$GENS" --islands "$ISLANDS" --test
   step 7 "$PY" code/run_discovery.py --run "$RUN" --ceiling --generations 0
-  echo; echo "done: data in ${SB_DATA:-data}/, results in outputs/discovery/$RUN/REPORT.md"
-  echo "(step 8, the submission rehearsal, runs the fitted-mode model; the closed-form runtime tracker is not built yet)"
+  # step 8: the best formulas inside a submission-style policy on the test split; live forecasts checked against replay
+  step 8 "$PY" code/run_policy.py --model "outputs/discovery/$RUN/best.py" --on test --steps "$REHEARSE_STEPS" --check-replay
+  echo; echo "done: data in ${SB_DATA:-data}/, results in outputs/discovery/$RUN/REPORT.md and outputs/policy/"
   exit 0
 fi
 step 6 "$PY" code/run_discovery.py --run "$RUN" --deployment "$DEPLOY" --proposer "$PROPOSER" --generations "$GENS"

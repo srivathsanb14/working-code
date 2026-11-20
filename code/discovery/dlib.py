@@ -79,6 +79,26 @@ def assemble(T, terms, b=0.0):
     return num / den
 
 
+def network_predict(net, x, T_out, g, T_supply, Q):
+    """One backward-Euler step of a LinearNetwork for a batch: x (B, N); T_out (B,); g, T_supply, Q (B, V).
+    The air stream is implicit, exactly as LinearNetwork.simulate.  Returns the new state (B, N)."""
+    x = np.atleast_2d(np.asarray(x, float)); V = net.V
+    rhs = x * net.Cdt[None, :] + np.asarray(T_out, float).reshape(-1, 1) * net.G_amb[None, :]
+    rhs[:, :V] += Q + g * T_supply
+    y = rhs @ net.A0inv.T
+    M = np.eye(V)[None] + g[:, :, None] * net.S[None]
+    q = np.linalg.solve(M, (g * y[:, :V])[..., None])[..., 0]
+    return y - q @ net.W.T
+
+
+def correct_rooms(x, T_measured, V):
+    """Fixed measurement correction for stateful candidates: room-air nodes take the measured temperatures,
+    hidden nodes (slab, walls, ...) keep their predicted values and so follow the measured air over time."""
+    x = np.array(x, float, copy=True)
+    x[..., :V] = T_measured
+    return x
+
+
 def pairs(M):
     """Upper-triangle (i, j, value) of a symmetric pair matrix where value > 0."""
     i, j = np.nonzero(np.triu(M, 1) > 0)

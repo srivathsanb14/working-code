@@ -1,0 +1,16 @@
+name: tests
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install (only what the tests import; the starter kit is not needed)
+        run: pip install numpy==2.0.2 scipy==1.16.3 pandas==2.3.3 matplotlib==3.10.0 pyyaml==6.0.3 -r requirements-dev.txt
+      - name: Lint
+        run: ruff check code tests
+      - name: Tests (scorer alignment with a planted truth, contract, safety layer, parsing, geometry, seed top-up)
+        run: pytest -q tests

@@ -7,3 +7,4 @@ outputs/roomdata_*.npz
 outputs/discovery/*/episodes/
 data/
 outputs/discovery/selftest_dataset/
+dist/

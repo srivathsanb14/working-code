@@ -21,12 +21,15 @@ GEOMETRY  geo (dict; computed from the building metadata's floor_plan and zone_m
   geo["V"] int rooms;  geo["area"] (V,) m2;  geo["facade_faces"] (V,) 0.2 m boundary segments on the exterior wall;
   geo["wall_cells"] (V,V) partition cells shared by rooms i and j;  geo["door_cells"] (V,V) door cells joining i and j;
   geo["n_doors"] (V,V);  geo["bbox_x"], geo["bbox_y"] (V,) m;  geo["ahu"] (V,) air handler index;  geo["floor"] (V,)
+  geo["facade_top"|"facade_bottom"|"facade_left"|"facade_right"] (V,) exterior-wall faces by side of the drawing (compass unknown);
+  geo["facade_sides"] (V,) sides with >= 2 m of exterior wall (2+ = corner room);  geo["boundary_faces"] (V,) all boundary faces;
+  geo["n_neighbours"] (V,) rooms sharing a wall or door;  geo["aspect"] (V,) long / short bounding-box side
 
 INPUTS of one 5-minute step (computed at run time from the observation and the policy's own commands):
   per room (V,): g = capacity rate of the supply air, W/K (0..~2400); T_supply = its temperature, K;
                  Q_reheat = reheat coil heat, W; Q_gain = lighting/equipment heat, W (known schedule)
   building-wide (): T_out K; occupants = people in the whole building (room unknown); comfort 1/0;
-                 hour_sin, hour_cos, dow_sin, dow_cos
+                 hour_sin, hour_cos, dow_sin, dow_cos; T_water = boiler supply-water temperature, K
 TARGET  every room's measured air temperature at the end of the step.  Every episode starts with every cell at
   294 K.  The early steps of an episode have a short real history (the buffer is padded with the first values);
   some error there is acceptable.

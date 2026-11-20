@@ -61,8 +61,10 @@ def check_source(src: str, kind: str = "fitted") -> ast.Module:
     names = {n.name for n in tree.body if isinstance(n, ast.FunctionDef)}
     assigns = {t.id for n in tree.body if isinstance(n, ast.Assign) for t in n.targets if isinstance(t, ast.Name)}
     if kind == "closedform":
-        if "step" not in names:
-            raise ContractError("missing function step(coef, geo, hist, u, U)")
+        stateful = {"init_state", "predict", "correct"} <= names
+        if "step" not in names and not stateful:
+            raise ContractError("missing function step(coef, geo, hist, u, U) "
+                                "(or the stateful trio init_state/predict/correct)")
         return tree
     for req in ("PARAMS", "THETA"):
         if req not in assigns:

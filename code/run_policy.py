@@ -31,7 +31,7 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 from common import DATA, KIT, WC, import_kit  # noqa: E402
 from discovery import contract  # noqa: E402
-from runtime.model_policy import make_model_policy  # noqa: E402
+from runtime.model_policy import make_closedform_policy, make_model_policy  # noqa: E402
 from test_model import model_tag  # noqa: E402
 
 
@@ -45,6 +45,36 @@ def scenarios_for(split, part, scen_dir):
     return [s for s in allp if any(m(s, p) for p in inc) and not any(m(s, p) for p in exc)]
 
 
+def is_closedform(src):
+    """A closed-form candidate defines step() (or the stateful init_state/predict/correct) and no simulate()."""
+    import ast
+    t = ast.parse(src)
+    fns = {n.name for n in t.body if isinstance(n, ast.FunctionDef)}
+    return ("step" in fns or {"init_state", "predict", "correct"} <= fns) and "simulate" not in fns
+
+
+def replay_check(tracker, run_dir, scenario_dir, base_key):
+    """J3: the live tracker's inputs and scores must equal the offline replay of the same run."""
+    from discovery import closedform as cf
+    from discovery import starterkit_data as skd
+    ctx = skd.ScenarioContext(scenario_dir)
+    R = skd.read_results(run_dir)
+    C, Dd = skd.replay(ctx, base_key, R)
+    inputs, T_meas, chk, _ = skd.episode_inputs(ctx, R, C, Dd)
+    live = tracker.to_episode()
+    n = min(live.n, len(T_meas))
+    perm = np.array([ctx.rooms.index(r) for r in tracker.io.rooms])        # offline (simulator VAV) order -> observation order
+    off = {k: (np.asarray(v)[:n][:, perm] if np.ndim(v) == 2 else np.asarray(v)[:n]) for k, v in inputs.items()}
+    diffs = {k: float(np.nanmax(np.abs(np.asarray(live.inputs[k][:n]) - off[k])))
+             for k in ("T_out", "g", "T_supply", "Q_reheat", "Q_gain", "occupants", "comfort") if k in off}
+    diffs["T_meas"] = float(np.max(np.abs(live.T_meas[:n] - np.asarray(T_meas)[:n][:, perm])))
+    ep_off = live.__class__(**{**live.__dict__, "inputs": {**live.inputs, **{k: off[k] for k in off if k in live.inputs}},
+                               "T_meas": np.asarray(T_meas)[:n][:, perm]})
+    r = cf.episode_scores(tracker.mod, tracker.coef, ep_off, tracker.U, (12, 36, 72), 12, 36, keep=36)
+    return {"replay_max_abs_diff": diffs, "replay_flow_max_rel_err": chk["flow_max_rel_err"],
+            "offline_one_step": r["one_step"], "offline_3h": r["36"]}
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--model", type=Path, default=HERE / "discovery/seeds/seed_slab_wall_network.py")
@@ -56,10 +86,16 @@ def main():
     ap.add_argument("--steps", type=int, default=8640, help="8640 = 30 days, the hidden evaluation's length")
     ap.add_argument("--base", default="pid_water", help="starter-kit policy key that makes the control decisions")
     ap.add_argument("--out", type=Path, help="default outputs/policy/<model>_<base>_<on>")
+    ap.add_argument("--check-replay", action="store_true",
+                    help="closed-form only: replay the run offline (starterkit_data) and compare inputs and scores with the live tracker")
     a = ap.parse_args()
 
-    mod, _ = contract.load(a.model.read_text())
-    if a.params:
+    src_text = a.model.read_text()
+    closed = is_closedform(src_text)
+    mod = None if closed else contract.load(src_text)[0]
+    if closed:
+        params, theta, src = {}, {}, "closed-form: nothing fitted"
+    elif a.params:
         P = json.loads(a.params.read_text()); b = P.get("best", P)
         params, theta = b["params"], b.get("theta_shared") or {k: v[0] for k, v in mod.THETA.items()}
         src = str(a.params) + ("" if b.get("theta_shared") else " (no theta_shared: THETA at initial values)")
@@ -75,7 +111,8 @@ def main():
 
     os.environ.setdefault("NUMBA_CACHE_DIR", str(WC / ".numba_cache"))
     ev = import_kit()
-    cls = make_model_policy(ev.POLICY_MAP[a.base], mod, params, theta, name=f"model_tracking_{a.base}")
+    cls = (make_closedform_policy(ev.POLICY_MAP[a.base], src_text, name=f"closedform_tracking_{a.base}") if closed
+           else make_model_policy(ev.POLICY_MAP[a.base], mod, params, theta, name=f"model_tracking_{a.base}"))
     rows = []
     for s in scen:
         b, w = s.split("/")
@@ -88,6 +125,8 @@ def main():
             os.chdir(cwd)
         pol = cls.instances[-1]
         fc = pol.model.forecast_errors()
+        if closed and a.check_replay:
+            fc.update(replay_check(pol.model, out / "results" / b / w / pol.name(), sdir, a.base))
         row = dict(scenario=s, rooms=pol.model.V, ahus=pol.model.K, steps=summ["total_steps"],
                    score=-summ["avg_reward"], model_init_s=pol.init_seconds,
                    model_s_per_step=float(np.mean(pol.step_seconds)), wall_s=time.time() - t0, **fc)

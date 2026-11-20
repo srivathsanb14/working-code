@@ -133,6 +133,22 @@ Their footprints are below the generator's current `DEFAULT_RANGES` (400–700 �
   - 70 W per occupant and 10 W/m² internal gains, 0.2 outside comfort hours (audit, STATE_SPACE.md §12.2, §14.2);
   - partition heat capacity 900 J/kgK, not drawn.
 
+## 3a. Timing found by the live tracker
+
+- Live forecasts inside the policy equal the offline scores exactly: one-step error 0.4584 K both ways, 3 h error 2.0203 K both ways, on building_train_8/atlanta_1 over 576 steps (`run_policy.py --check-replay`).
+- The `num_occupants` observation runs **two steps behind** the occupancy the kit logs in `reward_components.total_occupancy`. Offline episodes now use the observable value (`starterkit_data.episode_inputs`).
+
+## 3b. The cost estimate checked against the kit (backlog K4)
+
+`control/costs.py` estimates electric power (fans, cooling at COP 3.5, pump) and gas power (reheat) from the commands. It then applies the kit's price and carbon tables and the per-AHU normalisation. Checked against `reward_components.csv` on two 30-day pid_water runs:
+
+| run | electric power: corr, estimate/kit | gas power: corr, estimate/kit | normalised energy: corr, estimate/kit |
+|---|---|---|---|
+| train_2 atlanta_3 | 0.999, 1.03 | 0.977, (mean 156 vs 326 W) | 0.999, 0.97 |
+| train_1 fairbanks_1 | 0.999, 0.93 | 0.977, 1.11 | 0.993, 1.03 |
+
+The small gap in mild weather is boiler loss, which the estimate leaves out. The policy cannot read the month, so the gas price is the annual mean.
+
 ## 4. How deviations are measured
 
 - **Model** (`closedform.py`):

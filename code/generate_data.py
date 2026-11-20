@@ -27,12 +27,12 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import sys
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
-import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from common import DATA, KIT, kit_git_status, run_kit  # noqa: E402
@@ -41,9 +41,29 @@ ALL_STATIONS = ["fairbanks", "denver", "atlanta", "phoenix", "singapore", "minne
 SHIPPED_POLICIES = ["all_off", "bang_bang", "fixed_setpoint", "pid", "pid_water"]
 
 
+def seed_ranges(spec):
+    """'500:600' or '500:600,10500:10525' -> [(500, 600), (10500, 10525)] (stop excluded)."""
+    out = []
+    for part in str(spec).split(","):
+        a, b = part.split(":"); out.append((int(a), int(b)))
+    return out
+
+
 def seeds(spec):
-    a, b = spec.split(":")
-    return list(range(int(a), int(b)))
+    return [s for a, b in seed_ranges(spec) for s in range(a, b)]
+
+
+TOPUP_OFFSET = 10000      # extra seeds for --oversample start here above each split's first seed (no clash with 500/700/800)
+
+
+def with_topup(spec, oversample):
+    """Append an extra block of seeds so that about `oversample` x the planned count is generated (the kit rejects
+    some seeds); the first planned-count accepted buildings are kept."""
+    if not spec or oversample <= 1:
+        return spec
+    n = len(seeds(spec)); extra = int(math.ceil(n * (oversample - 1) - 1e-9))
+    start = seed_ranges(spec)[0][0] + TOPUP_OFFSET
+    return f"{spec},{start}:{start + extra}"
 
 
 def strip_for(seed, j, k=0):
@@ -57,10 +77,13 @@ def make_plan(a):
                 train_seeds=a.train_seeds, val_seeds=a.val_seeds, test_seeds=a.test_seeds, stations=stations,
                 val_station=a.val_station, test_station=a.test_station, test_strips=a.test_strips,
                 include_shipped=a.include_shipped, splits={}, scenarios={}, failures={})
+    plan["target"] = {k: len(seeds(v)) if v else 0 for k, v in (("train", a.train_seeds), ("val", a.val_seeds), ("test", a.test_seeds))}
+    plan["oversample"] = a.oversample
     for split, spec in (("train", a.train_seeds), ("val", a.val_seeds), ("test", a.test_seeds)):
+        spec = with_topup(spec, a.oversample)
         plan["splits"][split] = [f"building_{s:04d}" for s in seeds(spec)] if spec else []
         for s in (seeds(spec) if spec else []):
-            b = f"building_{s:04d}"
+            b = f"building_{s:04d}"   # noqa: E501
             if split == "test":
                 plan["scenarios"][b] = [f"{a.test_station}_{strip_for(s, 0, k)}" for k in range(a.test_strips)]
             else:
@@ -117,6 +140,9 @@ def main():
     ap.add_argument("--include-shipped", action="store_true", help="also run the 30 shipped scenarios")
     ap.add_argument("--stage", choices=["all", "buildings", "scenarios", "runs"], default="all")
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--oversample", type=float, default=1.0,
+                    help="generate about this x the planned buildings per split (e.g. 1.3: the kit rejects ~20%% of seeds) "
+                         "from extra seeds starting 10000 above each range, and keep the planned number of accepted ones")
     a = ap.parse_args()
     if a.steps < 864:
         print("warning: --steps < 864 leaves less than day 1 + 2 scoring days")
@@ -138,14 +164,15 @@ def main():
         for split, spec in (("train", a.train_seeds), ("val", a.val_seeds), ("test", a.test_seeds)):
             if not spec:
                 continue
-            s = seeds(spec)
-            if all((bdir / split / f"building_{x:04d}.yaml").exists() for x in s):
-                print(f"buildings/{split}: already there ({len(s)})"); continue
-            print(f"buildings/{split}: generating seeds {s[0]}..{s[-1]}")
-            code, tail = run_kit(["smart_buildings.run_floor_generator", "--start-seed", str(s[0]), "--count", str(len(s)),
-                                  "--output-dir", str(bdir / split), "--no-pdf"], logs / f"buildings_{split}.log")
-            if code:
-                raise SystemExit(f"run_floor_generator failed (see {logs / f'buildings_{split}.log'}):\n{tail}")
+            for lo, hi in seed_ranges(with_topup(spec, a.oversample)):       # one kit batch per range
+                s = list(range(lo, hi))
+                if all((bdir / split / f"building_{x:04d}.yaml").exists() for x in s):
+                    print(f"buildings/{split}: seeds {lo}..{hi - 1} already there"); continue
+                print(f"buildings/{split}: generating seeds {lo}..{hi - 1}")
+                code, tail = run_kit(["smart_buildings.run_floor_generator", "--start-seed", str(lo), "--count", str(len(s)),
+                                      "--output-dir", str(bdir / split), "--no-pdf"], logs / f"buildings_{split}_{lo}.log")
+                if code:
+                    raise SystemExit(f"run_floor_generator failed (see {logs / f'buildings_{split}_{lo}.log'}):\n{tail}")
 
     # ---------------------------------------------------------------- scenarios
     done_scen = {}
@@ -189,6 +216,15 @@ def main():
                 if err:
                     plan["failures"][b] = err
                     print(f"  {b}: FAILED ({err})")
+
+    # keep the first `target` accepted buildings per split (planned seeds first, then top-up seeds)
+    if a.oversample > 1:
+        for split, blds in plan["splits"].items():
+            ok = [b for b in blds if b in done_scen]
+            for b in ok[plan["target"][split]:]:
+                done_scen.pop(b, None)
+            plan.setdefault("kept", {})[split] = ok[: plan["target"][split]]
+            print(f"{split}: {len(ok)} accepted, kept {min(len(ok), plan['target'][split])} of {plan['target'][split]} planned")
 
     # ---------------------------------------------------------------- runs
     shipped = []

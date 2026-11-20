@@ -40,7 +40,7 @@ from pathlib import Path
 
 from . import diagnostics, evaluate, prompts, proposers
 from .episodes import _load_cached
-from .starterkit_data import DATA, KIT, load_all
+from .starterkit_data import DATA, load_all
 
 ROOT = Path(__file__).resolve().parents[2]
 OUTD = ROOT / "outputs"
