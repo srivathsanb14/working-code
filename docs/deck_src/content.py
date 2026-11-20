@@ -439,6 +439,6 @@ add("table", "decisions", eyebrow="Decisions", title="Settled, and still open",
 add("flow", "roadmap", eyebrow="Roadmap", title="From here to a submission, with a fallback at every stage",
     steps=[("Full data", "big machine"), ("LLM generations", "real search"), ("Pick horizon", "for MPC"), ("Model in policy", "tracker"), ("MPC", "≤ 0.125 s/step")],
     points=["Submit a pid_water-like baseline early (5 submissions a day)", "Then feed-forward: model-computed setpoints with PID trims", "Then MPC; deadline January 15, 2027"],
-    src="[plan] full backlog: docs/next_tasks.csv (70 tasks); [Kaggle] timeline, limits", notes="Each stage is a complete submission.")
+    src="[plan] full backlog: docs/next_tasks.csv (68 tasks); [Kaggle] timeline, limits", notes="Each stage is a complete submission.")
 add("statement", "close", eyebrow="In one line", title="Formulas we can read, written once, run on any building",
     sub="Geometry from the floor plan · materials from the measured history · everything else universal · nothing fitted", src="", notes="Questions?")
