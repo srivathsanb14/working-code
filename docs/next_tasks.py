@@ -321,6 +321,13 @@ TASKS += [
      "I5 benchmark passed, notebook rehearsed locally with the packaged dataset, fallback to pid_water verified by fault injection.",
      "All items ticked in docs/RUNBOOK.md; only then is the MPC notebook submitted.", "K1,K7,K8,I5", "P0", "S"),
 ]
+TASKS.append(("I7", "Validation", "Deployment-information audit of the discovery loop",
+              "Make sure discovery uses only what a policy has on an unseen building at Kaggle test time (metadata, observations, own actions).",
+              "Every candidate input traced to a test-time source; future weather/occupancy not used in the score; building-specific code rejected; "
+              "live-vs-offline parity on geometry, inputs and forecasts; tests.", "", "P0", "S"))
+STATUS["I7"] = ("done", "docs/DISCOVERY_WALKTHROUGH.md 'Deployment parity'. Score now holds future outside temperature and occupancy at their last observed "
+                        "values (--score deploy, default); contract rejects size/identity branching; analysis text anonymised; run_policy --check-replay "
+                        "compares geometry too (identical); tests/test_deployment.py.")
 STATUS["K1"] = ("open", "Deployable today: the pid_water-only notebook (kaggle/submission.ipynb without best.py). Submit it first to prove the Kaggle interface.")
 STATUS["I4"] = ("open", "Include the controllers: MPC plan time was ~50 ms on 30-39 room buildings; unmeasured on 150-200 rooms (see K7).")
 rows = [list(t) + list(STATUS.get(t[0], ("open", ""))) for t in TASKS]

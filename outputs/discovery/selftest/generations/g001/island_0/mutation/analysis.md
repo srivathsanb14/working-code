@@ -17,14 +17,14 @@ one-step (5 min) RMSE 0.6604 K (persistence 0.2169); train buildings 3h 2.389 K
   colder half of outside temps           3.489  +2.612
   warmer half                            1.288  -0.019
 skill vs persistence by horizon (ratio <1 is better): 1h 1.60, 3h 0.83, 6h 0.49
-worst rooms: building_train_5_synth0_mixed room #6 (rmse 3.76, bias +1.75, facade faces 74, area 35 m2, doors 0); building_train_5_synth1_mixed room #22 (rmse 3.56, bias +1.65, facade faces 79, area 55 m2, doors 0); building_train_5_synth0_mixed room #45 (rmse 3.54, bias +1.61, facade faces 93, area 78 m2, doors 0); building_train_5_synth1_mixed room #63 (rmse 3.51, bias +1.64, facade faces 111, area 74 m2, doors 0)
+worst rooms: held-out episode 1 room #6 (rmse 3.76, bias +1.75, facade faces 74, area 35 m2, doors 0); held-out episode 2 room #22 (rmse 3.56, bias +1.65, facade faces 79, area 55 m2, doors 0); held-out episode 1 room #45 (rmse 3.54, bias +1.61, facade faces 93, area 78 m2, doors 0); held-out episode 2 room #63 (rmse 3.51, bias +1.64, facade faces 111, area 74 m2, doors 0)
 complexity 793 AST nodes, history 288 steps
 ```
 
 ## Measured vs predicted
 
 ```
-episode building_train_5_synth0_mixed; room #57 = most exposed exterior room, room #10 = largest interior room
+a held-out episode; room #57 = most exposed exterior room, room #10 = largest interior room
 time  | room #57 measured / predicted | room #10 measured / predicted | T_out | HVAC air
    0h |   5.02 /   7.94 C |  14.00 /  15.41 C |  -2.0 C | off
    2h |   2.91 /   5.85 C |  12.74 /  14.52 C |  -3.9 C | off

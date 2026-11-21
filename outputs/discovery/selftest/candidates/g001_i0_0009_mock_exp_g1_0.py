@@ -12,14 +12,14 @@ HISTORY = 1
 def prepare(geo, U):
     face = U['CELL'] * U['HEIGHT']
     C = U['RHO_C_AIR'] * U['HEIGHT'] * geo['area']
-    G_ext = geo['facade_faces'] * face * 2.5
-    G_nb = geo['wall_cells'] * face * 4.0 + geo['door_cells'] * face * 40.0
+    G_ext = geo['facade_faces'] * face * 1.6
+    G_nb = geo['wall_cells'] * face * 3.125 + geo['door_cells'] * face * 15.0
     G_nb = G_nb * (1 - np.eye(geo['V']))
     return dict(C=C, G_ext=G_ext, G_nb=G_nb, G_nb_sum=G_nb.sum(1))
 
 def step(coef, geo, hist, u, U):
     T = hist['T'][:, -1]
     C, dt = (coef['C'], U['DT'])
-    T_nb = T @ coef['G_nb'].T / np.maximum(coef['G_nb_sum'], 6e-10)
+    T_nb = T @ coef['G_nb'].T / np.maximum(coef['G_nb_sum'], 1.6000000000000003e-09)
     Q = u['Q_reheat'] + u['Q_gain'] + U['OCC_W'] * u['occupants'][:, None] / geo['V']
     return dlib.assemble(T, [(u['g'] * dt / C, u['T_supply']), (coef['G_nb_sum'] * dt / C, T_nb), (coef['G_ext'] * dt / C, u['T_out'][:, None])], b=Q * dt / C)

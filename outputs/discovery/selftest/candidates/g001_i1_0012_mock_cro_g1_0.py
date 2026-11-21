@@ -15,18 +15,47 @@ Nothing is fitted before deployment: the only estimation is the closed-form hist
 import numpy as np
 import dlib
 HISTORY = 288
-U_NOMINAL, U_LO, U_HI, SHRINK = (2.0, 0.3, 10.0, 5.0)
-H_SLOW, TAU_SLOW = (5.0, 6 * 12)
+U_NOMINAL, U_LO, U_HI, SHRINK = (2.0, 0.3, 8.0, 5.0)
+H_SLOW, TAU_SLOW = (4.0, 6 * 12)
 
 def prepare(geo, U):
-    face = U['CELL'] * U['HEIGHT']
-    G_nb = (geo['wall_cells'] * face * 2.5 + geo['door_cells'] * face * 40.0) * (1 - np.eye(geo['V']))
-    return dict(C=U['RHO_C_AIR'] * U['HEIGHT'] * geo['area'], A_fac=geo['facade_faces'] * face, G_nb=G_nb, G_nb_sum=G_nb.sum(1), G_slow=H_SLOW * geo['area'])
+    V = geo['V']
+    A = geo['area']
+    H = U['HEIGHT']
+    c = U['CELL']
+    face = H * c
+    wi, wj, wn = dlib.pairs(geo['wall_cells'])
+    di, dj, dn = dlib.pairs(geo['door_cells'])
+    N = 3 * V + len(wi)
+    C = np.empty(N)
+    G = np.zeros((N, N))
+    G_amb = np.zeros(N)
+    air, slab, fac = (np.arange(V), V + np.arange(V), 2 * V + np.arange(V))
+    C[air] = U['RHO_C_AIR'] * H * A
+    C[slab] = RC_MASS * H * A
+    G[air, slab] = G[slab, air] = H_SLAB * A
+    nf = geo['facade_faces']
+    has_f = nf > 0
+    C[fac] = np.where(has_f, RC_EXT * nf * face * c / 2, 1.0)
+    g_in = nf * face / (c / (2 * K_AIR) + c / (4 * K_EXT))
+    G[air, fac] = G[fac, air] = np.where(has_f, 1 / (1 / np.maximum(g_in, 1e-09) + _spread(A, nf * c)), 0.0)
+    G_amb[fac] = np.where(has_f, nf * face / (c / (4 * K_EXT) + 1 / H_FILM), 0.0)
+    for k in range(len(wi)):
+        i, j, n = (wi[k], wj[k], wn[k])
+        w = 3 * V + k
+        C[w] = RC_IW * n * face * c
+        g_half = n * face / (c / (2 * K_AIR) + c / (2 * K_IW))
+        G[i, w] = G[w, i] = 1 / (1 / g_half + _spread(A[i], n * c))
+        G[j, w] = G[w, j] = 1 / (1 / g_half + _spread(A[j], n * c))
+    for i, j, n in zip(di, dj, dn):
+        g_door = n * face / (2 * c / K_AIR)
+        G[i, j] = G[j, i] = G[i, j] + 1 / (1 / g_door + _spread(A[i], n * c) + _spread(A[j], n * c))
+    return dict(net=dlib.LinearNetwork(C, G, G_amb, V), V=V)
 
 def _known(coef, geo, T, inp, U, T_slow):
     """Heat-balance terms other than the facade, as (terms, b) for dlib.assemble."""
     C, dt = (coef['C'], U['DT'])
-    T_nb = T @ coef['G_nb'].T / np.maximum(coef['G_nb_sum'], 8.000000000000001e-10)
+    T_nb = T @ coef['G_nb'].T / np.maximum(coef['G_nb_sum'], 1e-09)
     Q = inp['Q_reheat'] + inp['Q_gain'] + U['OCC_W'] * inp['occupants'][..., None] / geo['V']
     return ([(inp['g'] * dt / C, inp['T_supply']), (coef['G_nb_sum'] * dt / C, T_nb), (coef['G_slow'] * dt / C, T_slow)], Q * dt / C)
 

@@ -197,14 +197,17 @@ def write(run_dir: Path, db, a, val, U, final=False):
               f"Hypothesis: {best.get('hypothesis', '')}", "", f"Source: [{best['file']}]({best['file']})", "",
               "```", best.get("analysis", ""), "```", ""]
     # leaderboard
-    L += ["## Leaderboard (held-out, K)", "", "| id | island | operator | parents | name | score | 5 min | 1 h | 3 h | 6 h | persistence 3 h |",
-          "|---|---|---|---|---|---|---|---|---|---|---|"]
+    L += ["## Leaderboard (held-out, K)", "", "Score uses test-time information only (future outside temperature and occupancy unknown); "
+          "the 1/3/6 h columns use the true future inputs (dynamics only).", "",
+          "| id | island | operator | parents | name | score | 3 h test-time | 5 min | 1 h | 3 h | 6 h | persistence 3 h |",
+          "|---|---|---|---|---|---|---|---|---|---|---|---|"]
     for r in ok[:15]:
         L.append(f"| {r['id']} | {r['island']} | {r['operator']} | {', '.join(r.get('parents', [])) or '-'} | `{r['name']}` | {r['score']:.4f} | "
+                 f"{_h(r, 'val_3h_deploy_mean')} | "
                  f"{_h(r, 'val_one_step_mean')} | {_h(r, 'val_1h_mean')} | {_h(r, 'val_3h_mean')} | {_h(r, 'val_6h_mean')} | {_h(r, 'val_persistence_3h_mean')} |")
     if ceiling:
         m = ceiling["mean"]
-        L.append(f"| ceiling | - | fitted per room (diagnostic) | - | second half of each episode | - | - | {m.get('1h', float('nan')):.3f} | "
+        L.append(f"| ceiling | - | fitted per room (diagnostic) | - | second half of each episode | - | - | - | {m.get('1h', float('nan')):.3f} | "
                  f"{m.get('3h', float('nan')):.3f} | {m.get('6h', float('nan')):.3f} | {m.get('persistence_3h', float('nan')):.3f} |")
     L.append("")
     # operators

@@ -15,16 +15,13 @@ Nothing is fitted before deployment: the only estimation is the closed-form hist
 import numpy as np
 import dlib
 HISTORY = 288
-U_NOMINAL, U_LO, U_HI, SHRINK = (2.0, 0.3, 8.0, 5.0)
-H_SLOW, TAU_SLOW = (4.0, 6 * 12)
+U_NOMINAL, U_LO, U_HI, SHRINK = (1.6, 0.18, 8.0, 5.0)
+H_SLOW, TAU_SLOW = (1.92, 6 * 12)
 
 def prepare(geo, U):
     face = U['CELL'] * U['HEIGHT']
-    C = U['RHO_C_AIR'] * U['HEIGHT'] * geo['area']
-    G_ext = geo['facade_faces'] * face * 2.0
-    G_nb = geo['wall_cells'] * face * 2.5 + geo['door_cells'] * face * 25.0
-    G_nb = G_nb * (1 - np.eye(geo['V']))
-    return dict(C=C, G_ext=G_ext, G_nb=G_nb, G_nb_sum=G_nb.sum(1))
+    G_nb = (geo['wall_cells'] * face * 4.0 + geo['door_cells'] * face * 20.0) * (1 - np.eye(geo['V']))
+    return dict(C=U['RHO_C_AIR'] * U['HEIGHT'] * geo['area'], A_fac=geo['facade_faces'] * face, G_nb=G_nb, G_nb_sum=G_nb.sum(1), G_slow=H_SLOW * geo['area'])
 
 def _known(coef, geo, T, inp, U, T_slow):
     """Heat-balance terms other than the facade, as (terms, b) for dlib.assemble."""

@@ -36,6 +36,7 @@
  "warmup": 36,
  "screen": 5.0,
  "complexity_weight": 0.0001,
+ "score": "deploy",
  "max_train": 8,
  "max_val": 30,
  "ceiling": true,

@@ -119,23 +119,35 @@ def filter_states(mod, coef, prep, U):
     return S
 
 
-def _rollout_stateful(mod, coef, prep, U, starts, horizon):
+EXOGENOUS = ("T_out", "occupants")   # not known ahead at test time: frozen at the last observed value in deployment rollouts
+
+
+def _freeze(u, prep, ts0, freeze):
+    if freeze:
+        u0 = _u_at(prep, ts0)
+        for k in freeze:
+            if k in u:
+                u[k] = u0[k]
+    return u
+
+
+def _rollout_stateful(mod, coef, prep, U, starts, horizon, freeze=None):
     S = filter_states(mod, coef, prep, U)
     geo, V = prep.ep.geo, prep.V
     out = np.empty((len(starts), horizon, V))
     s = S[starts]
     for k in range(horizon):
-        s = np.asarray(mod.predict(coef, geo, s, _u_at(prep, starts + k), U), float)
+        s = np.asarray(mod.predict(coef, geo, s, _freeze(_u_at(prep, starts + k), prep, starts, freeze), U), float)
         out[:, k] = s[:, :V]
     return out
 
 
-def rollout(mod, coef, prep, U, starts, horizon, chunk=None):
+def rollout(mod, coef, prep, U, starts, horizon, chunk=None, freeze=None):
     """Free-run every start in `starts` for `horizon` steps from measured history.
     Returns pred (S, horizon, V): pred[s, k] is the forecast of X[starts[s] + k + 1]."""
     starts = np.asarray(starts, int)
     if is_stateful(mod):
-        return _rollout_stateful(mod, coef, prep, U, starts, horizon)
+        return _rollout_stateful(mod, coef, prep, U, starts, horizon, freeze)
     chunk = chunk or int(max(8, min(1024, 2e6 // (prep.H * prep.V))))       # bounds the (B, H, V) windows in memory
     out = np.empty((len(starts), horizon, prep.V))
     for a in range(0, len(starts), chunk):
@@ -143,7 +155,7 @@ def rollout(mod, coef, prep, U, starts, horizon, chunk=None):
         Tb = prep.measured_window(ts0).astype(float)
         for k in range(horizon):
             ts = ts0 + k
-            y = np.asarray(mod.step(coef, prep.ep.geo, prep.hist(ts, Tb), prep.u(ts), U), float)
+            y = np.asarray(mod.step(coef, prep.ep.geo, prep.hist(ts, Tb), _freeze(prep.u(ts), prep, ts0, freeze), U), float)
             if y.shape != (len(ts0), prep.V):
                 raise ValueError(f"step returned shape {y.shape}, expected {(len(ts0), prep.V)} (batch, rooms)")
             out[a:a + chunk, k] = y
@@ -257,6 +269,8 @@ def episode_scores(mod, coef, ep, U, horizons=(12, 36, 72), every=6, warmup=36, 
         e = pr[:, h - 1] - X[starts + h]
         r[f"{h}"] = float(np.sqrt(np.mean(e ** 2))) if np.all(np.isfinite(e)) else float("inf")
         r[f"persistence_{h}"] = float(np.sqrt(np.mean((X[starts] - X[starts + h]) ** 2)))
+    pd_ = rollout(mod, coef, prep, U, starts, keep, freeze=EXOGENOUS)         # what a deployed model can actually do
+    r[f"deploy_{keep}"] = float(np.sqrt(np.mean((pd_[:, -1] - X[starts + keep]) ** 2)))
     r["keep_err"] = pr[:, keep - 1] - X[starts + keep]
     r["keep_t"] = starts + keep - 1                  # index of the input step that ends at the target
     return r
@@ -269,7 +283,7 @@ def _hname(h):
 # ----------------------------------------------------------------------------- the full evaluation
 
 def evaluate(src, train_eps, val_eps, U, complexity_weight=0.0001, horizons=(12, 36, 72), main_h=36, every=6,
-             warmup=36, screen_factor=5.0, max_train=8):
+             warmup=36, screen_factor=5.0, max_train=8, deploy_score=True):
     """Everything about one closed-form candidate as a JSON-able record (+ 'detail' with arrays for the analysis)."""
     t0 = time.time()
     rec = {"status": "ok", "deployment": "closedform"}
@@ -318,12 +332,15 @@ def evaluate(src, train_eps, val_eps, U, complexity_weight=0.0001, horizons=(12,
             rec["warnings"] = w
         rec["val_by_episode"] = {k: {kk: v[kk] for kk in v if not kk.endswith(("_err", "_t")) and kk != "unstable"} for k, v in val.items()}
         rec["horizons"] = list(horizons); rec["main_horizon"] = main_h
-        m = rec[f"val_{_hname(main_h)}_mean"]
+        rec[f"val_{_hname(main_h)}_deploy_mean"] = float(np.mean([v[f"deploy_{main_h}"] for v in val.values()]))
+        m = rec[f"val_{_hname(main_h)}_deploy_mean"] if deploy_score else rec[f"val_{_hname(main_h)}_mean"]
         if rec["unstable_episodes"]:
             rec.update(status="unstable", stage=2, reason=f"free-run rollout left [230, 350] K or went non-finite on "
                        f"{len(rec['unstable_episodes'])} held-out episode(s)")
             m = float("inf")
-        rec["score_metric"] = f"val {_hname(main_h)} rollout RMSE from measured history (no fitting)"
+        rec["score_metric"] = (f"val {_hname(main_h)} rollout RMSE from measured history, future outside temperature and occupancy "
+                               f"unknown (held at their last observed values), as at test time" if deploy_score else
+                               f"val {_hname(main_h)} rollout RMSE from measured history with the true future inputs (diagnostic)")
         rec["score"] = m + complexity_weight * cx
         rec["detail"] = val
     except Exception as e:  # noqa: BLE001
@@ -391,7 +408,8 @@ def analysis(rec, val_eps):
         E = rec["detail"][ep.name]["keep_err"]
         rms = np.sqrt((E ** 2).mean(0)); b = E.mean(0)
         for i in np.argsort(-rms)[:2]:
-            worst.append((rms[i], b[i], ep.name, i, int(ep.geo["facade_faces"][i]), float(ep.geo["area"][i]), int(ep.geo["n_doors"][i].sum())))
+            worst.append((rms[i], b[i], f"held-out episode {val_eps.index(ep) + 1}", i, int(ep.geo["facade_faces"][i]),
+                          float(ep.geo["area"][i]), int(ep.geo["n_doors"][i].sum())))
     worst.sort(key=lambda w: -w[0])
     L.append("worst rooms: " + "; ".join(f"{w[2]} room #{w[3]} (rmse {w[0]:.2f}, bias {w[1]:+.2f}, facade faces {w[4]}, "
                                           f"area {w[5]:.0f} m2, doors {w[6]})" for w in worst[:4]))

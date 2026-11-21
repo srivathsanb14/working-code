@@ -66,6 +66,13 @@ Write one Python module (numpy, math and dlib only; deterministic; no files):
   U          universal constants (table below).  geo matrices are (V, V): use T @ M.T for neighbour sums.
   In rollouts your own predictions are fed back into hist["T"] (free run), so the map must stay stable.
 
+Optional STATEFUL form (instead of step): keep hidden stores (slab, walls) as a state corrected by measurements.
+    def init_state(coef, geo, U): return x0            # (N,), the first V entries are the room-air nodes
+    def predict(coef, geo, state, u, U): return state  # (B, N) -> (B, N), one 5-minute step
+    def correct(coef, geo, state, T_measured, U): return state   # fold in measured room temps (B, V); a FIXED rule
+  The scorer runs predict/correct over the measured history, then free-runs predict from the corrected state.
+  dlib.network_predict(net, state, T_out, g, T_supply, Q) and dlib.correct_rooms(state, T_measured, V) help.
+
 Rules:
   - NO fitted numbers: no PARAMS/THETA.  Every number in the code is either a universal constant (the same for
     every building and weather; you may introduce new ones, keep them few and physically sensible), a geometry
@@ -85,9 +92,14 @@ How candidates are scored (no fitting anywhere):
   stage 0  the checks above on a real floor plan; failures are rejected with the reason.
   stage 1  quick screen: one-step (5-minute) RMSE on held-out buildings, from measured history; more than
            5.0x the persistence error (T_next = T_now) is screened out.
-  stage 2  decisive: from measured history at many moments, free-run 1 h, 3 h, 6 h ahead with the actual inputs;
-           a rollout leaving [230, 350] K marks the candidate unstable.  One-step accuracy does not guarantee good
-           rollouts.  Score = mean 3 h RMSE on held-out buildings + 0.0001 K per AST node of your code.
+  stage 2  decisive: from measured history at many moments, free-run 1 h, 3 h, 6 h ahead; a rollout leaving [230, 350] K
+           marks the candidate unstable.  One-step accuracy does not guarantee good rollouts.
+           Score = mean 3 h RMSE on held-out buildings + 0.0001 K per AST node of your code, computed AS AT TEST TIME:
+           the controller's own future commands are known, but the future outside temperature and occupancy are not
+           (they are held at their last observed values during the rollout).  Rollouts with the true future inputs are
+           reported as a diagnostic.
+  The evaluation buildings are unseen: formulas must work for any floor plan; never branch on a building's size or
+  identity (code comparing geo values or array sizes to fixed numbers is rejected).
 
 Reply only in the JSON format requested: a list of candidates, each with a short name, a one-paragraph hypothesis
 (what changed and which diagnostic motivates it), and the complete module source in "code".

@@ -117,7 +117,8 @@ def evaluate(code, train, val, U, args):
     signal.signal(signal.SIGALRM, _alarm); signal.alarm(int(args.timeout))
     try:
         return cf.evaluate(code, train, val, U, complexity_weight=args.complexity_weight, horizons=tuple(args.horizons),
-                           main_h=args.main_horizon, every=args.every, warmup=args.warmup, screen_factor=args.screen)
+                           main_h=args.main_horizon, every=args.every, warmup=args.warmup, screen_factor=args.screen,
+                           deploy_score=(args.score == "deploy"))
     except _Timeout:
         return {"status": "error", "reason": f"timeout after {args.timeout} s"}
     finally:
@@ -200,7 +201,7 @@ def profile_text(code, ep, U, horizon):
             continue
         rows.append(f"{(t % 288) / 12:4.0f}h | " + " | ".join(f"{X[t, i] - 273.15:6.2f} / {hz[j, i] - 273.15:6.2f} C" for i in P["rooms"])
                     + f" | {P['T_out'][min(t, len(P['T_out']) - 1)] - 273.15:5.1f} C | {'on' if P['hvac'][min(t, len(P['hvac']) - 1)] > 50 else 'off'}")
-    return f"episode {ep.name}; room #{P['rooms'][0]} = most exposed exterior room, room #{P['rooms'][1]} = largest interior room\n" + "\n".join(rows)
+    return f"a held-out episode; room #{P['rooms'][0]} = most exposed exterior room, room #{P['rooms'][1]} = largest interior room\n" + "\n".join(rows)
 
 
 # ----------------------------------------------------------------------------- the loop
@@ -385,6 +386,9 @@ def build_parser():
     ap.add_argument("--warmup", type=int, default=36, help="steps at the start of an episode not scored (history buffer filling)")
     ap.add_argument("--screen", type=float, default=5.0, help="stage-1 screen: reject if one-step RMSE > this x persistence")
     ap.add_argument("--complexity-weight", type=float, default=0.0001)
+    ap.add_argument("--score", choices=["deploy", "oracle"], default="deploy",
+                    help="deploy (default): rollouts hold the future outside temperature and occupancy at their last observed "
+                         "values, as a policy must at test time; oracle: the true future inputs (dynamics only, a diagnostic)")
     ap.add_argument("--max-train", type=int, default=8, help="train episodes used for the diagnostics (0 = all)")
     ap.add_argument("--max-val", type=int, default=30, help="held-out episodes used for scoring (0 = all; deterministic sample)")
     ap.add_argument("--ceiling", action="store_true", help="also compute the per-building fitted ceiling (diagnostic only)")

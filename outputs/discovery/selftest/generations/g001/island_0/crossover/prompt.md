@@ -6,7 +6,74 @@ see ../../../../system_prompt.md
 
 Generation 1, island 0.  Operator: CROSSOVER.
 
-### Parent A: seed_cf_history_slab  [g000_i0_0000, island 0, score 2.5772]
+### Parent A: seed_cf_network_observer  [g000_i0_0002, island 0, score 2.4331]
+Hypothesis: Stateful seed: the audited room network (air, slab, facade, partitions, doors) with a measurement-corrected state.
+```python
+"""Stateful seed: the audited room network (air, slab, facade, partitions, doors) with a measurement-corrected state.
+
+Nothing is fitted.  Every material number is a universal constant: the middle (geometric mean for log-drawn
+properties) of the starter-kit generator's range (smart_control/utils/materials.py), and the outdoor film is the
+middle of the stations' range.  The state is corrected every step by the measured room temperatures (room-air
+nodes take the measurement; slab, facade and partition nodes follow), so the slow stores are estimated from
+history instead of being fitted.  Stateful contract: init_state / predict / correct (see prompts.CF_CONTRACT).
+"""
+import numpy as np
+import dlib
+
+K_EXT = (0.15 * 0.55) ** 0.5               # W/mK   facade conductivity, log-middle of 0.15-0.55
+RC_EXT = (350 * 2400) ** 0.5 * 920.0       # J/m3K  facade density (log-middle 350-2400) x heat capacity (middle 840-1000)
+K_IW = 0.525                               # W/mK   partition conductivity, middle of 0.45-0.60
+RC_IW = (110 * 700) ** 0.5 * 900.0         # J/m3K  partition density (log-middle) x fixed heat capacity 900
+RC_MASS = (10 * 40) ** 0.5 * 1000.0        # J/m3K  slab/furniture density (log-middle 10-40) x 1000
+H_FILM = 17.75                             # W/m2K  outdoor film, middle of the stations' 8.8-26.7
+H_SLAB, A_SPREAD, K_AIR = 5.0, 0.6, 50.0   # slab-air coupling per m2, spreading-resistance strength, mixed-air conductivity
+
+
+def _spread(area, length):
+    return A_SPREAD * np.log1p(np.sqrt(area) / np.maximum(length, 1e-9)) / (np.pi * K_AIR * dlib.HEIGHT)
+
+
+def prepare(geo, U):
+    V = geo["V"]; A = geo["area"]; H = U["HEIGHT"]; c = U["CELL"]; face = H * c
+    wi, wj, wn = dlib.pairs(geo["wall_cells"]); di, dj, dn = dlib.pairs(geo["door_cells"])
+    N = 3 * V + len(wi)
+    C = np.empty(N); G = np.zeros((N, N)); G_amb = np.zeros(N)
+    air, slab, fac = np.arange(V), V + np.arange(V), 2 * V + np.arange(V)
+    C[air] = U["RHO_C_AIR"] * H * A
+    C[slab] = RC_MASS * H * A
+    G[air, slab] = G[slab, air] = H_SLAB * A
+    nf = geo["facade_faces"]; has_f = nf > 0
+    C[fac] = np.where(has_f, RC_EXT * nf * face * c / 2, 1.0)
+    g_in = nf * face / (c / (2 * K_AIR) + c / (4 * K_EXT))
+    G[air, fac] = G[fac, air] = np.where(has_f, 1 / (1 / np.maximum(g_in, 1e-9) + _spread(A, nf * c)), 0.0)
+    G_amb[fac] = np.where(has_f, nf * face / (c / (4 * K_EXT) + 1 / H_FILM), 0.0)
+    for k in range(len(wi)):
+        i, j, n = wi[k], wj[k], wn[k]; w = 3 * V + k
+        C[w] = RC_IW * n * face * c
+        g_half = n * face / (c / (2 * K_AIR) + c / (2 * K_IW))
+        G[i, w] = G[w, i] = 1 / (1 / g_half + _spread(A[i], n * c))
+        G[j, w] = G[w, j] = 1 / (1 / g_half + _spread(A[j], n * c))
+    for i, j, n in zip(di, dj, dn):
+        g_door = n * face / (2 * c / K_AIR)
+        G[i, j] = G[j, i] = G[i, j] + 1 / (1 / g_door + _spread(A[i], n * c) + _spread(A[j], n * c))
+    return dict(net=dlib.LinearNetwork(C, G, G_amb, V), V=V)
+
+
+def init_state(coef, geo, U):
+    return np.full(coef["net"].N, U["T0"])          # every cell starts at 294 K
+
+
+def predict(coef, geo, state, u, U):
+    Q = u["Q_reheat"] + u["Q_gain"] + U["OCC_W"] * np.asarray(u["occupants"])[:, None] / geo["V"]
+    return dlib.network_predict(coef["net"], state, u["T_out"], u["g"], u["T_supply"], Q)
+
+
+def correct(coef, geo, state, T_measured, U):
+    return dlib.correct_rooms(state, T_measured, coef["V"])
+```
+
+
+### Parent B: seed_cf_history_slab  [g000_i0_0000, island 0, score 2.5778]
 Hypothesis: Room air plus a slow store summarised from history, and the facade U-value inferred from history.
 ```python
 """Room air plus a slow store summarised from history, and the facade U-value inferred from history.
@@ -77,58 +144,21 @@ def step(coef, geo, hist, u, U):
 ```
 
 
-### Parent B: seed_cf_one_node  [g000_i0_0002, island 0, score 3.3729]
-Hypothesis: One temperature per room, nominal materials, no history beyond the last measurement.
-```python
-"""One temperature per room, nominal materials, no history beyond the last measurement.
-
-Templates: room air capacity from floor area; facade loss = facade area x a nominal U-value; neighbour
-exchange through shared walls and doors = contact area x nominal conductance per m2.  Every coefficient
-is geometry x material; the material numbers are fixed universal guesses (nothing fitted, nothing
-inferred from history), so this is the baseline the history-based candidates must beat.
-"""
-import numpy as np
-import dlib
-
-HISTORY = 1
-
-
-def prepare(geo, U):
-    face = U["CELL"] * U["HEIGHT"]                       # m2 of one 0.2 m boundary segment
-    C = U["RHO_C_AIR"] * U["HEIGHT"] * geo["area"]       # J/K, room air
-    G_ext = geo["facade_faces"] * face * 2.0             # W/K, facade + film, nominal 2 W/m2K
-    G_nb = geo["wall_cells"] * face * 2.5 + geo["door_cells"] * face * 25.0
-    G_nb = G_nb * (1 - np.eye(geo["V"]))
-    return dict(C=C, G_ext=G_ext, G_nb=G_nb, G_nb_sum=G_nb.sum(1))
-
-
-def step(coef, geo, hist, u, U):
-    T = hist["T"][:, -1]                                  # (B, V) latest measured room temperatures
-    C, dt = coef["C"], U["DT"]
-    T_nb = (T @ coef["G_nb"].T) / np.maximum(coef["G_nb_sum"], 1e-9)
-    Q = u["Q_reheat"] + u["Q_gain"] + U["OCC_W"] * u["occupants"][:, None] / geo["V"]
-    return dlib.assemble(T, [(u["g"] * dt / C, u["T_supply"]),
-                             (coef["G_nb_sum"] * dt / C, T_nb),
-                             (coef["G_ext"] * dt / C, u["T_out"][:, None])], b=Q * dt / C)
-```
-
-
 Pre-crossover analysis:
 Where each parent is better (A vs B, main-horizon rollout RMSE, K):
-  all rooms                              2.500 vs 3.289  -> A
-  exterior rooms                         2.739 vs 3.022  -> A
-  interior rooms                         1.645 vs 3.950  -> A
-  most exposed third of exterior rooms   3.026 vs 2.445  -> B
-  HVAC air on                            1.520 vs 2.300  -> A
-  HVAC air off                           3.391 vs 4.265  -> A
-  comfort hours                          1.520 vs 2.300  -> A
-  night/weekend                          3.391 vs 4.265  -> A
-  room being reheated                    1.814 vs 2.523  -> A
-  room not reheated                      2.640 vs 3.451  -> A
-  colder half of outside temps           3.489 vs 4.488  -> A
-  warmer half                            1.288 vs 1.896  -> A
-A is clearly better on: all rooms, exterior rooms, interior rooms, HVAC air on, HVAC air off, comfort hours, night/weekend, room being reheated, room not reheated, colder half of outside temps, warmer half
-B is clearly better on: most exposed third of exterior rooms
-templates (top-level functions): same in both: none; different: prepare, step; only in A: _known, _slow, facade_u; only in B: none
+  all rooms                              2.284 vs 2.500  -> A
+  exterior rooms                         2.480 vs 2.739  -> A
+  interior rooms                         1.603 vs 1.645  -> A
+  most exposed third of exterior rooms   2.773 vs 3.026  -> A
+  HVAC air on                            0.810 vs 1.520  -> A
+  HVAC air off                           3.361 vs 3.391  -> A
+  comfort hours                          0.810 vs 1.520  -> A
+  night/weekend                          3.361 vs 3.391  -> A
+  room being reheated                    0.746 vs 1.814  -> A
+  room not reheated                      2.520 vs 2.640  -> A
+  colder half of outside temps           3.324 vs 3.489  -> A
+  warmer half                            0.833 vs 1.288  -> A
+A is clearly better on: all rooms, exterior rooms, interior rooms, most exposed third of exterior rooms, HVAC air on, comfort hours, room being reheated, room not reheated, colder half of outside temps, warmer half
+templates (top-level functions): same in both: none; different: prepare; only in A: _spread, init_state, predict, correct; only in B: _known, _slow, facade_u, step
 
 Write 2 children that COMBINE the parents: take each template from the parent that is better where that template matters (e.g. the exterior-wall template from the parent better on exterior rooms), make the pieces consistent, and state in the hypothesis which template came from which parent.

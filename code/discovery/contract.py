@@ -37,6 +37,33 @@ class ContractError(Exception):
     pass
 
 
+def _sizeish(node):
+    """geo["V"] / geo['...'] subscripts, len(...), x.shape[...] or x.size: quantities that identify a building's size."""
+    if isinstance(node, ast.Subscript) and isinstance(node.value, ast.Name) and node.value.id == "geo":
+        return True
+    if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "len":
+        return True
+    if isinstance(node, ast.Subscript) and isinstance(node.value, ast.Attribute) and node.value.attr == "shape":
+        return True
+    return isinstance(node, ast.Attribute) and node.attr in ("shape", "size")
+
+
+def _reject_building_specific(tree):
+    """Formulas run on unseen buildings: comparing a building's size or a geometry value to a fixed number with
+    == / != / in (e.g. `if geo["V"] == 85:`) would special-case the buildings seen during discovery."""
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Compare):
+            continue
+        sides = [node.left, *node.comparators]
+        if not any(isinstance(op, (ast.Eq, ast.NotEq, ast.In, ast.NotIn)) for op in node.ops):
+            continue
+        consts = [x for x in sides if isinstance(x, ast.Constant) and isinstance(x.value, (int, float)) and not isinstance(x.value, bool)
+                  or isinstance(x, (ast.Tuple, ast.List, ast.Set)) and x.elts and all(isinstance(e, ast.Constant) for e in x.elts)]
+        if consts and any(_sizeish(x) for x in sides):
+            raise ContractError("building-specific branching: comparing a building's size or geometry to a fixed number "
+                                f"(line {node.lineno}) would special-case the buildings seen in discovery; formulas must work for any floor plan")
+
+
 def check_source(src: str, kind: str = "fitted") -> ast.Module:
     """kind "fitted": PARAMS/THETA tables + simulate() (the fitted deployment modes).
     kind "closedform": step() (+ optional prepare(), HISTORY); nothing is fitted, so no PARAMS/THETA."""
@@ -61,6 +88,7 @@ def check_source(src: str, kind: str = "fitted") -> ast.Module:
     names = {n.name for n in tree.body if isinstance(n, ast.FunctionDef)}
     assigns = {t.id for n in tree.body if isinstance(n, ast.Assign) for t in n.targets if isinstance(t, ast.Name)}
     if kind == "closedform":
+        _reject_building_specific(tree)
         stateful = {"init_state", "predict", "correct"} <= names
         if "step" not in names and not stateful:
             raise ContractError("missing function step(coef, geo, hist, u, U) "

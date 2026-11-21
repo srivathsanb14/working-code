@@ -77,6 +77,37 @@ The scorer filters the measured history this way, then free-runs from the correc
 
 RMSE in K. The observer seed is also about 5× faster to score.
 
+## Deployment parity: discovery uses only what a policy has at Kaggle test time
+
+On an unseen building the policy gets the building metadata once, an observation every 5 minutes, and remembers its own actions. Nothing else exists: no YAML, no `config.gin` and no materials. Discovery is held to the same limits.
+
+| what discovery uses | available at test time? | where it comes from at run time |
+|---|---|---|
+| geometry (`geo`: areas, exterior wall by side, shared walls, doors, AHU, floor, ...) | yes | `floor_plan`, `zone_map`, `ahu_zone_assignments` in the metadata (`episodes.geometry`) |
+| measured room temperatures (history buffer) | yes, one step late | observation, de-normalised with the metadata (`runtime/inputs.RoomInputs.measured`) |
+| outside temperature (now and history) | yes | observation |
+| occupants (building total) | yes, **two steps late** | observation; offline episodes use the same lagged value |
+| comfort flag, clock | yes | observation |
+| air streams `g`, supply temperature, reheat heat | yes | the policy's own commands through the kit's equipment laws (`runtime/inputs.py`), with return air from measured temperatures |
+| boiler water temperature `T_water` | yes | integrated from the policy's own water-setpoint commands (ramp limits) from the 340 K reset |
+| internal gains `Q_gain` | assumed | 10 W/m² × area (20% outside comfort hours): a kit-wide constant, not in the metadata (risk tracked in I6) |
+| universal constants `U` | assumed | kit-wide values, each citing its kit source (`universal_constants.json`) |
+| **future** outside temperature and occupancy | **no** | the score holds them at their last observed values (`closedform.EXOGENOUS`; `--score deploy`, the default) |
+| future commands | yes | they are the controller's own plan |
+| building identity, materials, weather window, policy name | **no** | never given to candidates; the analysis text the LLM reads names episodes anonymously |
+
+How this is enforced:
+1. **Sandbox and contract.** Candidates receive only `geo`, the history buffer, this step's inputs and `U`. They cannot open files or import anything other than numpy, math and dlib. Code that compares a building's size or geometry to fixed numbers (for example `if geo["V"] == 85`) is rejected (`contract._reject_building_specific`).
+2. **Test-time score.** Stage 2 scores rollouts with the future outside temperature and occupancy unknown. Rollouts with the true future inputs are reported as a diagnostic (`val_<h>_mean`).
+3. **Live parity check.** `run_policy.py --check-replay` runs the model inside a submission-style policy from the Kaggle-style metadata and observations, then compares with the offline episodes:
+   - geometry: identical in every field;
+   - inputs: identical to rounding;
+   - forecasts: equal to the offline scores (0.6014 K both ways at 3 h on building_train_8/atlanta_1).
+4. **Held-out evaluation.** Selection uses buildings never seen in training, and the final check uses unseen buildings on an unseen station.
+5. **Tests.** `tests/test_deployment.py` covers the allowed keys, the branching rule, the test-time score and the frozen inputs.
+
+On the 12 thirty-day episodes, the stateful seed's 3 h error is 0.959 K at test time vs 0.928 K with true future inputs (persistence 0.973 K).
+
 ## 3. Where to look in a run folder (`outputs/discovery/<run>/`)
 
 | file | what it tells you |

@@ -317,9 +317,14 @@ How candidates are scored (no fitting anywhere):
   stage 0  the checks above on a real floor plan; failures are rejected with the reason.
   stage 1  quick screen: one-step (5-minute) RMSE on held-out buildings, from measured history; more than
            {screen}x the persistence error (T_next = T_now) is screened out.
-  stage 2  decisive: from measured history at many moments, free-run {horizons} ahead with the actual inputs;
-           a rollout leaving [230, 350] K marks the candidate unstable.  One-step accuracy does not guarantee good
-           rollouts.  Score = mean {main} RMSE on held-out buildings + {cw} K per AST node of your code."""
+  stage 2  decisive: from measured history at many moments, free-run {horizons} ahead; a rollout leaving [230, 350] K
+           marks the candidate unstable.  One-step accuracy does not guarantee good rollouts.
+           Score = mean {main} RMSE on held-out buildings + {cw} K per AST node of your code, computed AS AT TEST TIME:
+           the controller's own future commands are known, but the future outside temperature and occupancy are not
+           (they are held at their last observed values during the rollout).  Rollouts with the true future inputs are
+           reported as a diagnostic.
+  The evaluation buildings are unseen: formulas must work for any floor plan; never branch on a building's size or
+  identity (code comparing geo values or array sizes to fixed numbers is rejected)."""
 
 CF_SYSTEM = """\
 You are a scientist discovering the room dynamics of office buildings, as ONE set of closed-form formulas that

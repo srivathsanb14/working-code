@@ -1,20 +1,19 @@
-# Pre-crossover analysis: A = g000_i0_0000 seed_cf_history_slab, B = g000_i0_0002 seed_cf_one_node
+# Pre-crossover analysis: A = g000_i0_0002 seed_cf_network_observer, B = g000_i0_0000 seed_cf_history_slab
 
 ```
 Where each parent is better (A vs B, main-horizon rollout RMSE, K):
-  all rooms                              2.500 vs 3.289  -> A
-  exterior rooms                         2.739 vs 3.022  -> A
-  interior rooms                         1.645 vs 3.950  -> A
-  most exposed third of exterior rooms   3.026 vs 2.445  -> B
-  HVAC air on                            1.520 vs 2.300  -> A
-  HVAC air off                           3.391 vs 4.265  -> A
-  comfort hours                          1.520 vs 2.300  -> A
-  night/weekend                          3.391 vs 4.265  -> A
-  room being reheated                    1.814 vs 2.523  -> A
-  room not reheated                      2.640 vs 3.451  -> A
-  colder half of outside temps           3.489 vs 4.488  -> A
-  warmer half                            1.288 vs 1.896  -> A
-A is clearly better on: all rooms, exterior rooms, interior rooms, HVAC air on, HVAC air off, comfort hours, night/weekend, room being reheated, room not reheated, colder half of outside temps, warmer half
-B is clearly better on: most exposed third of exterior rooms
-templates (top-level functions): same in both: none; different: prepare, step; only in A: _known, _slow, facade_u; only in B: none
+  all rooms                              2.284 vs 2.500  -> A
+  exterior rooms                         2.480 vs 2.739  -> A
+  interior rooms                         1.603 vs 1.645  -> A
+  most exposed third of exterior rooms   2.773 vs 3.026  -> A
+  HVAC air on                            0.810 vs 1.520  -> A
+  HVAC air off                           3.361 vs 3.391  -> A
+  comfort hours                          0.810 vs 1.520  -> A
+  night/weekend                          3.361 vs 3.391  -> A
+  room being reheated                    0.746 vs 1.814  -> A
+  room not reheated                      2.520 vs 2.640  -> A
+  colder half of outside temps           3.324 vs 3.489  -> A
+  warmer half                            0.833 vs 1.288  -> A
+A is clearly better on: all rooms, exterior rooms, interior rooms, most exposed third of exterior rooms, HVAC air on, comfort hours, room being reheated, room not reheated, colder half of outside temps, warmer half
+templates (top-level functions): same in both: none; different: prepare; only in A: _spread, init_state, predict, correct; only in B: _known, _slow, facade_u, step
 ```

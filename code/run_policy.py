@@ -68,10 +68,21 @@ def replay_check(tracker, run_dir, scenario_dir, base_key):
     diffs = {k: float(np.nanmax(np.abs(np.asarray(live.inputs[k][:n]) - off[k])))
              for k in ("T_out", "g", "T_supply", "Q_reheat", "Q_gain", "occupants", "comfort") if k in off}
     diffs["T_meas"] = float(np.max(np.abs(live.T_meas[:n] - np.asarray(T_meas)[:n][:, perm])))
+    geo_diff = {}                                   # geometry from the Kaggle-style metadata (live) vs the offline episodes
+    for k, v in tracker.geo.items():
+        o = np.asarray(ctx.geo.get(k)) if k in ctx.geo else None
+        if o is None or np.ndim(v) == 0:
+            continue
+        o = o[np.ix_(perm, perm)] if np.ndim(v) == 2 else o[perm] if np.ndim(v) == 1 else o
+        if k == "ahu":                              # AHU numbering: compare the grouping, not the labels
+            same = all(len(set(o[np.asarray(v) == a])) == 1 for a in set(np.asarray(v).tolist()))
+            geo_diff[k] = 0.0 if same else 1.0
+        else:
+            geo_diff[k] = float(np.max(np.abs(np.asarray(v, float) - o.astype(float))))
     ep_off = live.__class__(**{**live.__dict__, "inputs": {**live.inputs, **{k: off[k] for k in off if k in live.inputs}},
                                "T_meas": np.asarray(T_meas)[:n][:, perm]})
     r = cf.episode_scores(tracker.mod, tracker.coef, ep_off, tracker.U, (12, 36, 72), 12, 36, keep=36)
-    return {"replay_max_abs_diff": diffs, "replay_flow_max_rel_err": chk["flow_max_rel_err"],
+    return {"replay_max_abs_diff": diffs, "geometry_max_abs_diff": geo_diff, "replay_flow_max_rel_err": chk["flow_max_rel_err"],
             "offline_one_step": r["one_step"], "offline_3h": r["36"]}
 
 

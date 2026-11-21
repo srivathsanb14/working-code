@@ -15,18 +15,18 @@ Nothing is fitted before deployment: the only estimation is the closed-form hist
 import numpy as np
 import dlib
 HISTORY = 288
-U_NOMINAL, U_LO, U_HI, SHRINK = (2.0, 0.3, 8.0, 5.0)
-H_SLOW, TAU_SLOW = (4.0, 6 * 12)
+U_NOMINAL, U_LO, U_HI, SHRINK = (1.2, 0.3, 8.0, 4.0)
+H_SLOW, TAU_SLOW = (5.0, 6 * 12)
 
 def prepare(geo, U):
     face = U['CELL'] * U['HEIGHT']
-    G_nb = (geo['wall_cells'] * face * 1.5 + geo['door_cells'] * face * 25.0) * (1 - np.eye(geo['V']))
+    G_nb = (geo['wall_cells'] * face * 3.125 + geo['door_cells'] * face * 25.0) * (1 - np.eye(geo['V']))
     return dict(C=U['RHO_C_AIR'] * U['HEIGHT'] * geo['area'], A_fac=geo['facade_faces'] * face, G_nb=G_nb, G_nb_sum=G_nb.sum(1), G_slow=H_SLOW * geo['area'])
 
 def _known(coef, geo, T, inp, U, T_slow):
     """Heat-balance terms other than the facade, as (terms, b) for dlib.assemble."""
     C, dt = (coef['C'], U['DT'])
-    T_nb = T @ coef['G_nb'].T / np.maximum(coef['G_nb_sum'], 1e-09)
+    T_nb = T @ coef['G_nb'].T / np.maximum(coef['G_nb_sum'], 1.6000000000000003e-09)
     Q = inp['Q_reheat'] + inp['Q_gain'] + U['OCC_W'] * inp['occupants'][..., None] / geo['V']
     return ([(inp['g'] * dt / C, inp['T_supply']), (coef['G_nb_sum'] * dt / C, T_nb), (coef['G_slow'] * dt / C, T_slow)], Q * dt / C)
 

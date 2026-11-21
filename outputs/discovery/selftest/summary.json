@@ -1,94 +1,96 @@
 {
  "mode": "closedform",
- "n_records": 24,
- "n_ok": 19,
+ "n_records": 26,
+ "n_ok": 21,
  "best": {
-  "id": "g002_i1_0022",
-  "name": "mock_exp_g2_0",
-  "island": 1,
-  "operator": "explore",
-  "parents": [],
-  "score": 2.3400029295019995,
-  "score_metric": "val 3h rollout RMSE from measured history (no fitting)",
-  "file": "candidates/g002_i1_0022_mock_exp_g2_0.py",
-  "val_one_step_mean": 0.5346439189865312,
-  "val_1h_mean": 2.0391324568833404,
-  "val_3h_mean": 2.2607029295019996,
-  "val_6h_mean": 2.0147500601601656,
+  "id": "g002_i0_0017",
+  "name": "mock_mut_g2_0",
+  "island": 0,
+  "operator": "mutation",
+  "parents": [
+   "g001_i0_0008"
+  ],
+  "score": 2.1244831438175473,
+  "score_metric": "val 3h rollout RMSE from measured history, future outside temperature and occupancy unknown (held at their last observed values), as at test time",
+  "file": "candidates/g002_i0_0017_mock_mut_g2_0.py",
+  "val_one_step_mean": 0.7577021070569142,
+  "val_1h_mean": 1.6583343115536064,
+  "val_3h_mean": 1.9295153024574998,
+  "val_6h_mean": 2.129925633570016,
   "val_persistence_3h_mean": 3.0054903171733063,
-  "complexity": 793,
-  "history": 288
+  "complexity": 990,
+  "history": 1
  },
  "leaderboard": [
   {
-   "id": "g002_i1_0022",
-   "name": "mock_exp_g2_0",
-   "island": 1,
-   "operator": "explore",
-   "score": 2.3400029295019995
-  },
-  {
-   "id": "g001_i0_0004",
-   "name": "mock_mut_g1_0",
-   "island": 0,
-   "operator": "mutation",
-   "score": 2.4253470786998435
-  },
-  {
-   "id": "g002_i0_0015",
-   "name": "mock_mut_g2_1",
-   "island": 0,
-   "operator": "mutation",
-   "score": 2.430940451928567
-  },
-  {
-   "id": "g002_i0_0014",
+   "id": "g002_i0_0017",
    "name": "mock_mut_g2_0",
    "island": 0,
    "operator": "mutation",
-   "score": 2.4829999941959082
+   "score": 2.1244831438175473
   },
   {
-   "id": "g000_i0_0000",
-   "name": "seed_cf_history_slab",
-   "island": 0,
-   "operator": "seed",
-   "score": 2.5772405483989185
-  },
-  {
-   "id": "g000_i1_0001",
-   "name": "seed_cf_history_slab",
+   "id": "g002_i1_0023",
+   "name": "mock_cro_g2_1",
    "island": 1,
-   "operator": "seed",
-   "score": 2.5772405483989185
+   "operator": "crossover",
+   "score": 2.2700796851115155
+  },
+  {
+   "id": "g001_i1_0014",
+   "name": "mock_exp_g1_0",
+   "island": 1,
+   "operator": "explore",
+   "score": 2.271358123221649
+  },
+  {
+   "id": "g002_i1_0024",
+   "name": "mock_exp_g2_0",
+   "island": 1,
+   "operator": "explore",
+   "score": 2.2975257875900015
   },
   {
    "id": "g001_i0_0006",
-   "name": "mock_cro_g1_0",
-   "island": 0,
-   "operator": "crossover",
-   "score": 2.5772405483989185
-  },
-  {
-   "id": "g001_i1_0009",
-   "name": "mock_mut_g1_1",
-   "island": 1,
-   "operator": "mutation",
-   "score": 2.578152398807414
-  },
-  {
-   "id": "g001_i0_0005",
-   "name": "mock_mut_g1_1",
+   "name": "mock_mut_g1_0",
    "island": 0,
    "operator": "mutation",
-   "score": 2.579065914439899
+   "score": 2.3662558560460614
   },
   {
-   "id": "g002_i1_0021",
+   "id": "g002_i1_0022",
    "name": "mock_cro_g2_0",
    "island": 1,
    "operator": "crossover",
-   "score": 2.583139691029851
+   "score": 2.3925132316335502
+  },
+  {
+   "id": "g002_i1_0020",
+   "name": "mock_mut_g2_0",
+   "island": 1,
+   "operator": "mutation",
+   "score": 2.420224068762442
+  },
+  {
+   "id": "g000_i0_0002",
+   "name": "seed_cf_network_observer",
+   "island": 0,
+   "operator": "seed",
+   "score": 2.4330976398385764
+  },
+  {
+   "id": "g000_i1_0003",
+   "name": "seed_cf_network_observer",
+   "island": 1,
+   "operator": "seed",
+   "score": 2.4330976398385764
+  },
+  {
+   "id": "g001_i0_0008",
+   "name": "mock_cro_g1_0",
+   "island": 0,
+   "operator": "crossover",
+   "score": 2.4330976398385764
   }
  ]
 }
