@@ -22,7 +22,7 @@ from control import costs  # noqa: E402
 from discovery import starterkit_data as skd  # noqa: E402
 
 
-def check(results, run):
+def check(results, run, arrays=False):
     b, w, pol = run.split("/")
     ep, chk, F = skd.load_starterkit_episode(KIT / "smart_buildings" / "training_scenarios", results, b, w, pol, {}, full=True)
     ctx, act, R = F["ctx"], F["act"], F["R"]
@@ -53,6 +53,8 @@ def check(results, run):
         r = float(np.corrcoef(a[m], b_[m])[0, 1]) if m.sum() > 2 and a[m].std() > 0 and b_[m].std() > 0 else float("nan")
         ratio = float(np.median(a[m & (b_ > 0)] / b_[m & (b_ > 0)])) if (m & (b_ > 0)).any() else float("nan")
         out[name] = (r, ratio, float(a.mean()), float(b_.mean()))
+    if arrays:
+        return out, dict(est_e=np.asarray(est_e), kit_e=np.asarray(kit_e), est_g=np.asarray(est_g), kit_g=np.asarray(kit_g))
     return out
 
 

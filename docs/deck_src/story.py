@@ -11,7 +11,7 @@ HERE = Path(__file__).resolve().parent
 P = HERE / "project"; SL = P / "slides"
 import sys
 sys.path.insert(0, str(HERE))
-from content2 import S, SECTIONS  # noqa: E402
+from content4 import S, SECTIONS  # noqa: E402
 
 # =========================================================================== render: online HTML
 E = html.escape
@@ -79,7 +79,7 @@ for s in S:
         elif k == "cards":
             body += '<div class="cards">' + "".join(card(*c) for c in s["cards"]) + "</div>\n" + callout(s.get("callout"))
         elif k == "table":
-            body += table(s["rows"], s["colw"], s.get("header", True), s.get("mono_first", False), 26 if len(s["rows"]) <= 7 else 21) + callout(s.get("callout"))
+            body += table(s["rows"], s["colw"], s.get("header", True), s.get("mono_first", False), s.get("size") or (26 if len(s["rows"]) <= 7 else 21)) + callout(s.get("callout"))
         elif k == "compare":
             body += '<div class="cards">' + card(s["left"][0], "\n".join("• " + p for p in s["left"][1]), "", "accent1") + card(s["right"][0], "\n".join("• " + p for p in s["right"][1]), "", "accent2") + "</div>\n" + callout(s.get("callout"))
         elif k == "code":

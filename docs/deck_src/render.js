@@ -166,7 +166,7 @@ for (const d of ST.slides) {
     const colW = d.colw.map(f => f * W);
     if (d.header === false) {
       s.addTable(rr, { x: X0, y: Y0 - 0.1, w: W, colW, fontSize: d.rows.length > 7 ? 10.5 : 13, color: C.text2, border: { type: "solid", pt: 0.5, color: "D5CFC2" }, fill: { color: C.background1 }, margin: [0.06, 0.1, 0.06, 0.1], valign: "middle" });
-    } else table(s, rr, X0, Y0 - 0.1, W, colW, d.rows.length > 7 ? 10.5 : 13);
+    } else table(s, rr, X0, Y0 - 0.1, W, colW, d.font || (d.rows.length > 7 ? 10.5 : 13));
     cbox(d.callout, d.rows.length > 7 ? 6.2 : 5.75, d.rows.length > 7 ? 0.62 : 0.8);
   } else if (k === "compare") {
     const cw = (W - 0.4) / 2, ch = d.callout ? 3.2 : 4.2;
