@@ -90,9 +90,10 @@ def check_source(src: str, kind: str = "fitted") -> ast.Module:
     if kind == "closedform":
         _reject_building_specific(tree)
         stateful = {"init_state", "predict", "correct"} <= names
-        if "step" not in names and not stateful:
-            raise ContractError("missing function step(coef, geo, hist, u, U) "
-                                "(or the stateful trio init_state/predict/correct)")
+        coef_form = "coefficients" in names
+        if "step" not in names and not stateful and not coef_form:
+            raise ContractError("missing the model: coefficients(geo, hist, U) "
+                                "(or the other forms: nodes + coefficients, step(...), or init_state/predict/correct)")
         return tree
     for req in ("PARAMS", "THETA"):
         if req not in assigns:
@@ -143,6 +144,11 @@ def load_closedform(src: str):
     if not (isinstance(h, int) and 1 <= h <= MAX_HISTORY):
         raise ContractError(f"HISTORY must be an int in [1, {MAX_HISTORY}] (steps of measured history), got {h!r}")
     mod.HISTORY = h
+    if hasattr(mod, "coefficients"):
+        r = getattr(mod, "REFRESH", 36)
+        if not (isinstance(r, int) and 1 <= r <= MAX_HISTORY):
+            raise ContractError(f"REFRESH must be an int in [1, {MAX_HISTORY}] (steps between coefficient updates), got {r!r}")
+        mod.REFRESH = r
     return mod, complexity(tree)
 
 

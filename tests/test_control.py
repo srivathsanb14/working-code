@@ -43,6 +43,6 @@ def test_occupancy_learns_the_profile():
 
 def test_stateful_seed_scores_and_contract(toy_episodes, U):
     from discovery import closedform as cf
-    src = (SEEDS / "seed_cf_network_observer.py").read_text()
+    src = (SEEDS / "seed_cf_network.py").read_text()
     r = cf.evaluate(src, toy_episodes[:1], toy_episodes[1:], U, every=24, screen_factor=1e9)
     assert r["status"] == "ok" and np.isfinite(r["val_3h_mean"])

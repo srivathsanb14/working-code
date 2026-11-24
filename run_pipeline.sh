@@ -45,7 +45,7 @@ step() { local n=$1; shift; if (( n >= FROM && n <= TO )); then echo; echo "=== 
 step 1 "$PY" code/setup_check.py
 # shellcheck disable=SC2086
 step 2 "$PY" code/generate_data.py --train-seeds "$TRAIN" --val-seeds "$VAL" --test-seeds "$TEST" \
-        --val-station "$VAL_STATION" --test-station "$TEST_STATION" --policies $POLICIES --steps "$STEPS" --workers "$WORKERS" --oversample "$OVERSAMPLE"
+        --val-station "$VAL_STATION" --test-station "$TEST_STATION" --policies $POLICIES --steps "$STEPS" --workers "$WORKERS" --oversample "$OVERSAMPLE" --include-shipped   # shipped six: test split only
 step 3 "$PY" code/audit_data.py
 step 4 "$PY" code/build_dataset.py --workers "$WORKERS"
 step 5 "$PY" code/audit_data.py

@@ -11,7 +11,7 @@ HERE = Path(__file__).resolve().parent
 P = HERE / "project"; SL = P / "slides"
 import sys
 sys.path.insert(0, str(HERE))
-from content4 import S, SECTIONS  # noqa: E402
+from content13 import S, SECTIONS  # noqa: E402
 
 # =========================================================================== render: online HTML
 E = html.escape
@@ -75,7 +75,7 @@ for s in S:
                 body += ('<div class="row" style="gap:56px; align-items:flex-start;">' + f'<div class="col" style="width:1060px; gap:10px;">{im(s["img"], "width:100%; max-height:560px;")}{cap(s.get("caption"))}</div>'
                          + f'<div class="col grow" style="gap:20px;">{ul(s["points"], 28)}{callout(s.get("callout"))}</div></div>\n')
             else:
-                body += im(s["img"], "width:100%; max-height:415px;") + "\n" + cap(s.get("caption")) + ul(s["points"], 26).replace('padding-left:1.1em;"', 'padding-left:1.1em; columns:2; column-gap:60px;"') + callout(s.get("callout"))
+                body += im(s["img"], "width:100%; max-height:370px;") + "\n" + cap(s.get("caption")) + ul(s["points"], 26).replace('padding-left:1.1em;"', 'padding-left:1.1em; columns:2; column-gap:60px;"') + callout(s.get("callout"))
         elif k == "cards":
             body += '<div class="cards">' + "".join(card(*c) for c in s["cards"]) + "</div>\n" + callout(s.get("callout"))
         elif k == "table":
@@ -85,9 +85,9 @@ for s in S:
         elif k == "code":
             body += ('<div class="row" style="gap:48px; align-items:flex-start;">'
                      f'<pre class="mono" style="width:1180px; margin:0; padding:26px 30px; font-size:19px; line-height:1.4; white-space:pre-wrap; background:#FCFBF8; border:2px solid #C9D3E3; border-radius:14px; color:#13213A;">{E(s["code"])}</pre>'
-                     f'<div class="col grow" style="gap:20px;">{ul(s["points"], 26)}</div></div>\n')
+                     f'<div class="col grow" style="gap:20px;">{ul(s["points"], 23)}</div></div>\n')
         elif k == "eq":
-            body += f'<div class="eq big" style="font-size:44px; text-align:center;">{E(s["eq"])}</div>\n' + ul(s["points"], 28)
+            body += f'<div class="eq big" style="font-size:{s.get("eqsize") or (36 if chr(10) in s["eq"] else 44)}px; text-align:{"left" if chr(10) in s["eq"] else "center"}; white-space:{"pre" if chr(10) in s["eq"] else "normal"};">{E(s["eq"]).replace(chr(10), "<br>")}</div>\n' + ul(s["points"], 28)
         elif k == "flow":
             body += '<div class="row" style="gap:12px;">' + '<x-shape kind="arrow-right" class="arrow" style="align-self:center;"></x-shape>'.join(
                 f'<div class="box {"cool" if i == len(s["steps"]) - 1 else ""} grow"><p class="bt">{E(t)}</p><p class="bs">{E(b)}</p></div>' for i, (t, b) in enumerate(s["steps"])) + "</div>\n" + ul(s["points"], 30)

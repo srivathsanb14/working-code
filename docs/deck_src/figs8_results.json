@@ -1,0 +1,58 @@
+{
+ "cells_train8": {
+  "outside": 42132,
+  "facade": 1902,
+  "partition": 2359,
+  "room air": 77087,
+  "door": 40
+ },
+ "worked_room": {
+  "building": "building_train_8",
+  "room": 5,
+  "area_m2": 59.360000000000014,
+  "facade_faces": 85.0,
+  "facade_m": 17.0,
+  "C_air_J_per_K": 214764.48000000004,
+  "C_slab_J_per_K": 3561600.000000001,
+  "G_slab_W_per_K": 296.80000000000007,
+  "kappa_W_air_to_facade": 254.55612761773799,
+  "gamma_facade_to_outside": 221.3390993487942,
+  "neighbours": [
+   {
+    "room": 4,
+    "wall_m": 9.8,
+    "door_cells": 2,
+    "G_wall_half": 137.26105649018936,
+    "G_door": 67.64126080809336
+   },
+   {
+    "room": 12,
+    "wall_m": 5.2,
+    "door_cells": 0,
+    "G_wall_half": 74.0988211786473,
+    "G_door": 0.0
+   }
+  ],
+  "materials": {
+   "k_ext": 0.2872281323269014,
+   "rc_ext": 843193.9278718745,
+   "k_iw": 0.525,
+   "rc_iw": 249739.86465920895,
+   "rc_mass": 20000.0,
+   "h": 17.75
+  },
+  "states": 148,
+  "V": 30,
+  "tau_air_slab_h": 0.201,
+  "tau_air_supply_max_s": 89.04000000000002
+ },
+ "matrix": {
+  "N": 148,
+  "V": 30,
+  "nonzeros": 525,
+  "partitions": 58
+ },
+ "analysis_history_seed": "held-out rollout RMSE by horizon (model / persistence), K: 1h 0.990/0.662, 3h 1.163/0.973, 6h 1.338/1.470\none-step (5 min) RMSE 0.3108 K (persistence 0.3515); train buildings 3h 1.433 K\n3h rollout error by group (rmse, bias), K:\n  all rooms                              1.210  +0.063\n  exterior rooms                         1.308  +0.237\n  interior rooms                         0.900  -0.402\n  most exposed third of exterior rooms   1.592  +0.452\n  HVAC air on                            0.883  +0.132\n  HVAC air off                           1.269  +0.048\n  comfort hours                          1.228  +0.556\n  night/weekend                          1.199  -0.244\n  room being reheated                    1.001  +0.459\n  room not reheated                      1.217  +0.049\n  colder half of outside temps           1.236  -0.068\n  warmer half                            1.186  +0.186\nskill vs persistence by horizon (ratio <1 is better): 1h 1.49, 3h 1.20, 6h 0.91\nworst rooms: held-out episode 5 room #15 (rmse 2.29, bias +0.58, facade faces 181, area 63 m2, doors 1); held-out episode 6 room #15 (rmse 2.25, bias +0.96, facade faces 181, area 63 m2, doors 1); held-out episode 12 room #20 (rmse 2.21, bias +0.59, facade faces 66, area 24 m2, doors 1); held-out episode 12 room #7 (rmse 2.16, bias +0.76, facade faces 95, area 53 m2, doors 1)\ncomplexity 793 AST nodes, history 288 steps",
+ "profile_text": "a held-out episode; room #84 = most exposed exterior room, room #14 = largest interior room\ntime  | room #84 measured / predicted | room #14 measured / predicted | T_out | HVAC air\n   0h |  17.70 /  18.83 C |  23.50 /  23.08 C |  13.9 C | on\n   2h |  19.30 /  20.51 C |  25.53 /  25.68 C |  16.1 C | on\n   4h |  20.37 /  21.44 C |  25.90 /  25.38 C |  19.4 C | on\n   6h |  21.47 /  21.95 C |  25.26 /  24.52 C |  20.6 C | on\n   8h |  22.27 /  22.31 C |  24.43 /  23.84 C |  21.7 C | on\n  10h |  22.81 /  21.95 C |  23.69 /  23.30 C |  20.6 C | on\n  12h |  22.97 /  21.16 C |  24.79 /  24.50 C |  18.9 C | on\n  14h |  21.86 /  18.20 C |  24.97 /  24.64 C |  14.4 C | off\n  16h |  20.81 /  17.48 C |  25.19 /  24.73 C |  12.8 C | off\n  18h |  19.87 /  17.88 C |  25.38 /  24.89 C |  12.2 C | off\n  20h |  18.97 /  18.17 C |  25.57 /  25.07 C |  11.1 C | off\n  22h |  18.08 /  18.24 C |  25.74 /  25.23 C |   8.9 C | off",
+ "score": 1.0900104537788327
+}

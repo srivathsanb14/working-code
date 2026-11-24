@@ -53,7 +53,7 @@ def main():
     ap.add_argument("--steps", type=int, default=8640)
     ap.add_argument("--model", type=Path, help="closed-form best.py to carry as a tracker")
     ap.add_argument("--controller", default="pid_water", choices=["pid_water", "rule", "ff", "mpc"],
-                    help="ff / mpc need --model (a closed-form best.py, e.g. code/discovery/seeds_cf/seed_cf_network_observer.py)")
+                    help="ff / mpc need --model (a closed-form best.py, e.g. code/discovery/seeds_cf/seed_cf_network.py)")
     ap.add_argument("--tag", help="default: the controller name")
     a = ap.parse_args()
     import yaml

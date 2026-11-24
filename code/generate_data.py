@@ -12,7 +12,7 @@ into the kit.  The plan follows GUIDE.md Part A:
                 test buildings: only the test station (default Minneapolis, the one shipped
                 station that is in no shipped scenario: the stand-in for an unseen station)
   runs        evaluate.py with the shipped policies (replayable: see starterkit_data.py)
-  shipped     optionally evaluate.py on the 30 shipped scenarios too
+  shipped     optionally evaluate.py on the 30 shipped scenarios too; they are held out in the test split
 
 It also writes  plan.json  (everything above, plus failures) and  split.json  (exact
 train/val/test scenario lists: train excludes the val and test stations, val = val
@@ -105,9 +105,8 @@ def split_json(plan, done_scen, shipped=()):
                     out["val"].append(f"{b}/{w}")
                 elif split == "test" and st == test_st:
                     out["test"].append(f"{b}/{w}")
-    for sc in shipped:                               # shipped scenarios join train unless on a held-out station
-        if sc.split("/")[1].rsplit("_", 1)[0] not in (val_st, test_st):
-            out["train"].append(sc)
+    for sc in shipped:                               # the organisers' six shipped buildings are never trained on:
+        out["test"].append(sc)                       # they are our local stand-in for the hidden test buildings
     return out
 
 
@@ -137,7 +136,8 @@ def main():
     ap.add_argument("--policies", nargs="+", default=SHIPPED_POLICIES)
     ap.add_argument("--steps", type=int, default=2016, help=">= 864 (3 days); 2016 = 7 days; 8640 = full episode")
     ap.add_argument("--workers", type=int, default=4)
-    ap.add_argument("--include-shipped", action="store_true", help="also run the 30 shipped scenarios")
+    ap.add_argument("--include-shipped", action="store_true",
+                    help="also run the 30 shipped scenarios; they go to the TEST split (held out, never trained on)")
     ap.add_argument("--stage", choices=["all", "buildings", "scenarios", "runs"], default="all")
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--oversample", type=float, default=1.0,

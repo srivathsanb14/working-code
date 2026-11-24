@@ -4,6 +4,41 @@ This is the guide to the default discovery mode: **closed-form formulas with no 
 LLM with islands, mutation and crossover. The earlier fitted modes (`--deployment offline|online|both`) are still
 available for comparison; see [LLM_DISCOVERY.md](LLM_DISCOVERY.md).
 
+## 0. What the LLM writes: the coefficient formulas of a fixed state-space function
+
+The dynamics function is fixed (`discovery/coefform.py`, `TermModel`). Per room i, every 5-minute step, with a hidden
+slab store S, outside-wall store W and inner-wall store P per room:
+
+```
+T_i+ = ( T_i + air_i g_i T_supply_i + outside_i T_out + sum_j neighbours_ij T_j + slab_i S_i + wall_i W_i + inner_i P_i
+         + heat_i Q_i ) / ( 1 + air_i g_i + outside_i + sum_j neighbours_ij + slab_i + wall_i + inner_i )
+S_i+ = ( S_i + slab_back_i T_i+ ) / ( 1 + slab_back_i )
+W_i+ = ( W_i + wall_back_i T_i+ + wall_out_i T_out ) / ( 1 + wall_back_i + wall_out_i )
+P_i+ = ( P_i + inner_back_i T_i+ ) / ( 1 + inner_back_i )
+```
+
+then the room air is set to the measurement. Each line is the backward-Euler form of `x+ = x + sum_k a_k (source_k - x)`,
+stable for any coefficients >= 0; together they are `x(t+1) = A(g) x(t) + B(g) u(t) + E(g) d(t)` with `x = (T, S, W, P)`.
+
+The LLM writes only the **formulas for the coefficients** (`air, heat, outside, neighbours, slab, slab_back, wall,
+wall_back, wall_out, inner, inner_back`) and optionally the heat input:
+
+```python
+HISTORY = 288; REFRESH = 36
+def coefficients(geo, hist, U):   -> {"air": (V,), "heat": (V,), "outside": (V,), "neighbours": (V, V), ...}
+def heat(geo, u, U):              -> (B, V) W   # optional
+```
+
+Each formula may read only test-time information: geometry from the building metadata, the universal constants, and the
+measured history up to now (`hist`, re-evaluated every `REFRESH` steps). The building's configuration file is never
+available at test time. Mutation, crossover, exploration and islands evolve these formulas; generated data on unseen
+buildings decides which survive. Nothing is fitted. `tests/test_coefform.py` checks that the formulas only see test-time
+keys and nothing after the refresh step. A network form (`nodes()` + capacities and conductances) and the older
+`step()` / stateful forms still load; their starting models are in `seeds_cf_legacy/`.
+
+Starting models in this form are in `seeds_cf/` (`seed_cf_network`, `seed_cf_history`, `seed_cf_one_node`); their scores
+on the 12 thirty-day runs are in docs/SOURCES_AND_FACTS.md.
+
 ## 1. Try it in four minutes, with no data and no LLM
 
 ```bash
@@ -67,7 +102,7 @@ A candidate may instead keep hidden stores (slab, walls) as a **state corrected 
 
 The scorer filters the measured history this way, then free-runs from the corrected state (`closedform.filter_states`). The runtime tracker does the same live, and its forecasts equal the offline scores exactly.
 
-`seeds_cf/seed_cf_network_observer.py`, the audited network with mid-range universal materials, was scored on 12 thirty-day simulator episodes:
+`seeds_cf_legacy/seed_cf_network_observer.py` (now `seeds_cf/seed_cf_network.py`, identical forecasts), the audited network with mid-range universal materials, was scored on 12 thirty-day simulator episodes:
 
 | model | 1 h | 3 h | 6 h |
 |---|---|---|---|
@@ -145,7 +180,7 @@ On the 12 thirty-day episodes, the stateful seed's 3 h error is 0.959 K at test 
 | One set of formulas for any building, from layout + measured history; used for MPC | done | contract in `prompts.CF_CONTRACT`; `step(coef, geo, hist, u, U)` |
 | No fitting at deployment or beforehand; the only estimation is a closed-form history expression | done (default mode) | `contract.load_closedform` rejects any PARAMS/THETA; `closedform.evaluate` fits nothing |
 | Universal constants allowed in formulas; reviewed once before the prompt | done; **review pending** | `code/discovery/universal_constants.json` (`_reviewed: false` until someone checks it) |
-| Per-building values inferred from history by formulas | supported; shown in a seed | `seed_cf_history_slab.facade_u` (shrunk least squares over the buffer) |
+| Per-building values inferred from history by formulas | supported; shown in a seed | `seed_cf_history.facade_u` (shrunk least squares over the buffer) |
 | Script extracting per-room geometry from floor_plan + zone_map | done | `episodes.geometry` (uses `room_model.grid_geometry`) |
 | Conductance = conductivity × area / distance; layers in series | stated in the prompt; used in seeds | `prompts.CF_CONTRACT`, seeds |
 | Templates: same for every room; rooms differ by their numbers | stated in the prompt; crossover swaps templates | `prompts.CF_SYSTEM`, `closedform.crossover_analysis` |

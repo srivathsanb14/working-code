@@ -131,7 +131,7 @@ python code/generate_data.py --train-seeds 500:600 --val-seeds 700:720 --test-se
 | `--test-strips` | 3 | strips per test building |
 | `--policies` | the five shipped | behaviour policies (must be replayable, GUIDE.md A.2) |
 | `--steps` | 2016 | steps per run: 864 = 3 days (minimum), 2016 = 7 days, 8640 = full episode |
-| `--include-shipped` | off | also run the 30 shipped scenarios (they join train unless on a held-out station) |
+| `--include-shipped` | off | also run the 30 shipped scenarios; they go to the test split (the organisers' six buildings are never trained on) |
 | `--workers` | 4 | parallel processes |
 | `--stage` | all | buildings / scenarios / runs, to redo one stage |
 

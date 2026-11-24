@@ -46,11 +46,11 @@ def scenarios_for(split, part, scen_dir):
 
 
 def is_closedform(src):
-    """A closed-form candidate defines step() (or the stateful init_state/predict/correct) and no simulate()."""
+    """A closed-form candidate defines nodes() + coefficients() (or step(), or init_state/predict/correct) and no simulate()."""
     import ast
     t = ast.parse(src)
     fns = {n.name for n in t.body if isinstance(n, ast.FunctionDef)}
-    return ("step" in fns or {"init_state", "predict", "correct"} <= fns) and "simulate" not in fns
+    return ("step" in fns or {"init_state", "predict", "correct"} <= fns or "coefficients" in fns) and "simulate" not in fns
 
 
 def replay_check(tracker, run_dir, scenario_dir, base_key):

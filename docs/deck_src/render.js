@@ -178,8 +178,9 @@ for (const d of ST.slides) {
     text(s, d.code, { x: X0 + 0.2, y: Y0, w: 7.1, h: 4.35, fontSize: 8.5, fontFace: MONO, color: C.text1 });
     bullets(s, d.points, X0 + 7.8, Y0, W - 7.8, 4.4, 14);
   } else if (k === "eq") {
-    eq(s, d.eq, X0, Y0, W, 0.9, 22);
-    bullets(s, d.points, X0, Y0 + 1.25, W, 3.2, 16);
+    const nl = d.eq.split("\n").length, two = nl > 1, eh = two ? 0.45 + 0.3 * nl : 0.9;
+    eq(s, d.eq, X0, Y0, W, eh, d.eqpt || (two ? 17 : 22));
+    bullets(s, d.points, X0, Y0 + eh + 0.3, W, YMAX - (Y0 + eh + 0.3), two ? 14 : 16);
   } else if (k === "flow") {
     const n = d.steps.length, aw = 0.36, gap = 0.12, bw = (W - (n - 1) * (aw + 2 * gap)) / n;
     d.steps.forEach(([t, b], i) => {

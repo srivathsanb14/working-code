@@ -18,7 +18,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 WC = HERE.parent
 FILES = ["room_model.py", "room_coeff_targets.py",
-         "discovery/__init__.py", "discovery/closedform.py", "discovery/contract.py", "discovery/dlib.py",
+         "discovery/__init__.py", "discovery/closedform.py", "discovery/coefform.py", "discovery/contract.py", "discovery/dlib.py",
          "discovery/episodes.py", "discovery/universal_constants.json",
          "runtime/__init__.py", "runtime/inputs.py", "runtime/closedform_tracker.py",
          "submission/__init__.py", "submission/layout.py", "submission/safety.py", "submission/rule_policy.py",

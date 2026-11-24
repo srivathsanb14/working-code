@@ -172,12 +172,13 @@ The small gap in mild weather is boiler loss, which the estimate leaves out. The
 | model | 5 min | 1 h | 3 h | 6 h |
 |---|---|---|---|---|
 | persistence | 0.35 | 0.66 | 0.97 | 1.47 |
-| `seed_cf_history_slab` | 0.31 | 0.99 | 1.16 | 1.34 |
-| `seed_cf_one_node` (nominal materials; unstable on 1 episode) | 0.52 | 3.64 | 6.61 | 7.94 |
+| `seed_cf_network` (fixed-function coefficients: air + slab, outside-wall and inner-wall stores; mid-range materials) | 0.30 | 0.68 | 0.87 | 1.11 |
+| `seed_cf_history` (fixed-function coefficients: air + slab store, outside-wall U from history) | 0.36 | 1.17 | 1.40 | 1.64 |
+| `seed_cf_one_node` (fixed-function coefficients, air only, nominal materials; unstable on 1 episode) | 0.52 | 3.64 | 6.61 | 7.94 |
 | ceiling: per-room fitted, second half of each episode | — | 0.31 | 0.46 | 0.62 |
 
 RMSE in K.
-- **The hand-written seeds are not good enough.** The history seed loses to persistence at 1 h and 3 h and wins only at 6 h. The fitted ceiling beats persistence in 11 of 12 episodes. The gap between seed and ceiling is what the LLM search has to close.
+- **The hand-written starting models are not good enough.** At 3 h the network model loses to persistence in 3 of 12 runs and the history model in 9 of 12 (all six HVAC-off runs). The fitted ceiling beats persistence in all 12. The gap between the starting models and the ceiling is what the LLM search has to close.
 - An earlier 3-day check on audit files looked better: 1.47 against 2.40 K at 3 h. Those files used the simulator's own logged heat input instead of inputs rebuilt from commands, and a period with larger swings.
 - **Bug found and fixed:** the first version of the ceiling (unconstrained least squares) blew up in free run, reaching 101 K at 3 h. It now uses non-negative weights and the stable end-of-step form.
 

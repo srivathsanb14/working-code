@@ -34,7 +34,7 @@ from pathlib import Path
 
 import numpy as np
 
-from . import contract
+from . import coefform, contract
 
 HERE = Path(__file__).resolve().parent
 DAY = 288
@@ -78,6 +78,7 @@ class Prepared:
     def __init__(self, ep, H):
         self.ep, self.H, self.n, self.V = ep, H, ep.n, ep.V
         self.S = None                                # filtered states of a stateful candidate (filter_states)
+        self.CF = None                               # coefficient form: (states, networks, network index) (filter_coef)
         self.X = np.vstack([np.full((1, ep.V), ep.T0), ep.T_meas])
         self.Xp = np.vstack([np.repeat(self.X[:1], H, 0), self.X])                       # Xp[H + k] = X[k]
         self.Ip = {k: np.concatenate([np.repeat(v[:1], H, 0), v]) for k, v in ep.inputs.items()}   # Ip[H + k] = inputs[k]
@@ -96,8 +97,52 @@ def is_stateful(mod):
     return all(hasattr(mod, f) for f in ("init_state", "predict", "correct"))
 
 
+def prepare_model(mod, geo, U):
+    """Per-building setup: a CoefModel for coefficient-form candidates, else the candidate's own prepare()."""
+    if coefform.is_coefform(mod):
+        return coefform.make_model(mod, geo, U)
+    return mod.prepare(geo, U) if hasattr(mod, "prepare") else None
+
+
 def _u_at(prep, ts):
     return {k: v[ts] for k, v in prep.ep.inputs.items()}
+
+
+def filter_coef(mod, cm, prep, U):
+    """Coefficient form: run the model over the measured history.  Every cm.refresh steps the coefficients are
+    recomputed from the measured history up to that step (nothing later), the network is rebuilt, and each step the
+    room-air nodes are set to the measurement.  Returns (S, nets, idx): S[k] the state after correcting with X[k],
+    nets[idx[k]] the network that steps k -> k+1."""
+    if getattr(prep, "CF", None) is not None:
+        return prep.CF
+    n, R = prep.n, cm.refresh
+    S = np.empty((prep.n + 1, cm.N)); idx = np.empty(prep.n + 1, int); nets = []
+    for k in range(n + 1):
+        if k % R == 0:
+            ts = np.array([k])
+            nets.append(cm.build(prep.hist(ts, prep.measured_window(ts).astype(float))))
+        idx[k] = len(nets) - 1
+        if k == 0:
+            s = cm.correct(cm.init(prep.X[0])[None], prep.X[0][None])
+        else:
+            s = cm.correct(cm.predict(nets[idx[k - 1]], S[k - 1][None], _u_at(prep, np.array([k - 1]))), prep.X[k][None])
+        S[k] = s[0]
+    if not np.all(np.isfinite(S)):
+        raise ValueError("coefficient-form candidate produced non-finite states while filtering the measured history")
+    prep.CF = (S, nets, idx)
+    return prep.CF
+
+
+def _rollout_coef(mod, cm, prep, U, starts, horizon, freeze=None):
+    S, nets, idx = filter_coef(mod, cm, prep, U)
+    out = np.empty((len(starts), horizon, prep.V))
+    for g in np.unique(idx[starts]):                 # starts that share a network are stepped together
+        sel = np.where(idx[starts] == g)[0]; st = starts[sel]
+        x = S[st]
+        for k in range(horizon):
+            x = cm.predict(nets[g], x, _freeze(_u_at(prep, st + k), prep, st, freeze))
+            out[sel, k] = x[:, :prep.V]
+    return out
 
 
 def filter_states(mod, coef, prep, U):
@@ -146,6 +191,8 @@ def rollout(mod, coef, prep, U, starts, horizon, chunk=None, freeze=None):
     """Free-run every start in `starts` for `horizon` steps from measured history.
     Returns pred (S, horizon, V): pred[s, k] is the forecast of X[starts[s] + k + 1]."""
     starts = np.asarray(starts, int)
+    if coefform.is_coefform(mod):
+        return _rollout_coef(mod, coef, prep, U, starts, horizon, freeze)
     if is_stateful(mod):
         return _rollout_stateful(mod, coef, prep, U, starts, horizon, freeze)
     chunk = chunk or int(max(8, min(1024, 2e6 // (prep.H * prep.V))))       # bounds the (B, H, V) windows in memory
@@ -294,7 +341,7 @@ def evaluate(src, train_eps, val_eps, U, complexity_weight=0.0001, horizons=(12,
 
         def coef_of(ep):
             if ep.building not in coefs:
-                coefs[ep.building] = mod.prepare(ep.geo, U) if hasattr(mod, "prepare") else None
+                coefs[ep.building] = prepare_model(mod, ep.geo, U)
             return coefs[ep.building]
         fails = physics_checks(mod, coef_of(train_eps[0]), train_eps[0], U)
         if fails:
@@ -452,7 +499,7 @@ def crossover_analysis(a, b, names=("A", "B")):
 def profile(src, ep, U, horizon=36, rooms=None):
     """Measured vs predicted series on one episode: one-step and `horizon`-ahead forecasts at every step."""
     mod, _ = contract.load_closedform(src)
-    coef = mod.prepare(ep.geo, U) if hasattr(mod, "prepare") else None
+    coef = prepare_model(mod, ep.geo, U)
     prep = Prepared(ep, mod.HISTORY)
     n = ep.n
     t1 = np.arange(0, n)

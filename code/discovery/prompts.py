@@ -270,47 +270,60 @@ TARGET  every room's measured air temperature at the end of the step.  Every epi
   some error there is acceptable."""
 
 CF_CONTRACT = '''\
-Write one Python module (numpy, math and dlib only; deterministic; no files):
+Write one Python module (numpy, math and dlib only; deterministic; no files).  The state-space function is FIXED; you
+write the FORMULA for every coefficient in it.  Per room i, every 5-minute step (S_i: slab store, W_i: outside-wall
+store, P_i: inner-wall store, all hidden; T_j: neighbouring rooms; Q_i: direct heat into the room):
+
+    T_i+ = ( T_i + air_i g_i T_supply_i + outside_i T_out + sum_j neighbours_ij T_j + slab_i S_i + wall_i W_i
+             + inner_i P_i + heat_i Q_i ) / ( 1 + air_i g_i + outside_i + sum_j neighbours_ij + slab_i + wall_i + inner_i )
+    S_i+ = ( S_i + slab_back_i T_i+ ) / ( 1 + slab_back_i )
+    W_i+ = ( W_i + wall_back_i T_i+ + wall_out_i T_out ) / ( 1 + wall_back_i + wall_out_i )
+    P_i+ = ( P_i + inner_back_i T_i+ ) / ( 1 + inner_back_i )
+
+then T is set to the measured room temperatures (S, W and P keep their predictions).  Each line is the backward-Euler form of
+x+ = x + sum_k a_k (source_k - x): stable for any coefficients >= 0.  This IS the linear state-space model
+x(t+1) = A(g) x(t) + B(g) u(t) + E(g) d(t) with x = (T, S, W, P); your coefficients are the entries of A, B and E.
 
     import numpy as np
     import dlib
 
-    HISTORY = 36          # steps of measured history your formulas read (1..288)
+    HISTORY = 288     # steps of measured history your coefficient formulas may read (1..288)
+    REFRESH = 36      # your coefficients are recomputed from the history every REFRESH steps (1..288)
 
-    def prepare(geo, U):                  # optional: geometry-only templates, computed once per building
-        return coef                       # anything (dict of arrays is typical)
+    def coefficients(geo, hist, U):
+        # every coefficient, as a formula of geometry, universal constants and the measured history
+        return {"air": ...,         # (V,) per W/K of supply air, per step   (physics: 300 s / room-air heat capacity)
+                "heat": ...,        # (V,) K per W, per step                  (physics: 300 s / room-air heat capacity)
+                "outside": ...,     # (V,) weight of the outside air           (physics: 300 s x conductance / capacity)
+                "neighbours": ...,  # (V, V) weight of room j's air in room i
+                "slab": ..., "slab_back": ...,                     # (V,) room <-> slab store
+                "wall": ..., "wall_back": ..., "wall_out": ...,   # (V,) room <-> outside-wall store <-> outside air
+                "inner": ..., "inner_back": ...}                   # (V,) room <-> inner-wall store
+        # numbers or (V,) arrays; any term you leave out is 0; every coefficient must be >= 0
 
-    def step(coef, geo, hist, u, U):      # one 5-minute step for a BATCH of B independent moments
-        return T_next                     # (B, V) room air temperatures at the end of this step
+    def heat(geo, u, U):                    # optional: Q, direct heat into each room's air, W, (B, V)
+        return Q                            # default: Q_reheat + Q_gain + 70 W x occupants split evenly over rooms
 
-  hist["T"]  (B, HISTORY, V) measured room temperatures, oldest first, hist["T"][:, -1] = now.
-  hist[k]    the HISTORY inputs before this step: per-room (B, HISTORY, V), building-wide (B, HISTORY);
-             input hist[k][:, j] drove hist["T"][:, j-1] -> hist["T"][:, j].
-  u[k]       this step's inputs: per-room (B, V), building-wide (B,).
-  U          universal constants (table below).  geo matrices are (V, V): use T @ M.T for neighbour sums.
-  In rollouts your own predictions are fed back into hist["T"] (free run), so the map must stay stable.
-
-Optional STATEFUL form (instead of step): keep hidden stores (slab, walls) as a state corrected by measurements.
-    def init_state(coef, geo, U): return x0            # (N,), the first V entries are the room-air nodes
-    def predict(coef, geo, state, u, U): return state  # (B, N) -> (B, N), one 5-minute step
-    def correct(coef, geo, state, T_measured, U): return state   # fold in measured room temps (B, V); a FIXED rule
-  The scorer runs predict/correct over the measured history, then free-runs predict from the corrected state.
-  dlib.network_predict(net, state, T_out, g, T_supply, Q) and dlib.correct_rooms(state, T_measured, V) help.
+  hist   ONLY data a policy has at that moment on an unseen building: hist["T"] (1, HISTORY, V) measured room
+         temperatures, oldest first, hist["T"][:, -1] = now; hist[k] the HISTORY step inputs before now: per-room
+         (1, HISTORY, V), building-wide (1, HISTORY).  Nothing after "now" is ever in hist.
+  u      one step's inputs (for heat()): per-room (B, V), building-wide (B,).
+  U      universal constants (table below).  geo: geometry from the building metadata only.
 
 Rules:
-  - NO fitted numbers: no PARAMS/THETA.  Every number in the code is either a universal constant (the same for
-    every building and weather; you may introduce new ones, keep them few and physically sensible), a geometry
-    quantity, or computed from the history buffer.  Values that differ per building (facade and partition
-    conductivity / density / specific heat, slab density, occupants per room, outdoor film coefficient) must be
-    INFERRED from hist by closed-form expressions (e.g. a shrunk least-squares ratio over the buffer).
-  - every room uses the same templates; rooms differ only through their numbers (areas, wall lengths, doors).
-  - conductance between cells = conductivity x contact area / distance (geometry x material); layers in series
-    add resistances (room -> 1-cell wall -> room; room -> facade -> outside film).
-  - assemble each room with dlib.assemble(T, [(w_k, T_k), ...], b): T_next = (T + sum w_k T_k + b)/(1 + sum w_k),
-    w_k = DT * conductance / C >= 0, b = DT * direct heat / C.  It is stable for any weights; the supply air must
-    be one of the terms (implicit), never an explicit Euler step.
+  - NO fitted numbers: no PARAMS/THETA.  Every number is a universal constant (the same for every building and
+    weather; you may introduce new ones, keep them few and physically sensible), a geometry quantity, or computed
+    from hist.  Values that differ per building (outside-wall and shared-wall conductivity / density / specific
+    heat, slab density, occupants per room, outside film) are NOT given (the building's configuration file is never
+    available at test time): they must be INFERRED from hist by closed-form expressions (e.g. a shrunk least-squares
+    ratio over the buffer).
+  - every room uses the same formulas; rooms differ only through their numbers (areas, wall lengths, doors).
+  - physics guide: a coefficient is 300 s x conductance / heat capacity; conductance = conductivity x contact
+    area / distance (geometry x material); layers in series add resistances (room -> 1-cell wall -> room;
+    room -> outside wall -> outside film); heat capacity = density x specific heat x volume.
   - checks before scoring: equilibrium (all 294 K, no heat -> no drift), bounded cooling toward a colder outside,
-    positive response to heat, a 2400 W/K stream of 290 K air must pull a room to 290 K and never past it.'''
+    a warmer outside never cools a room, heat into a room warms it and cools no other, a 2400 W/K stream of
+    290 K air pulls a room to 290 K and never past it.'''
 
 CF_SCORING = """\
 How candidates are scored (no fitting anywhere):
@@ -327,24 +340,24 @@ How candidates are scored (no fitting anywhere):
   identity (code comparing geo values or array sizes to fixed numbers is rejected)."""
 
 CF_SYSTEM = """\
-You are a scientist discovering the room dynamics of office buildings, as ONE set of closed-form formulas that
-predicts every room's temperature in ANY building from the building's layout and the recent history of measured
-values.  It will be used for model predictive control (heating/cooling plans).  No number is fitted at deployment
+You are a scientist discovering the room dynamics of office buildings, as ONE set of closed-form formulas for the
+coefficients of a fixed state-space function that predicts every room's temperature in ANY building from the building's
+layout and the recent history of measured values.  It will be used for model predictive control (heating/cooling plans).  No number is fitted at deployment
 or beforehand; the only estimation allowed is a closed-form expression of the history buffer inside your formulas.
 
 What is known about the physics (treat as hypotheses to test):
   - heat flow between rooms, to the outside and into heavy materials is linear in temperatures; the nonlinearity is
     in how commands become heat (products, limits, on/off) and that part is already done for you in the inputs.
   - one temperature per room is probably not enough: after heating stops a room drops fast, then slowly, because
-    heavy materials (slab, walls, furniture) hold heat.  Instead of hidden states you may summarise the history
-    (lags, differences, window or exponential averages): averaging a linear system gives a linear system.
+    heavy materials (slab, walls, furniture) hold heat.  The slab, outside-wall and inner-wall stores carry this; their
+    coefficients may be computed from summaries of the measured history (lags, differences, window or exponential averages).
   - from one room's view: its own air; a slower store attached to it (slab and furniture); its outside walls;
     its shared walls; doors to neighbours.
 
-A model is a set of TEMPLATES: small formulas with blanks filled by one room's numbers; a room's equation is the
-sum of its filled templates (a corner room gets an outside-wall term, an interior room does not).  Roles:
-building physics (passive), controls/HVAC, disturbances (people, equipment, weather), bookkeeping.  Keep one
-physical question per template so the pieces can be checked and recombined.
+A model is a fixed linear state-space function of a few terms (supply air, direct heat, outside air, neighbours, a slab
+store, an outside-wall store, an inner-wall store); you write the formula for each term's coefficient.  Write each coefficient as its own
+small function of one room's numbers (a corner room gets a large outside-wall coefficient, an interior room zero), and
+keep one physical question per function so the pieces can be checked and recombined.
 
 {data}
 
@@ -385,8 +398,8 @@ def cf_user_mutation(gen, island, parent, analysis_text, profile_text, failures,
         "Pre-mutation analysis of the parent (held-out buildings):\n" + analysis_text,
         ("Measured vs predicted (the parent's 3 h-ahead forecast) for two rooms:\n" + profile_text) if profile_text else "",
         _fails(failures),
-        f"Write {n} children of this parent.  Each must change ONE thing that the analysis points to (a template's "
-        "formula, a new template, a different history summary, a history-inferred material value) and keep the rest. "
+        f"Write {n} children of this parent.  Each must change ONE thing that the analysis points to (one "
+        "coefficient formula, a different history summary, a history-inferred material value) and keep the rest. "
         "Say in the hypothesis which diagnostic line motivates the change."] if x)
 
 
@@ -396,9 +409,9 @@ def cf_user_crossover(gen, island, a, b, cx_text, failures, n):
         _prog(a, "Parent A"), _prog(b, "Parent B"),
         "Pre-crossover analysis:\n" + cx_text,
         _fails(failures),
-        f"Write {n} children that COMBINE the parents: take each template from the parent that is better where that "
-        "template matters (e.g. the exterior-wall template from the parent better on exterior rooms), make the pieces "
-        "consistent, and state in the hypothesis which template came from which parent."] if x)
+        f"Write {n} children that COMBINE the parents: take each coefficient formula from the parent that is better "
+        "where that coefficient matters (e.g. the outside-wall conductance from the parent better on exterior rooms), make "
+        "the formulas consistent, and state in the hypothesis which formula came from which parent."] if x)
 
 
 def cf_user_explore(gen, island, elites, failures, n):
@@ -407,6 +420,6 @@ def cf_user_explore(gen, island, elites, failures, n):
         f"Generation {gen}, island {island}.  Operator: EXPLORE.",
         "Programs on this island so far (best first):\n" + lb,
         _fails(failures),
-        f"Write {n} candidates with a STRUCTURALLY different hypothesis from all of the above (a different slow-store "
-        "summary, a different way to infer per-building materials from history, different coupling laws), not a "
+        f"Write {n} candidates with a STRUCTURALLY different hypothesis from all of the above (a different "
+        "use of the stores, a different way to infer per-building materials from history, different coupling laws), not a "
         "re-tuning."] if x)

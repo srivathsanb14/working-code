@@ -16,7 +16,7 @@ from __future__ import annotations
 import numpy as np
 
 from discovery import closedform as cf
-from discovery import contract
+from discovery import coefform, contract
 from discovery.episodes import Episode
 from runtime.inputs import INPUT_KEYS, RoomInputs
 
@@ -27,8 +27,10 @@ class ClosedFormTracker:
         self.mod, _ = contract.load_closedform(src)
         self.U = U or cf.universal_constants()[0]
         self.geo, self.V, self.K, self.H = self.io.geo, self.io.V, self.io.K, self.mod.HISTORY
-        self.coef = self.mod.prepare(self.geo, self.U) if hasattr(self.mod, "prepare") else None
+        self.coef = cf.prepare_model(self.mod, self.geo, self.U)
+        self.coefform = coefform.is_coefform(self.mod)
         self.stateful = cf.is_stateful(self.mod)
+        self.nets, self.net_idx = [], []   # coefficient form: networks rebuilt every REFRESH steps, and which one steps k
         self.filt = []             # stateful candidates: state after correcting with X[k]
         self.X = []                # measured room temperatures, X[k] = start of step k
         self.inputs = []           # inputs[k] drive X[k] -> X[k+1]
@@ -48,10 +50,14 @@ class ClosedFormTracker:
             if self.inputs and len(self.X) == len(self.inputs):
                 self.one_step.append((len(self.X), self._step(self.X, self.inputs), y))
             self.X.append(y)
-            if self.stateful:
+            if self.coefform:
+                self._filter_update_coef()
+            elif self.stateful:
                 self._filter_update()
             po, pc, pd, prun = self.prev
             self.inputs.append(self.io.step_inputs(po, pc, pd, y, prun))   # inputs of step t-1
+            if self.coefform:
+                self._refresh_coef()
         # the first run command takes effect one step late (GUIDE.md B.2)
         run_now = (d[: self.K] > 0.5) if self.prev is not None else np.zeros(self.K, bool)
         self.prev = (obs, c_native, d, run_now)
@@ -70,6 +76,30 @@ class ClosedFormTracker:
         u = {k: np.asarray(U_list[-1][k])[None] for k in U_list[-1]}
         return hist, u
 
+    def _filter_update_coef(self):
+        """Same rule as closedform.filter_coef: predict with the network of the previous step, set the air to the measurement."""
+        k = len(self.X) - 1
+        if k == 0:
+            s = self.coef.init(self.X[0])[None]
+        else:
+            s = self.coef.predict(self.nets[self.net_idx[k - 1]], self.filt[-1][None], self._u1(self.inputs[k - 1]))
+        self.filt.append(np.asarray(self.coef.correct(s, self.X[k][None]), float)[0])
+
+    def _refresh_coef(self):
+        """After X[k] and inputs[k] are known: every REFRESH steps rebuild the network from the history up to the start of
+        step k (measured X[..k], inputs[..k-1], padded with the first values exactly like closedform.Prepared)."""
+        k = len(self.X) - 1
+        if k % self.coef.refresh == 0:
+            H = self.H
+            Xw = [self.X[0]] * max(0, H - (k + 1)) + self.X[max(0, k + 1 - H): k + 1]
+            past = self.inputs[:k]
+            Uw = [self.inputs[0]] * max(0, H - len(past)) + past[max(0, len(past) - H):]
+            hist = {"T": np.asarray(Xw, float)[None]}
+            for key in self.inputs[0]:
+                hist[key] = np.asarray([u[key] for u in Uw])[None]
+            self.nets.append(self.coef.build(hist))
+        self.net_idx.append(len(self.nets) - 1)
+
     def _filter_update(self):
         k = len(self.X) - 1
         if k == 0:
@@ -83,6 +113,13 @@ class ClosedFormTracker:
         return {k: np.asarray(v)[None] for k, v in inp.items()}
 
     def _step(self, X, U_list):
+        if self.coefform:                                # filtered state at X[-1], stepped through U_list[-1]
+            k = len(X) - 1
+            s = self.filt[k] if k < len(self.filt) else self._free_state
+            net = self.nets[self.net_idx[min(k, len(self.net_idx) - 1)]]
+            s = np.asarray(self.coef.predict(net, s[None], self._u1(U_list[-1])), float)[0]
+            self._free_state = s
+            return s[: self.V]
         if self.stateful:                                # state at X[-1] predicted through U_list[-1]
             s = self.filt[len(X) - 1] if len(X) - 1 < len(self.filt) else self._free_state
             s = np.asarray(self.mod.predict(self.coef, self.geo, s[None], self._u1(U_list[-1]), self.U), float)[0]
@@ -98,8 +135,14 @@ class ClosedFormTracker:
         X = list(self.X if start is None else self.X[:start + 1])
         U = list(self.inputs[: len(X) - 1])
         out = []
+        if self.coefform:
+            k = len(X) - 1
+            st, net = self.filt[k][None], self.nets[self.net_idx[k]]
+            for f in future_inputs:
+                st = np.asarray(self.coef.predict(net, st, self._u1(f)), float)
+                out.append(st[0, : self.V])
+            return np.asarray(out)
         if self.stateful:
-            st = self.filt[len(X) - 1][None]
             for f in future_inputs:
                 st = np.asarray(self.mod.predict(self.coef, self.geo, st, self._u1(f), self.U), float)
                 out.append(st[0, : self.V])

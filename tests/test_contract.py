@@ -19,7 +19,7 @@ def test_numpy_methods_work_inside_the_sandbox():
     ("import os\ndef step(c, g, h, u, U): pass\n", "not allowed"),
     ("PARAMS = {'a': (1, 0, 2)}\ndef step(c, g, h, u, U): pass\n", "absent or empty"),
     ("HISTORY = 999\ndef step(c, g, h, u, U): pass\n", "HISTORY"),
-    ("def prepare(g, U): pass\n", "missing function step"),
+    ("def prepare(g, U): pass\n", "missing the model"),
     ("x = open('f')\ndef step(c, g, h, u, U): pass\n", "not allowed"),
 ])
 def test_contract_rejects(src, msg):
