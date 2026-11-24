@@ -1,0 +1,36 @@
+{
+ "mean": 0.023693571616958148,
+ "runs": [
+  {
+   "scenario": "building_train_1/fairbanks_1",
+   "score": 0.022299900955949345,
+   "steps": 576,
+   "wall_s": 21.4,
+   "sec_per_step": 0.018069701476229563,
+   "repairs": 0,
+   "tracker_errors": 0,
+   "modes": {
+    "schedule": 92,
+    "comfort": 41,
+    "off": 58
+   },
+   "plan_ms_mean": 45.3879983013213
+  },
+  {
+   "scenario": "building_train_8/atlanta_1",
+   "score": 0.025087242277966954,
+   "steps": 576,
+   "wall_s": 14.1,
+   "sec_per_step": 0.01043591813908683,
+   "repairs": 0,
+   "tracker_errors": 0,
+   "modes": {
+    "schedule": 131,
+    "comfort": 24,
+    "off": 19,
+    "eco": 17
+   },
+   "plan_ms_mean": 34.56785416727915
+  }
+ ]
+}

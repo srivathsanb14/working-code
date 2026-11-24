@@ -1,0 +1,19 @@
+{
+  "policy": "transfer_policy_core",
+  "total_reward": -12.844742950626824,
+  "total_steps": 576,
+  "avg_reward": -0.022299900955949345,
+  "avg_occupancy": 0.005208333333333333,
+  "avg_zone_temp": 292.2330742397758,
+  "productivity_weight": 0.6,
+  "energy_weight": 0.2,
+  "carbon_weight": 0.2,
+  "total_normalized_productivity_regret": -0.20342610776424408,
+  "total_normalized_energy_cost": 24.318429744533205,
+  "total_normalized_carbon_emission": 39.295006631087745,
+  "seconds_per_step": 0.018069701476229563,
+  "n_discrete_action": 5,
+  "n_continuous_action": 92,
+  "num_zone_temp_features": 39,
+  "num_ahus": 4
+}

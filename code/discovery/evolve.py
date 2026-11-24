@@ -290,7 +290,8 @@ def run(a):
                     user = prompts.cf_user_mutation(gen, k, p, an, pt, fails, n)
                 elif op == "crossover":
                     cx = cf.crossover_analysis({"analysis": {"groups": parents[0]["groups"]}, "code": parents[0]["code"]},
-                                               {"analysis": {"groups": parents[1]["groups"]}, "code": parents[1]["code"]})
+                                               {"analysis": {"groups": parents[1]["groups"]}, "code": parents[1]["code"]},
+                                               ep=val[0] if val else None, U=U)
                     (rq / "analysis.md").write_text(f"# Pre-crossover analysis: A = {parents[0]['id']} {parents[0]['name']}, "
                                                     f"B = {parents[1]['id']} {parents[1]['name']}\n\n```\n{cx['text']}\n```\n")
                     user = prompts.cf_user_crossover(gen, k, parents[0], parents[1], cx["text"], fails, n)

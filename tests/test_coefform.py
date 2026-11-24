@@ -90,3 +90,12 @@ def test_refresh_must_be_in_range():
     src = "import numpy as np\nHISTORY = 1\nREFRESH = 0\ndef coefficients(geo, hist, U): pass\n"
     with pytest.raises(contract.ContractError, match="REFRESH"):
         contract.load_closedform(src)
+
+
+def test_crossover_analysis_compares_coefficient_values(toy_episodes, U):
+    a = (D / "seeds_cf" / "seed_cf_network.py").read_text()
+    b = (D / "seeds_cf" / "seed_cf_one_node.py").read_text()
+    g = {"all rooms": {"rmse": 1.0, "bias": 0.0}}
+    r = cf.crossover_analysis({"analysis": {"groups": g}, "code": a}, {"analysis": {"groups": g}, "code": b}, ep=toy_episodes[0], U=U)
+    assert "coefficient values on a held-out building" in r["text"]
+    assert "slab" in r["text"] and "outside" in r["text"]

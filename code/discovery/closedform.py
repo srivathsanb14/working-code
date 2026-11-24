@@ -464,8 +464,26 @@ def analysis(rec, val_eps):
     return {"text": "\n".join(L), "groups": G}
 
 
-def crossover_analysis(a, b, names=("A", "B")):
-    """Pre-crossover analysis: which parent is better where, and which templates (top-level functions) differ."""
+def coefficient_values(src, ep, U, t=None):
+    """A term-form candidate's coefficients evaluated on one episode at step t (default: the middle), from the measured
+    history up to t only.  Returns {term: mean over rooms} ('neighbours': mean row sum), or {} for other forms."""
+    try:
+        mod, _ = contract.load_closedform(src)
+    except contract.ContractError:
+        return {}
+    if not coefform.is_coefform(mod) or hasattr(mod, "nodes"):
+        return {}
+    tm = coefform.make_model(mod, ep.geo, U); prep = Prepared(ep, mod.HISTORY)
+    ts = np.array([ep.n // 2 if t is None else t])
+    c = tm.build(prep.hist(ts, prep.measured_window(ts).astype(float)))
+    out = {k: float(np.mean(c[k])) for k in coefform.TERMS_ROOM}
+    out["neighbours"] = float(np.mean(c["nb_sum"]))
+    return out
+
+
+def crossover_analysis(a, b, names=("A", "B"), ep=None, U=None):
+    """Pre-crossover analysis: which parent is better where, which top-level functions differ, and (term form, given a
+    held-out episode) how far apart the two parents' coefficient values are, term by term."""
     import ast
     L = [f"Where each parent is better ({names[0]} vs {names[1]}, {''}main-horizon rollout RMSE, K):"]
     ga, gb = a["analysis"].get("groups", {}), b["analysis"].get("groups", {})
@@ -491,6 +509,14 @@ def crossover_analysis(a, b, names=("A", "B")):
              + "; different: " + (", ".join(k for k in fa if k in fb and fa[k] != fb[k]) or "none")
              + f"; only in {names[0]}: " + (", ".join(k for k in fa if k not in fb) or "none")
              + f"; only in {names[1]}: " + (", ".join(k for k in fb if k not in fa) or "none"))
+    if ep is not None and U is not None:
+        va, vb = coefficient_values(a["code"], ep, U), coefficient_values(b["code"], ep, U)
+        if va and vb:
+            L.append(f"coefficient values on a held-out building, mean over rooms ({names[0]} vs {names[1]}); terms that differ most first:")
+            rel = {k: abs(va[k] - vb[k]) / max(abs(va[k]), abs(vb[k]), 1e-12) for k in va}
+            for k in sorted(rel, key=lambda k: -rel[k]):
+                if va[k] or vb[k]:
+                    L.append(f"  {k:<12} {va[k]:.4g} vs {vb[k]:.4g}")
     return {"text": "\n".join(L), "wins": wins}
 
 
