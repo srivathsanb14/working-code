@@ -115,7 +115,7 @@ function caption(s, t, x, y, w) { text(s, t, { x, y, w, h: 0.32, fontSize: 11, c
 
 
 // ================================================================ render story.json (one storyline for both decks)
-const ST = JSON.parse(fs.readFileSync(path.join(__dirname, "story.json"), "utf8"));
+const ST = JSON.parse(fs.readFileSync(process.env.STORY_JSON || path.join(__dirname, "story.json"), "utf8"));
 const secStart = Object.fromEntries(ST.sections.map(([id, d]) => [id, d]));
 function bullets(s, pts, x, y, w, h, size = 15) {
   s.addText(pts.map((p, i) => ({ text: p, options: { bullet: true, breakLine: i < pts.length - 1 } })),

@@ -4,14 +4,17 @@ Flow: 1 what is the problem -> 2 why it is hard -> 3 what people usually do, and
       4 what we do instead, and why -> 5 how it works (physics, then the search) -> 6 does it work -> 7 next.
 """
 import html
+import importlib
 import json
+import os
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-P = HERE / "project"; SL = P / "slides"
+P = Path(os.environ.get("STORY_OUT", HERE / "project")); SL = P / "slides"     # STORY_OUT: another deck's project folder
 import sys
 sys.path.insert(0, str(HERE))
-from content16 import S, SECTIONS  # noqa: E402
+_M = importlib.import_module(os.environ.get("STORY", "content17"))               # STORY: content module (S, SECTIONS)
+S, SECTIONS = _M.S, _M.SECTIONS
 
 # =========================================================================== render: online HTML
 E = html.escape
@@ -100,9 +103,10 @@ for s in S:
 d = json.loads((P / "deck.json").read_text())
 old = set(d["order"])
 d["order"] = [s["id"] for s in S]
-d["sections"] = {f"s{i + 1}": {"description": desc, "start": sid} for i, (sid, desc) in enumerate([("cover", "Opening")] + SECTIONS)}
+OPEN = [] if SECTIONS and SECTIONS[0][0] == S[0]["id"] else [(S[0]["id"], "Opening")]
+d["sections"] = {f"s{i + 1}": {"description": desc, "start": sid} for i, (sid, desc) in enumerate(OPEN + SECTIONS)}
 (P / "deck.json").write_text(json.dumps(d))
-(HERE.parent / "pptx" / "story.json").write_text(json.dumps({"slides": S, "sections": [("cover", "Opening")] + SECTIONS}, indent=1))
+Path(os.environ.get("STORY_JSON", HERE.parent / "pptx" / "story.json")).write_text(json.dumps({"slides": S, "sections": OPEN + SECTIONS}, indent=1))
 removed = sorted(old - set(d["order"]))
 (HERE / "removed.json").write_text(json.dumps(removed))
 print(len(S), "slides; removed from order:", removed)
