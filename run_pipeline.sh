@@ -1,77 +1,40 @@
 #!/usr/bin/env bash
-# The whole pipeline, in order, for a big machine.
+# Discovery on data that already exists.  Run it on the machine where the data was generated.
 #
-# Layout (the only assumption about paths):
-#   <root>/smart-buildings-starter-kit/   the kit, untouched (override with STARTER_KIT=...)
-#   <root>/working-code/                  this repository; everything is written under it:
-#       data/buildings, data/scenarios, data/results, data/plan.json, data/split.json   (step 2, the kit's own tools)
-#       data/audit/                       (steps 3 and 5)
-#       data/dataset/                     (step 4: one .npz per building x weather x policy, plus split.json)
-#       outputs/discovery/<run>/      (step 6: REPORT.md, log.md, generations/, candidates/, plots/)
-#       outputs/test/, outputs/policy/    (steps 7 and 8)
-#   Generated data can live elsewhere with SB_DATA=/big/disk/data (every script reads it).
+# The data is made beforehand with the starter kit (its scenario generator and evaluate.py, any number of buildings,
+# weather windows and controllers).  This script does not generate or simulate anything; it reads.
+#
+#   step 1  episodes   turn the kit's result folders into episodes (one .npz per run) -> $DATASET
+#                      (skipped for runs already converted; skip the step entirely if $DATASET is already built)
+#   step 2  split      whole episodes -> validation + test_easy / test_medium / test_hard (+ test_station)
+#   step 3  discovery  every candidate written by the Claude API, scored on validation only; at the end the chosen
+#                      model and the Pareto front are scored once on the test tiers
 #
 # Usage, from anywhere:
-#   ./run_pipeline.sh                      # everything, LLM step as a dry run (writes every prompt, calls nothing)
-#   PROPOSER=mock GENS=3 ./run_pipeline.sh               # no LLM: mechanical mutation/crossover, to inspect the logs
-#   PROPOSER=api GENS=20 ./run_pipeline.sh               # real LLM discovery through the Claude API (needs requirements-llm.txt + key)
-#   PROPOSER=agent GENS=20 ./run_pipeline.sh             # the same through a coding-agent CLI, a fresh session per request
-#   DEPLOY=offline ./run_pipeline.sh                     # the earlier FITTED modes instead (offline|online|both)
-#   FROM=6 PROPOSER=api GENS=20 ./run_pipeline.sh        # data already generated: start at discovery
-#   WORKERS=32 STEPS=8640 ./run_pipeline.sh              # more cores, full 30-day runs
+#   ANTHROPIC_API_KEY=... RESULTS=/data/results SCENARIOS=/data/scenarios GENS=20 ./run_pipeline.sh
+#   FROM=2 DATASET=/data/dataset GENS=20 ./run_pipeline.sh       # episodes already built
+#   FROM=2 TO=2 DATASET=/data/dataset ./run_pipeline.sh          # only (re)compute the split
 set -euo pipefail
 cd "$(dirname "$0")"
 
 PY=${PY:-.venv/bin/python}
+DATA_ROOT=${SB_DATA:-data}
+RESULTS=${RESULTS:-$DATA_ROOT/results}          # the kit's evaluate.py output: <building>/<weather>/<controller>/
+SCENARIOS=${SCENARIOS:-$DATA_ROOT/scenarios}    # the kit's scenario folders: <building>/<weather>/config.yaml ...
+DATASET=${DATASET:-$DATA_ROOT/dataset}          # episodes: index.json + <building>__<weather>__<controller>.npz
 WORKERS=${WORKERS:-16}
-STEPS=${STEPS:-2016}                 # 864 = 3 days (minimum), 2016 = 7 days, 8640 = 30 days like the hidden test
-TRAIN=${TRAIN:-500:600}              # building seed ranges (start:stop): disjoint batches = unseen buildings
-VAL=${VAL:-700:720}
-TEST=${TEST:-800:820}
-OVERSAMPLE=${OVERSAMPLE:-1.3}          # extra seeds so each split keeps its planned size (the kit rejects ~20% of seeds)
-VAL_STATION=${VAL_STATION:-phoenix}
-TEST_STATION=${TEST_STATION:-minneapolis}
-POLICIES=${POLICIES:-"all_off bang_bang fixed_setpoint pid pid_water"}
 RUN=${RUN:-main}
-DEPLOY=${DEPLOY:-closedform}         # closedform (default: no fitting anywhere) | offline | online | both (fitted modes)
-PROPOSER=${PROPOSER:-dry}            # dry (no LLM call) | api (Claude API) | agent (coding-agent CLI) | dir (inbox) | mock (no LLM)
 ISLANDS=${ISLANDS:-3}
-GENS=${GENS:-1}
-FROM=${FROM:-1}                      # first step to run
-TO=${TO:-8}                          # last step to run
-REHEARSE_STEPS=${REHEARSE_STEPS:-8640}
+GENS=${GENS:-20}
+MAX_USD=${MAX_USD:-50}
+MODEL=${MODEL:-claude-opus-5-5}
+FROM=${FROM:-1}
+TO=${TO:-3}
 
 step() { local n=$1; shift; if (( n >= FROM && n <= TO )); then echo; echo "=== step $n: $*"; "$@"; fi; }
 
-step 1 "$PY" code/setup_check.py
-# shellcheck disable=SC2086
-step 2 "$PY" code/generate_data.py --train-seeds "$TRAIN" --val-seeds "$VAL" --test-seeds "$TEST" \
-        --val-station "$VAL_STATION" --test-station "$TEST_STATION" --policies $POLICIES --steps "$STEPS" --workers "$WORKERS" --oversample "$OVERSAMPLE" --include-shipped   # shipped six: test split only
-step 3 "$PY" code/audit_data.py
-step 4 "$PY" code/build_dataset.py --workers "$WORKERS"
-step 4 "$PY" code/make_splits.py     # val + test_easy/medium/hard from the episodes that exist (no training split)
-step 5 "$PY" code/audit_data.py
-if [[ "$DEPLOY" == closedform ]]; then
-  # step 6 also scores the final best on the test split (--test); step 7 = the fitted ceiling, a diagnostic
-  step 6 "$PY" code/run_discovery.py --run "$RUN" --proposer "$PROPOSER" --generations "$GENS" --islands "$ISLANDS" --test
-  step 7 "$PY" code/run_discovery.py --run "$RUN" --ceiling --generations 0
-  # step 8: the best formulas inside a submission-style policy on the test split; live forecasts checked against replay
-  step 8 "$PY" code/run_policy.py --model "outputs/discovery/$RUN/best.py" --on test --steps "$REHEARSE_STEPS" --check-replay
-  echo; echo "done: data in ${SB_DATA:-data}/, results in outputs/discovery/$RUN/REPORT.md and outputs/policy/"
-  exit 0
-fi
-step 6 "$PY" code/run_discovery.py --run "$RUN" --deployment "$DEPLOY" --proposer "$PROPOSER" --generations "$GENS"
-
-# the discovery run(s) step 6 wrote
-if [[ "$DEPLOY" == both ]]; then OFF="outputs/discovery/${RUN}_offline"; ON="outputs/discovery/${RUN}_online"
-elif [[ "$DEPLOY" == offline ]]; then OFF="outputs/discovery/${RUN}"; ON=""
-else OFF=""; ON="outputs/discovery/${RUN}"; fi
-
-if [[ -n "$OFF" ]]; then
-  step 7 "$PY" code/test_model.py "$OFF/best.py" --params "$OFF/summary.json" --on test --theta all
-  step 8 "$PY" code/run_policy.py --model "$OFF/best.py" --params "$OFF/summary.json" --on test --steps "$REHEARSE_STEPS"
-fi
-if [[ -n "$ON" ]]; then
-  step 7 "$PY" code/test_model.py "$ON/best.py" --params "$ON/summary.json" --on test --theta day1
-fi
-echo; echo "done: data in ${SB_DATA:-data}/, results in outputs/"
+step 1 "$PY" code/build_dataset.py --results "$RESULTS" --scenarios "$SCENARIOS" --out "$DATASET" --workers "$WORKERS"
+step 2 "$PY" code/make_splits.py --dataset "$DATASET" --out "$DATASET/split.json"
+step 3 "$PY" code/run_discovery.py --dataset "$DATASET" --run "$RUN" --generations "$GENS" --islands "$ISLANDS" \
+        --model "$MODEL" --max-usd "$MAX_USD" --workers "$WORKERS" --test
+echo; echo "done: outputs/discovery/$RUN/REPORT.md (split: $DATASET/split.json)"

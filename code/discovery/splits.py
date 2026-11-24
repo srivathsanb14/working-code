@@ -196,3 +196,19 @@ def assign(scen, rest, pair, feats, hard_station=None, hard_buildings=None, hard
         "held_out_buildings": hb, "building_atypicality_z": {k: round(v, 2) for k, v in sorted(atyp.items(), key=lambda x: -x[1])},
         "counts": {k: len(v) for k, v in out.items() if isinstance(v, list)}}
     return out
+
+
+def check_whole_episodes(S, tiers=("val", "test_easy", "test_medium", "test_hard", "test_station")):
+    """Every episode belongs to at most one split, and every scenario (building + weather window, all its controllers)
+    to exactly one: no episode and no scenario is ever cut between validation and test.  Raises ValueError otherwise;
+    returns {split: [episode names]} for the record."""
+    where_ep, where_sc = {}, {}
+    for k in tiers:
+        for e in S.get(k, []):
+            where_ep.setdefault(e.name, set()).add(k)
+            where_sc.setdefault(e.scenario, set()).add(k)
+    bad_ep = {n: sorted(v) for n, v in where_ep.items() if len(v) > 1}
+    bad_sc = {n: sorted(v) for n, v in where_sc.items() if len(v) > 1}
+    if bad_ep or bad_sc:
+        raise ValueError(f"split cuts data across splits: episodes {bad_ep}, scenarios {bad_sc}")
+    return {k: sorted(e.name for e in S.get(k, [])) for k in tiers if S.get(k)}

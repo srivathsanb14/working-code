@@ -1,29 +1,21 @@
 """LLM-driven symbolic discovery loop for the room dynamics.
 
-    propose (LLM or other proposer)  ->  check + fit + score on held-out buildings  ->  diagnostics
+    propose (Claude API)  ->  check + fit + score on held-out buildings  ->  diagnostics
           ^                                                                               |
           '--------------- best programs, their diagnostics, recent failures ------------'
 
-Run from working-code/ (no LLM is called unless --proposer claude):
+EARLIER FITTED MODE, kept for comparison only (the default discovery is evolve.py, no fitting).  Run from
+working-code/; candidates come only from the Claude API (needs `pip install anthropic` and credentials):
 
-  # seeds only, end-to-end check of the pipeline
-  .venv/bin/python code/run_discovery.py --run demo --generations 0
-
-  # write the prompt the LLM would get for generation 1, without calling anything
-  .venv/bin/python code/run_discovery.py --run demo --proposer dry --generations 1
-
-  # let any LLM / person answer: drop candidate .py files into outputs/discovery/demo/inbox
-  .venv/bin/python code/run_discovery.py --run demo --proposer dir --generations 1
-
-  # the real thing (needs `pip install anthropic` and credentials)
-  .venv/bin/python code/run_discovery.py --run demo --proposer claude --generations 20
+  .venv/bin/python code/run_discovery.py --deployment offline --run demo --generations 0     # hand-written models only
+  .venv/bin/python code/run_discovery.py --deployment offline --run demo --generations 20    # API
 
 Two deployment options (--deployment):
   offline (default)  no fitting on a new building: PARAMS + ONE shared THETA fitted on train; held-out
                      buildings scored by the 3 h forecast from a Kalman-filtered state (measured history)
   online             THETA re-fitted on each held-out building's day 1; scored open loop on days 2+
   both               runs offline into <run>_offline, then online into <run>_online, and compares them
-                     (with --proposer claude this calls the LLM for each run)
+                     (with --generations > 0 this calls the API for each run)
 
 State lives in outputs/discovery/<run>/: database.jsonl (one record per candidate),
 candidates/<id>.py, prompts/prompt_genNNN.md, best.py, summary.json.  Re-running
@@ -135,11 +127,7 @@ class Database:
 # ----------------------------------------------------------------------------- loop
 
 def make_proposer(kind, run_dir, model, effort):
-    if kind == "dry":
-        return proposers.DryRunProposer(run_dir / "prompts")
-    if kind == "dir":
-        return proposers.DirectoryProposer(run_dir / "inbox")
-    if kind == "claude":
+    if kind == "api":
         return proposers.ClaudeProposer(model=model, effort=effort, log_dir=run_dir / "responses")
     raise SystemExit(f"unknown proposer {kind}")
 
@@ -190,7 +178,7 @@ def run(args):
 
     if not db.recs and args.seeds != "none":
         print(f"generation 0: seeds ({args.seeds})")
-        seeds = proposers.SeedProposer().propose("", "", 99, 0)
+        seeds = [proposers._from_file(f) for f in sorted((Path(__file__).resolve().parent / "seeds").glob("*.py"))]
         if args.seeds == "naive":                      # blind runs: no structure from the code audit
             seeds = [c for c in seeds if c["name"] == "seed_rc_one_node"]
         consider(seeds, 0)
@@ -241,7 +229,7 @@ def main():
                     help="evaluate.py --results-dir: <building>/<weather>/<policy>/timeseries.csv, ahu_log.csv, reward_components.csv")
     ap.add_argument("--policies", nargs="*", default=None, help="only these policy folders (default: all found)")
     ap.add_argument("--split", help="JSON file {train: [...], val: [...], test: [...]} of glob patterns (see split_episodes, split_example.json)")
-    ap.add_argument("--proposer", default="dry", choices=["dry", "dir", "claude"])
+    ap.add_argument("--proposer", default="api", choices=["api"])
     ap.add_argument("--generations", type=int, default=0)
     ap.add_argument("--n", type=int, default=6, help="candidates per generation")
     ap.add_argument("--explore", type=int, default=2)

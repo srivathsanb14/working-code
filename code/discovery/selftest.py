@@ -6,8 +6,6 @@ starter kit ships (geometry only), under made-up weather and HVAC inputs.  Then:
   1. the truth itself must score ~0 at every horizon (catches any misalignment of history, inputs
      and targets in the scorer: the classic off-by-one);
   2. the seeds and persistence must score worse than the truth, and the scorer must rank the truth first;
-  3. the full evolutionary loop (islands, mutation, crossover, migration, logs, report, plots) runs with
-     the offline MockProposer, so every file the real run writes can be inspected.
 Everything is written to outputs/discovery/selftest/ and labelled SYNTHETIC.
 
     .venv/bin/python -m discovery.selftest            (from working-code/code)
@@ -16,14 +14,13 @@ Everything is written to outputs/discovery/selftest/ and labelled SYNTHETIC.
 from __future__ import annotations
 
 import json
-import shutil
 import sys
 from pathlib import Path
 
 import numpy as np
 
 from . import closedform as cf
-from .episodes import Episode, _save_cached, geometry
+from .episodes import Episode, geometry
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "code"))
@@ -95,20 +92,12 @@ def generate(U, n=864, seed=0):
     return eps
 
 
-def main(out=ROOT / "outputs" / "discovery" / "selftest", generations=2, islands=2):
+def main(out=ROOT / "outputs" / "discovery" / "selftest"):
     U, _ = cf.universal_constants()
     eps = generate(U)
-    ds = out.parent / "selftest_dataset"
-    if ds.exists():
-        shutil.rmtree(ds)
-    ds.mkdir(parents=True)
-    idx = {}
-    for e in eps:
-        _save_cached(e, ds / f"{e.name}.npz")
-        idx[e.name] = dict(file=f"{e.name}.npz", status="ok", policy=e.policy, building=e.building)
+    out.mkdir(parents=True, exist_ok=True)
     blds = sorted({e.building for e in eps})
-    split = {"_note": "SYNTHETIC self-test split (no training split: nothing is fitted)", "val": blds[:5], "test_medium": blds[5:]}
-    (ds / "index.json").write_text(json.dumps(idx, indent=1)); (ds / "split.json").write_text(json.dumps(split, indent=1))
+    split = {"val": blds[:5]}
     va = [e for e in eps if e.building in split["val"]]
 
     print("1. the planted truth must score ~0 (scorer alignment)")
@@ -124,19 +113,12 @@ def main(out=ROOT / "outputs" / "discovery" / "selftest", generations=2, islands
         print(f"   {s.stem}: {r['status']}, 3 h {r.get('val_3h_mean', float('nan')):.3f} K "
               f"(persistence {r.get('val_persistence_3h_mean', float('nan')):.3f})" + (f" - {r.get('reason')}" if r['status'] != 'ok' else ""))
     ok2 = all(r["status"] != "ok" or r["score"] > rt["score"] for r in res.values())
-    print("3. the evolutionary loop with the offline mock proposer")
-    from . import evolve
-    if out.exists():
-        shutil.rmtree(out)
-    evolve.main_args(["--run", out.name, "--dataset", str(ds), "--proposer", "mock", "--generations", str(generations),
-                      "--islands", str(islands), "--migrate-every", "1", "--every", "12", "--ceiling"])
-    ok3 = (out / "REPORT.md").exists()
-    verdict = dict(truth_scores_zero=ok1, truth_beats_seeds=ok2, loop_and_report=ok3)
+    verdict = dict(truth_scores_zero=ok1, truth_beats_hand_written=ok2)
     (out / "selftest.json").write_text(json.dumps(verdict, indent=1))
     print(json.dumps(verdict, indent=1))
     if not all(verdict.values()):
         raise SystemExit("self-test FAILED")
-    print(f"self-test passed; open {out / 'REPORT.md'}")
+    print("self-test passed: the scorer gives the planted truth ~0 K and ranks it above every hand-written model")
 
 
 if __name__ == "__main__":

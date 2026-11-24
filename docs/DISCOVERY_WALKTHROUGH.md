@@ -39,22 +39,23 @@ keys and nothing after the refresh step. A network form (`nodes()` + capacities 
 Starting models in this form are in `seeds_cf/` (`seed_cf_network`, `seed_cf_history`, `seed_cf_one_node`); their scores
 on the 12 thirty-day runs are in docs/SOURCES_AND_FACTS.md.
 
-## 1. Try it in four minutes, with no data and no LLM
+## 1. Check the scorer, with no data and no API call
 
 ```bash
 .venv/bin/python code/run_discovery.py --selftest
 ```
 
-This writes `outputs/discovery/selftest/`. It is a **synthetic** run: the shipped floor plans with made-up weather
-and HVAC inputs. A known formula (the planted truth) generates the "measured" temperatures, and the LLM is replaced
-by a mechanical proposer. Open `outputs/discovery/selftest/REPORT.md`. Every file a real run writes is there.
+A **synthetic** check of the scorer: the shipped floor plans with made-up weather and HVAC inputs, and a known formula
+(the planted truth) generating the "measured" temperatures. The truth must score about 0 K and beat every hand-written
+model. The loop itself is tested with a stand-in for the API client (`tests/test_api_loop.py`): every request is a
+single user message under the same system prompt, under 40 KB, with no episode names.
 
 ## 2. One generation, step by step (code locations)
 
 | step | what happens | code |
 |---|---|---|
 | data | episodes from `data/dataset`, split into **validation** (all the search sees) and three held-out **test tiers**: easy (seen building and station, unseen weather window), medium (unseen building), hard (unseen building and the station farthest in Wasserstein distance). No training split: nothing is fitted. The split is computed from the episodes that exist (`splits.split_from_episodes`) unless `split.json` already has the tiers | `evolve.load_split`, `discovery/splits.py`, `code/make_splits.py` |
-| seeds | hand-written starting programs, evaluated once and copied into every island | `code/discovery/seeds_cf/*.py`, `evolve.run` (generation 0) |
+| generation 0 | per island, one API request (`init`) for `--n-init` first candidates written from the system prompt alone; the hand-written models are not in the population (`--baselines` scores them as reference rows) | `prompts.cf_user_init`, `evolve.run` |
 | islands | each island is its own population: its best `--elites` programs by **Pareto rank + crowding** over `--objectives` (default main 3 h score, 1 h, 6 h, exterior rooms, interior rooms; `--selection scalar` for the single score) | `evolve.DB.elites`, `discovery/pareto.py`, `closedform.OBJECTIVES` |
 | parent choice | a 2-way tournament inside the island, by Pareto rank then crowding | `evolve.tournament` |
 | **pre-mutation analysis** | on the validation episodes: TEMPORAL (error and bias vs horizon against persistence, by hour of day, occupancy, HVAC state and switching during the rollout, outside temperature, episode phase; autocorrelation of the one-step error), SPATIAL (by room class, facade side, floor; correlation of each room's bias with its geometry; whether adjacent rooms err together; worst rooms), TERMS (the one-step residual regressed on each term's exact contribution: which coefficient is too strong or too weak); plus a measured-vs-predicted table | `closedform.analysis`, `temporal_stats`, `spatial_stats`, `term_regression`, `evolve.profile_text` |
@@ -62,7 +63,7 @@ by a mechanical proposer. Open `outputs/discovery/selftest/REPORT.md`. Every fil
 | **pre-crossover analysis** | for two parents: who wins where (spatial groups) and when (temporal groups), per-room wins and the best-of-both bound, which parent's formula is closer to right for each term, which functions differ, coefficient values side by side | `closedform.crossover_analysis` |
 | **crossover request** | one LLM request per island: both parents + that analysis → `--n-cx` children combining templates | `prompts.cf_user_crossover` |
 | **explore request** | one LLM request per island: the island's leaderboard → `--n-exp` structurally new candidates | `prompts.cf_user_explore` |
-| proposal | the proposer answers each request: `dry` (writes the prompt only), `dir` (reads `.py` files you drop in the request's `inbox/`), `mock` (no LLM; rescales numbers or swaps templates), `api` (= `claude`: one stateless Claude API request per operator; only the cached system prompt and that request, no history; `--max-usd` budget), `agent` (a coding-agent CLI run headless, default `claude -p`, a fresh session per request) | `proposers.py`, called in `evolve.run` |
+| proposal | the Claude API answers each request: one stateless request (the cached system prompt + this request, no chat history); the answer is saved before evaluation; `--max-usd` caps the run | `proposers.ClaudeProposer`, called in `evolve.run` |
 | stage 0 | physics checks on a real floor plan: equilibrium, bounded cooling, heat response, stiff air stream | `closedform.physics_checks` |
 | stage 1 | quick screen: one-step (5 min) RMSE on the validation episodes; worse than `--screen` × persistence is screened out | `closedform.evaluate` |
 | stage 2 | decisive: free-run rollouts from measured history every `--every` steps, horizons `--horizons` (default 1/3/6 h), stability check; score = `--main-horizon` RMSE + complexity; the objectives vector for Pareto selection | `closedform.episode_scores`, `closedform.rollout` |
@@ -154,7 +155,6 @@ On the 12 thirty-day episodes, the stateful seed's 3 h error is 0.959 K at test 
 | `generations/gNNN/island_K/<operator>/prompt.md` | the exact user message of that request |
 | `generations/gNNN/island_K/<operator>/analysis.md` | the pre-mutation or pre-crossover analysis it was given |
 | `generations/gNNN/island_K/<operator>/response.json` | the raw LLM response (Claude proposer) |
-| `generations/gNNN/island_K/<operator>/inbox/` | `dir` proposer: put candidate `.py` files here and re-run the same command |
 | `candidates/<id>_<name>.py` | every candidate's source; the id says generation and island (`g002_i1_0022`) |
 | `plots/<id>_profile.png` | measured vs predicted temperature (5 min and 3 h ahead) for the most exposed exterior room and the largest interior room |
 | `plots/<id>_horizon.png` | held-out error vs horizon, against persistence and the fitted ceiling |
@@ -170,8 +170,7 @@ On the 12 thirty-day episodes, the stateful seed's 3 h error is 0.959 K at test 
 | planted truth | is the scorer right? (alignment of history, inputs and targets) | `--selftest`: the truth must score ~0 K and rank first. It does: 0.0 K at every horizon. |
 | persistence (floor) | is a model better than "the temperature stays"? | in every leaderboard row and plot |
 | fitted ceiling | how well can **any** model with free per-room numbers do on this data? | `--ceiling`: a per-room linear model fitted on the first half of each held-out episode, scored on the second half. A large gap between ceiling and the best formula means the formulas, not the data, are the limit. |
-| dry run | is the prompt right before spending money? | `--proposer dry` writes every request; read them |
-| mock run | do islands, mutation, crossover, migration and the logs work? | `--proposer mock` (no LLM) |
+| loop test | do islands, requests, logs and the test tiers work, with stateless requests only? | `tests/test_api_loop.py` (a stand-in API client) |
 | operator statistics | do mutation and crossover actually improve on their parents? | REPORT.md, "Operators": "better than best parent" and median Δ |
 
 ## 5. The guidelines, checked against the code

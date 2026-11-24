@@ -1,6 +1,12 @@
 """Closed-form discovery with islands, mutation and crossover (the default discovery mode; no fitting anywhere).
 
-Each generation, for every island:
+Input: a folder of finished episodes (index.json + one .npz per episode) produced elsewhere, by the data repository
+that runs the starter kit.  Nothing is simulated here.  The episodes are split, whole, into validation (all the search
+sees) and held-out test tiers (splits.py).  Every candidate, generation 0 included, is written by the Claude API.
+
+Generation 0, for every island:
+   INIT       the system prompt alone -> one LLM request for --n-init first candidates
+Each later generation, for every island:
    MUTATION   one parent (tournament from the island's best) + its PRE-MUTATION analysis
               -> one LLM request for --n-mut children
    CROSSOVER  two parents + the PRE-CROSSOVER analysis (who is better where; which templates differ)
@@ -14,14 +20,12 @@ Everything a person needs to follow the search is written to outputs/discovery/<
   log.md                       timeline, one line per request and per child (with parents and the change in score)
   database.jsonl               one JSON record per candidate (island, operator, parents, scores, analysis)
   candidates/<id>_<name>.py    the source of every candidate
-  generations/gNNN/island_K/<operator>/prompt.md, analysis.md, response.json (Claude only), inbox/ (dir proposer)
+  generations/gNNN/island_K/<operator>/prompt.md, analysis.md, response.json, candidates.json
   plots/<id>_profile.png       measured vs predicted temperatures (one-step and 3 h ahead), two rooms
   plots/<id>_horizon.png       rollout error vs horizon, against persistence (and the fitted ceiling if computed)
   plots/progress.png           best score per island per generation
 
-    .venv/bin/python code/run_discovery.py --run cf --proposer dry --generations 1     # writes every prompt, calls nothing
-    .venv/bin/python code/run_discovery.py --run cf --proposer mock --generations 3    # no LLM: mechanical operators
-    .venv/bin/python code/run_discovery.py --run cf --proposer claude --generations 20 --islands 3
+    .venv/bin/python code/run_discovery.py --dataset /path/to/dataset --run cf --generations 20 --islands 3 --test --max-usd 50
 """
 from __future__ import annotations
 
@@ -70,13 +74,15 @@ def load_split(args):
         print(f"split computed from the {len(eps)} available episodes: hard station {w['hard_station']} "
               f"(Wasserstein to the rest {w['station_wasserstein_to_rest_K']}), held-out buildings {w['held_out_buildings']}, "
               f"counts {w['counts']}")
-    S = split_episodes(eps, {k: v for k, v in split.items() if k != "train" and k != "_why"})
+    S = split_episodes(eps, {k: v for k, v in split.items() if k != "train" and not k.startswith("_")})
     if split.get("train"):
         print(f"note: the split has a 'train' list ({len(split['train'])} patterns); it is ignored, discovery uses no training data")
     rng = np.random.default_rng(0)
 
     def cap(L, k):
         return [L[i] for i in sorted(rng.choice(len(L), size=k, replace=False))] if k and len(L) > k else L
+    from . import splits as _splits
+    split["_episodes"] = _splits.check_whole_episodes(S)         # whole episodes only; raises if any is shared
     tests = {k: S[k] for k in TEST_TIERS if S.get(k)}
     if not tests and S.get("test"):
         tests = {"test": S["test"]}
@@ -212,21 +218,59 @@ def _fmt(r):
     return f"{r['status'].upper()} at stage {r.get('stage', '?')}: {r.get('reason', '')}"
 
 
-def profile_text(code, ep, U, horizon):
-    """Small measured-vs-predicted table for the mutation prompt (every 2 h over the second day)."""
+def _excerpt_episode(val):
+    """The validation episode to show as a trajectory: the first whose HVAC both runs and stops (switching is where
+    the stores show), else the first."""
+    for k, e in enumerate(val):
+        on = (e.inputs["g"].mean(1) > cf.HVAC_ON).mean()
+        if 0.1 < on < 0.9:
+            return k, e
+    return 0, val[0]
+
+
+def _excerpt_rooms(geo):
+    """One room of each type: the most exposed corner room, the median one-side exterior room, the largest interior room."""
+    expo = geo["facade_faces"] * 0.2 / np.maximum(geo["area"], 1e-9)
+    corner = np.where((geo["facade_faces"] > 0) & (geo.get("facade_sides", np.zeros(geo["V"])) >= 2))[0]
+    side = np.where((geo["facade_faces"] > 0) & ~np.isin(np.arange(geo["V"]), corner))[0]
+    inter = np.where(geo["facade_faces"] == 0)[0]
+    out = []
+    if len(corner):
+        out.append(("corner", int(corner[np.argmax(expo[corner])])))
+    if len(side):
+        out.append(("one-side exterior", int(side[np.argsort(expo[side])[len(side) // 2]])))
+    if len(inter):
+        out.append(("interior", int(inter[np.argmax(geo["area"][inter])])))
+    return out
+
+
+def profile_text(code, val, U, horizon):
+    """A real trajectory excerpt for the prompt: one validation episode, one room of each type, every hour of its
+    second day: measured temperature, the parent's forecast made `horizon` steps earlier from measured history, the
+    room's HVAC air and reheat, and the outside temperature.  About 2 KB."""
+    k, ep = _excerpt_episode(val)
+    rooms = _excerpt_rooms(ep.geo)
     try:
-        P = cf.profile(code, ep, U, horizon)
+        P = cf.profile(code, ep, U, horizon, rooms=[r for _, r in rooms])
     except Exception as e:  # noqa: BLE001
         return f"(profile failed: {e})"
-    X, hz, ht = P["X"], P["hz"], P["hz_t"]
-    rows = ["time  | " + " | ".join(f"room #{i} measured / predicted" for i in P["rooms"]) + " | T_out | HVAC air"]
-    for t in range(288, min(576, len(X) - 1), 24):
+    X, hz, ht, inp, geo = P["X"], P["hz"], P["hz_t"], ep.inputs, ep.geo
+    head = [f"validation episode {k + 1} of {len(val)} ({geo['V']} rooms), day 2, hourly; T = measured / forecast made "
+            f"{horizon * 5 / 60:g} h earlier (C); air = supply-air W/K into the room; rh = reheat W"]
+    for name, i in rooms:
+        head.append(f"  {name} room #{i}: area {geo['area'][i]:.0f} m2, outside-wall faces {int(geo['facade_faces'][i])}, "
+                    f"doors {int(geo['n_doors'][i].sum())}, neighbours {int(geo['n_neighbours'][i])}")
+    rows = ["hour | " + " | ".join(f"{n[:8]:>8} T meas/fcst   air    rh" for n, _ in rooms) + " | T_out"]
+    for t in range(288, min(576, len(X) - 1), 12):
         j = np.searchsorted(ht, t)
         if j >= len(ht) or ht[j] != t:
             continue
-        rows.append(f"{(t % 288) / 12:4.0f}h | " + " | ".join(f"{X[t, i] - 273.15:6.2f} / {hz[j, i] - 273.15:6.2f} C" for i in P["rooms"])
-                    + f" | {P['T_out'][min(t, len(P['T_out']) - 1)] - 273.15:5.1f} C | {'on' if P['hvac'][min(t, len(P['hvac']) - 1)] > 50 else 'off'}")
-    return f"a validation episode; room #{P['rooms'][0]} = most exposed exterior room, room #{P['rooms'][1]} = largest interior room\n" + "\n".join(rows)
+        u = min(t, len(inp["T_out"]) - 1)
+        hr = cf._hour(inp, np.array([u]))
+        hr = f"{hr[0]:4.0f}" if hr is not None else f"{(t % 288) / 12:4.0f}"
+        rows.append(f"{hr} | " + " | ".join(f"{X[t, i] - 273.15:6.2f}/{hz[j, i] - 273.15:6.2f} {inp['g'][u, i]:5.0f} {inp['Q_reheat'][u, i]:5.0f}"
+                                            for _, i in rooms) + f" | {inp['T_out'][u] - 273.15:5.1f}")
+    return "\n".join(head + rows)
 
 
 # ----------------------------------------------------------------------------- the loop
@@ -240,13 +284,18 @@ def tournament(rng, pop, k=2, keys=None):
 
 
 def make_proposer(a):
-    if a.proposer == "mock":
-        return proposers.MockProposer(a.seed)
-    if a.proposer in ("api", "claude"):
-        return proposers.ClaudeProposer(model=a.model, effort=a.effort, max_usd=a.max_usd)
-    if a.proposer == "agent":
-        return proposers.AgentCLIProposer(a.agent_cmd)
-    return None                                                 # dry / dir handled per request
+    return proposers.ClaudeProposer(model=a.model, effort=a.effort, max_usd=a.max_usd)
+
+
+def score_baselines(val, U, a, log, run_dir):
+    """--baselines: the hand-written models, scored once on validation as REFERENCE rows; never parents."""
+    out = {}
+    for s in sorted(SEEDS_CF.glob("*.py")):
+        res = evaluate(s.read_text(), val, U, a)
+        out[s.stem] = {k: res.get(k) for k in ("status", "score", "objectives", "reason")}
+        log(f"- reference (hand-written, not in the population) {s.stem} -> " + (
+            f"score {res['score']:.4f}" if res["status"] == "ok" else f"{res['status']}: {res.get('reason', '')}"))
+    (run_dir / "baselines.json").write_text(json.dumps(out, indent=1, default=float))
 
 
 def run(a):
@@ -272,15 +321,9 @@ def run(a):
         keys = next(iter(C.values())).keys()
         (run_dir / "ceiling.json").write_text(json.dumps({"episodes": C, "mean": {k: float(np.mean([c[k] for c in C.values() if k in c])) for k in keys}}, indent=1))
 
-    if not db.recs:
-        log(f"\n## Generation 0: seeds ({len(list(SEEDS_CF.glob('*.py')))} programs, copied into each of {a.islands} islands)\n")
-        for s in sorted(SEEDS_CF.glob("*.py")):
-            code = s.read_text(); t0 = time.time()
-            res = evaluate(code, val, U, a)
-            doc = proposers._from_file(s)["hypothesis"]
-            for k in range(a.islands):
-                r = record(db, code, s.stem, doc, 0, k, "seed", [], None, res, val, time.time() - t0)
-                log(f"- [{r['id']}] seed {s.stem} -> {_fmt(r)}")
+    if a.baselines and not (run_dir / "baselines.json").exists():
+        log("\n## Reference models (hand-written; scored for comparison only, never parents)\n")
+        score_baselines(val, U, a, log, run_dir)
 
     start = db.generation() + 1
     flag = run_dir / "in_progress.json"
@@ -296,14 +339,17 @@ def run(a):
             pop = [dict(r, code=code_of(db, r)) for r in db.elites(k, a.elites, keys)]
             fails = db.failures(k, 4)
             reqs = []
-            if pop:
+            if not pop:                                   # generation 0 (or an island with nothing that passed yet)
+                reqs.append(("init", [], a.n_init))
+            else:
                 for j in range(a.mut_requests):
                     reqs.append(("mutation", [tournament(rng, pop, keys=keys)], a.n_mut))
                 if len(pop) >= 2:
                     pa = tournament(rng, pop, keys=keys)
                     pb = tournament(rng, [p for p in pop if p["hash"] != pa["hash"]] or pop, keys=keys)
                     reqs.append(("crossover", [pa, pb], a.n_cx))
-            reqs.append(("explore", pop, a.n_exp))
+            if pop:
+                reqs.append(("explore", pop, a.n_exp))
             seen_op = {}
             for op, parents, n in reqs:
                 if n <= 0:
@@ -320,7 +366,7 @@ def run(a):
                 if op == "mutation":
                     p = parents[0]
                     an = p["analysis"]
-                    pt = profile_text(p["code"], val[0], U, a.main_horizon) if val else ""
+                    pt = profile_text(p["code"], val, U, a.main_horizon) if val else ""
                     (rq / "analysis.md").write_text(f"# Pre-mutation analysis of {p['id']} {p['name']}\n\n```\n{an}\n```\n\n## Measured vs predicted\n\n```\n{pt}\n```\n")
                     user = prompts.cf_user_mutation(gen, k, p, an, pt, fails, n, keys)
                 elif op == "crossover":
@@ -330,28 +376,25 @@ def run(a):
                     (rq / "analysis.md").write_text(f"# Pre-crossover analysis: A = {parents[0]['id']} {parents[0]['name']}, "
                                                     f"B = {parents[1]['id']} {parents[1]['name']}\n\n```\n{cx['text']}\n```\n")
                     user = prompts.cf_user_crossover(gen, k, parents[0], parents[1], cx["text"], fails, n, keys)
+                elif op == "init":
+                    user = prompts.cf_user_init(gen, k, fails, n)
                 else:
                     user = prompts.cf_user_explore(gen, k, pop, fails, n, keys)
                 (rq / "prompt.md").write_text(f"# SYSTEM\n\nsee ../../../../system_prompt.md\n\n# USER\n\n{user}\n")
                 ctx = {"operator": op, "parents": parents, "dir": rq}
                 usage = None
-                if a.proposer == "dry":
-                    cands = []
-                elif a.proposer == "dir":
-                    cands = proposers.DirectoryProposer(rq / "inbox").propose(system, user, n, gen, ctx)
-                else:
-                    try:
-                        cands = proposer.propose(system, user, n, gen, ctx)
-                        usage = getattr(proposer, "last_usage", None)
-                    except Exception as e:  # noqa: BLE001
-                        log(f"- island {k} {op}: proposer failed: {type(e).__name__}: {e}"); cands = []
-                pids = [p["id"] for p in parents] if op != "explore" else []
-                best_parent = min((p["score"] for p in parents), default=None) if op != "explore" else None
+                try:
+                    cands = proposer.propose(system, user, n, gen, ctx)
+                    usage = getattr(proposer, "last_usage", None)
+                except Exception as e:  # noqa: BLE001
+                    log(f"- island {k} {op}: API request failed: {type(e).__name__}: {e}"); cands = []
+                pids = [p["id"] for p in parents] if op not in ("explore", "init") else []
+                best_parent = min((p["score"] for p in parents), default=None) if op not in ("explore", "init") else None
                 if cands:                                  # saved BEFORE evaluation, so a crash never costs a second LLM call
                     saved.write_text(json.dumps({"candidates": cands, "parents": pids, "best_parent": best_parent, "usage": usage}, indent=1))
                 cost = f"; {usage['input']}+{usage['output']} tokens, ${usage['usd']:.3f}" if usage else ""
                 log(f"- island {k} **{op}**" + (f" of {', '.join(pids)}" if pids else "") + f": asked for {n}, got {len(cands)}{cost} "
-                    f"([prompt]({rq.relative_to(run_dir)}/prompt.md)" + (f", [analysis]({rq.relative_to(run_dir)}/analysis.md)" if op != "explore" else "") + ")")
+                    f"([prompt]({rq.relative_to(run_dir)}/prompt.md)" + (f", [analysis]({rq.relative_to(run_dir)}/analysis.md)" if op not in ("explore", "init") else "") + ")")
                 pending += [(c, k, op, pids, rq, best_parent) for c in cands]
         todo, seen_h = [], {r["hash"] for r in db.recs}
         for item in pending:
@@ -383,8 +426,7 @@ def run(a):
         report.write(run_dir, db, a, val, U)
         flag.unlink(missing_ok=True)
         if made == 0:
-            log(f"\nno candidates came back in generation {gen} ({a.proposer} proposer): every prompt is written under "
-                f"generations/g{gen:03d}/; " + ("drop candidate .py files into each request's inbox/ and re-run" if a.proposer == "dir" else "stopping"))
+            log(f"\nno candidates came back in generation {gen}: every prompt and response is under generations/g{gen:03d}/; stopping")
             break
 
     from . import report
@@ -440,14 +482,9 @@ def build_parser():
                     "computed from the available episodes when it has no test tiers)")
     ap.add_argument("--auto-split", action="store_true", help="always compute the split from the available episodes (splits.py)")
     ap.add_argument("--policies", nargs="*")
-    ap.add_argument("--proposer", default="dry", choices=["dry", "api", "claude", "agent", "dir", "mock"],
-                    help="api (= claude): one stateless Claude API request per operator (system prompt + this request only); "
-                         "agent: a coding-agent CLI run headless, a fresh session per request (--agent-cmd); "
-                         "dir: prompts written to inbox folders, candidates dropped in by hand or by any tool; "
-                         "dry: write every prompt, call nothing; mock: mechanical operators, no LLM")
-    ap.add_argument("--agent-cmd", default="claude -p",
-                    help="command for --proposer agent; the prompt goes to its stdin, the JSON answer is read from stdout")
-    ap.add_argument("--max-usd", type=float, default=None, help="api proposer: stop asking once the run has spent this much")
+    ap.add_argument("--max-usd", type=float, default=None, help="stop asking the API once the run has spent this much (USD)")
+    ap.add_argument("--n-init", type=int, default=3, help="generation 0: candidates the LLM writes per island from the system prompt alone")
+    ap.add_argument("--baselines", action="store_true", help="also score the hand-written models as reference rows (never parents)")
     ap.add_argument("--selection", choices=["pareto", "scalar"], default="pareto",
                     help="pareto (default): island populations and parents by non-dominated rank + crowding over --objectives; "
                          "scalar: by the single score")

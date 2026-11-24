@@ -1,30 +1,29 @@
-# Runbook: from a fresh computer to a tested room-dynamics model
+# Runbook: from generated data to discovered room-dynamics formulas
 
-Every step runs from `working-code/`. The starter kit is only read: imported from its folder, or its own command-line tools run with every output pointed into `working-code/data`. **Nothing is written into the starter kit**; steps 1, 3 and 6 check that.
+Run everything from `working-code/`, on the machine that holds the generated data. **Data generation is not part of
+this pipeline**: the data is made beforehand with the starter kit (its scenario generator and `evaluate.py`, any
+number of buildings, weather windows and controllers). This pipeline only reads it. The starter kit is never written to.
 
-| Step | Command | Writes |
-|---|---|---|
-| 0. Lay out the folders | `git clone` both repositories side by side | — |
-| 1. Set up and check | `python code/setup_check.py` | nothing |
-| 2. Generate data | `python code/generate_data.py …` | `data/buildings`, `data/scenarios`, `data/results`, `data/plan.json`, `data/split.json` |
-| 3. Audit the raw data | `python code/audit_data.py` | `data/audit/` |
-| 4. Build the dataset | `python code/build_dataset.py` | `data/dataset/` |
-| 5. Audit again | `python code/audit_data.py` | `data/audit/` |
-| 6. Discover the dynamics with an LLM | `python code/run_discovery.py …` | `outputs/discovery/<run>/` |
-| 7. Test the model | `python code/test_model.py …` | `outputs/test/<model>_<split>/` |
-| 8. Rehearse the submission | `python code/run_policy.py …` | `outputs/policy/<model>_<base>_<split>/` |
+| Step | Command | Reads | Writes |
+|---|---|---|---|
+| 1. Episodes | `python code/build_dataset.py --results R --scenarios S --out D` | the kit's result and scenario folders | `D/` episodes (one `.npz` per run) + `index.json` |
+| 2. Split | `python code/make_splits.py --dataset D` | the episodes | `D/split.json`: validation + test_easy / test_medium / test_hard (+ test_station), whole episodes only |
+| 3. Discovery | `python code/run_discovery.py --dataset D --generations 20 --test` | validation episodes (test tiers only at the end) | `outputs/discovery/<run>/` |
 
-**All of it in one command** (for a big machine; each step resumes or can be started with `FROM=n`):
+All three in one command (`FROM=2` if the episodes are already built):
 
 ```bash
-./run_pipeline.sh
+ANTHROPIC_API_KEY=... RESULTS=/data/results SCENARIOS=/data/scenarios GENS=20 ./run_pipeline.sh
 ```
 
-```bash
-PROPOSER=claude GENS=20 WORKERS=32 ./run_pipeline.sh
-```
+Every candidate is written by the Claude API: one stateless request per operator (the cached system prompt plus that
+request), generation 0 included. Nothing is generated, simulated or mocked here. The scorer runs the candidates'
+formulas on the validation episodes with numpy; the episodes themselves never leave the machine (the prompts carry the
+analysis and a short trajectory excerpt; see docs/DISCOVERY_WALKTHROUGH.md).
 
-The first writes the LLM prompt without calling anything; the second runs real discovery. Settings are environment variables at the top of `run_pipeline.sh` (seed ranges, stations, policies, steps, workers, deployment, proposer, generations).
+Optional afterwards: step 7 (`code/test_model.py`), the policy rehearsal (`code/run_policy.py`) and the Kaggle package
+(sections 8–11 below). The sections on generating data (1–5 below) describe how the data machine makes the data
+with the kit; they are kept for reference.
 
 **Folder layout.** The only path assumption: one parent folder holds both repositories side by side.
 
@@ -192,52 +191,35 @@ Only go on when the audit has no hard failures.
 
 ## 6. Discover the dynamics with an LLM
 
-The default mode is **closed-form, with no fitting anywhere**. It runs islands, mutation and crossover. Every step, file and check is described in
-[DISCOVERY_WALKTHROUGH.md](DISCOVERY_WALKTHROUGH.md). Before anything else, check the machinery on synthetic data (no simulator data, no LLM, about 4 minutes):
+The default mode is **closed-form, with no fitting anywhere**: islands, mutation and crossover, every candidate written
+by the Claude API. Every step, file and check is described in [DISCOVERY_WALKTHROUGH.md](DISCOVERY_WALKTHROUGH.md).
+Check the scorer first (a planted truth on synthetic inputs must score about 0 K; no API call):
 
 ```bash
 python code/run_discovery.py --selftest
 ```
 
-Score the seeds and write every prompt of generation 1 without sending anything:
+**Split** (whole episodes; no training split, nothing is fitted). The search sees only `val`. `test_easy` (seen
+building and station, unseen weather window), `test_medium` (unseen building), `test_hard` (unseen building at the
+station farthest from the others in Wasserstein distance) and `test_station` (seen building, that station) are scored
+once at the end. Computed from the episodes that exist; a run stops if any episode or scenario would be in two splits:
 
 ```bash
-python code/run_discovery.py --run main --proposer dry --generations 1 --ceiling
+python code/make_splits.py --dataset D
 ```
 
-Exercise islands, mutation and crossover with no LLM (mechanical operators), and read the logs:
+**Discovery** (needs `pip install -r requirements-llm.txt` and `ANTHROPIC_API_KEY`). Generation 0 is `--n-init`
+candidates per island written from the system prompt alone; later generations are mutation, crossover and explore
+requests. `--max-usd` stops the run at a budget; `--baselines` also scores the hand-written models as reference rows
+(never parents):
 
 ```bash
-python code/run_discovery.py --run mock --proposer mock --generations 3
+python code/run_discovery.py --dataset D --run main --generations 20 --islands 3 --test --max-usd 50
 ```
 
-Run discovery through the Claude API (needs `requirements-llm.txt` and credentials). Each operator is one stateless request: the cached system prompt plus that request only, no chat history:
-
-```bash
-python code/run_discovery.py --run main --proposer api --generations 20 --islands 3 --test --max-usd 50
-```
-
-Or through a coding-agent CLI run headless, a fresh session per request (`--agent-cmd`, default `claude -p`):
-
-```bash
-python code/run_discovery.py --run main --proposer agent --generations 20 --islands 3 --test
-```
-
-**Splits.** There is no training split (nothing is fitted). The search sees only `val`; `test_easy` (seen building and station, unseen weather window), `test_medium` (unseen building), `test_hard` (unseen building on the station farthest from the others in Wasserstein distance) and `test_station` are scored once at the end. They are computed from the episodes that exist:
-
-```bash
-python code/make_splits.py
-```
-
-`run_discovery.py` computes the same split by itself when `split.json` has no test tiers (`--auto-split` forces it). Selection is multi-objective by default (`--selection pareto --objectives main fast slow exterior interior`).
-
-You can also answer with any other LLM or by hand. Put candidate `.py` files in each request's `generations/gNNN/island_K/<operator>/inbox/`, then run:
-
-```bash
-python code/run_discovery.py --run main --proposer dir --generations 1
-```
-
-Results land in `outputs/discovery/main/`. Start with `REPORT.md`, then `log.md`, `generations/`, `candidates/`, `plots/`, `database.jsonl`, `summary.json` and `best.py`.
+Selection is multi-objective by default (`--selection pareto --objectives main fast slow exterior interior`).
+Results land in `outputs/discovery/main/`. Start with `REPORT.md`, then `log.md`, `generations/` (every prompt,
+analysis and raw API response), `candidates/`, `plots/`, `database.jsonl`, `summary.json` and `best.py`.
 
 ### The earlier fitted modes (comparison only)
 

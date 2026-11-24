@@ -299,7 +299,7 @@ def physics_checks(mod, coef, ep, U, n=576):
 TERM_NAMES = ("air", "outside", "neighbours", "slab", "wall", "inner", "heat")
 
 
-def term_contributions(cm, prep, ts):
+def term_contributions(cm, prep, ts, with_steps=False):
     """Term form only.  For steps ts, the change each term of the fixed function makes to every room's air in one step,
     from the filtered state (measured room air, hidden stores as the model carries them), and the one-step residual
     (measured - predicted).  T+ - T = sum of the contributions exactly, so a residual that follows one contribution
@@ -307,7 +307,7 @@ def term_contributions(cm, prep, ts):
     room (m,)) over rooms x steps."""
     S, nets, idx = prep.CF
     V = prep.V
-    C, R, I = [], [], []
+    C, R, I, K = [], [], [], []
     for g in np.unique(idx[ts]):
         st = ts[idx[ts] == g]
         c, x = nets[g], S[st]
@@ -320,8 +320,9 @@ def term_contributions(cm, prep, ts):
                       c["wall"] * (W - T), c["inner"] * (P - T), c["heat"] * cm.heat(u)], -1) / den[..., None]
         C.append(k.reshape(-1, len(TERM_NAMES)))
         R.append((prep.X[st + 1] - (T + k.sum(-1))).reshape(-1))
-        I.append(np.tile(np.arange(V), len(st)))
-    return np.concatenate(C), np.concatenate(R), np.concatenate(I)
+        I.append(np.tile(np.arange(V), len(st))); K.append(np.repeat(st, V))
+    out = (np.concatenate(C), np.concatenate(R), np.concatenate(I))
+    return out + (np.concatenate(K),) if with_steps else out
 
 
 def episode_scores(mod, coef, ep, U, horizons=(12, 36, 72), every=6, warmup=36, keep=36, n_attrib=600):
@@ -356,7 +357,7 @@ def episode_scores(mod, coef, ep, U, horizons=(12, 36, 72), every=6, warmup=36, 
     r["keep_start"] = starts
     if isinstance(coef, coefform.TermModel) and prep.CF is not None:
         ts = t1[:-1] if len(t1) <= n_attrib else np.sort(np.random.default_rng(0).choice(t1[:-1], n_attrib, replace=False))
-        r["attrib"] = term_contributions(coef, prep, ts)
+        r["attrib"] = term_contributions(coef, prep, ts, with_steps=True)
     return r
 
 
@@ -508,6 +509,9 @@ def _group_stats(det, val_eps):
         add("all rooms", E)
         add("space: exterior rooms", E[:, ext]); add("space: interior rooms", E[:, ~ext])
         add("space: corner rooms (outside wall on 2+ sides)", E[:, ext & corner])
+        add("space: one-side exterior rooms", E[:, ext & ~corner])
+        big = geo["area"] >= np.median(geo["area"])
+        add("space: larger half of rooms (floor area)", E[:, big]); add("space: smaller half of rooms", E[:, ~big])
         for side in ("top", "bottom", "left", "right"):
             if f"facade_{side}" in geo:
                 add(f"space: outside wall on the {side} side of the plan", E[:, geo[f"facade_{side}"] > 0])
@@ -530,15 +534,16 @@ def _group_stats(det, val_eps):
 
 
 def term_regression(det, val_eps, rows=None):
-    """Pooled least squares of the one-step residual on the term contributions (term form).  Returns
-    {term: {"slope", "se", "size"}} plus "_r2", or {} when the candidate is not in the term form."""
+    """Pooled least squares of the one-step residual on the term contributions (term form).  `rows(ep, room, step)`
+    selects rows (a room type, a condition).  Returns {term: {"slope", "se", "size"}} plus "_r2", or {} when the
+    candidate is not in the term form or too few rows are selected."""
     C, R = [], []
     for ep in val_eps:
         a = det[ep.name].get("attrib")
         if a is None:
             return {}
-        c, r, i = a
-        m = np.ones(len(r), bool) if rows is None else rows(ep)[i]
+        c, r, i, t = a
+        m = np.ones(len(r), bool) if rows is None else np.asarray(rows(ep, i, t), bool)
         C.append(c[m]); R.append(r[m])
     C, R = np.concatenate(C), np.concatenate(R)
     if len(R) < 50:
@@ -605,6 +610,29 @@ def temporal_stats(det, val_eps):
             ac += [_corr(x[:-12, i], x[12:, i]) for i in range(x.shape[1])]
     return {"curve_rmse": cr.tolist(), "curve_bias": cb.tolist(), "curve_persistence": cp.tolist(),
             "one_step_autocorr_1h": float(np.mean(ac)) if ac else None}
+
+
+def _room_type_masks():
+    def corner(g):
+        return (g["facade_faces"] > 0) & (g.get("facade_sides", np.zeros(g["V"])) >= 2)
+
+    def side(g):
+        return (g["facade_faces"] > 0) & ~corner(g)
+
+    def interior(g):
+        return g["facade_faces"] == 0
+
+    def large(g):
+        return g["area"] >= np.median(g["area"])
+    return {"corner rooms (outside wall, 2+ sides)": corner, "one-side exterior rooms": side, "interior rooms": interior,
+            "larger half of rooms (by floor area)": large, "smaller half of rooms": lambda g: ~large(g)}
+
+
+ROOM_TYPES = _room_type_masks()
+CONDITIONS = {"HVAC air on (room mean > 50 W/K)": lambda inp, t: inp["g"][t].mean(1) > HVAC_ON,
+              "HVAC air off": lambda inp, t: inp["g"][t].mean(1) <= HVAC_ON,
+              "occupied (comfort) hours": lambda inp, t: inp["comfort"][t] > 0.5,
+              "colder half of outside temperatures": lambda inp, t: inp["T_out"][t] < np.median(inp["T_out"])}
 
 
 def _verdict(t):
@@ -683,10 +711,23 @@ def analysis(rec, val_eps):
             if k in Tm:
                 t = Tm[k]
                 L.append(f"    {k:<11} size {t['size']:.4f} K/step   slope {t['slope']:+.3f} +- {2 * t['se']:.3f}   -> {_verdict(t)}")
-        Te = term_regression(det, val_eps, rows=lambda ep: ep.geo["facade_faces"] > 0)
-        if Te:
-            terms["exterior rooms"] = Te
-            L.append("  exterior rooms only: " + "; ".join(f"{k} {Te[k]['slope']:+.3f} ({_verdict(Te[k])})" for k in ("outside", "wall") if k in Te))
+        L.append("  BY ROOM TYPE (slope per term; blank = term not present or too few rows):")
+        L.append("    " + f"{'room type':<38}" + "".join(f"{k:>11}" for k in TERM_NAMES) + "   explained")
+        for name, sel in ROOM_TYPES.items():
+            Tt = term_regression(det, val_eps, rows=lambda ep, i, t, sel=sel: sel(ep.geo)[i])
+            if Tt:
+                terms[name] = Tt
+                L.append("    " + f"{name:<38}" + "".join(f"{Tt[k]['slope']:>+11.2f}" if k in Tt else f"{'':>11}" for k in TERM_NAMES)
+                         + f"   {100 * max(Tt['_r2'], 0):5.0f}%")
+        L.append("  BY CONDITION:")
+        for name, sel in CONDITIONS.items():
+            Tt = term_regression(det, val_eps, rows=lambda ep, i, t, sel=sel: sel(ep.inputs, t))
+            if Tt:
+                terms[name] = Tt
+                L.append("    " + f"{name:<38}" + "".join(f"{Tt[k]['slope']:>+11.2f}" if k in Tt else f"{'':>11}" for k in TERM_NAMES)
+                         + f"   {100 * max(Tt['_r2'], 0):5.0f}%")
+        L.append("  -> a slope that differs by room type means the formula's dependence on geometry is wrong for that type;")
+        L.append("     one that differs by condition means the term depends on something the formula ignores (airflow, time, weather)")
         L.append("  (terms that move together, e.g. outside and wall, share the residual: read their slopes together)")
     L.append(f"\ncomplexity {rec['complexity']} AST nodes, history {rec['history']} steps, horizons {', '.join(_hname(h) for h in hs)}")
     return {"text": "\n".join(L), "groups": G, "terms": terms, "rooms": Sp["rooms"]}
@@ -748,6 +789,20 @@ def crossover_analysis(a, b, names=("A", "B"), ep=None, U=None):
             if k in ta and k in tb:
                 better = A if abs(ta[k]["slope"]) < abs(tb[k]["slope"]) else Bn
                 L.append(f"    {k:<11} {ta[k]['slope']:+.3f} vs {tb[k]['slope']:+.3f}   -> take '{k}' from {better}")
+        TA, TB = a["analysis"].get("terms", {}), b["analysis"].get("terms", {})
+        sub = [g for g in TA if g != "all rooms" and g in TB]
+        if sub:
+            L.append("  by room type and condition: which parent's formula is closer to right (|slope| smaller) for each term")
+            L.append("    " + f"{'':<38}" + "".join(f"{k:>11}" for k in TERM_NAMES))
+            for g in sub:
+                cells = []
+                for k in TERM_NAMES:
+                    if k in TA[g] and k in TB[g]:
+                        sa, sb = TA[g][k]["slope"], TB[g][k]["slope"]
+                        cells.append(f"{(A if abs(sa) < abs(sb) else Bn) + f' {min(abs(sa), abs(sb)):.2f}':>11}")
+                    else:
+                        cells.append(f"{'':>11}")
+                L.append("    " + f"{g:<38}" + "".join(cells))
 
     def funcs(src):
         try:

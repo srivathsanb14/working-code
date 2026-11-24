@@ -135,7 +135,7 @@ def _lineage_png(run_dir, db, ids, islands):
         walk(i)
     if not nodes:
         return None
-    col = {"seed": "#13213A", "mutation": "#D9692A", "crossover": "#2F72B5", "explore": "#3a9a5b", "migration": "#8A93A3"}
+    col = {"init": "#13213A", "mutation": "#D9692A", "crossover": "#2F72B5", "explore": "#3a9a5b", "migration": "#8A93A3"}
     lanes = {}
     pos = {}
     for i, r in sorted(nodes.items(), key=lambda kv: (kv[1]["generation"], kv[1]["island"], kv[0])):
@@ -172,24 +172,22 @@ def write(run_dir: Path, db, a, val, U, final=False):
     best = ok[0] if ok else None
     synthetic = "SYNTHETIC" in json.dumps(cfg.get("split", {}))
     L = [f"# Discovery run `{run_dir.name}`" + (" — SYNTHETIC self-test (planted truth, not simulator data)" if synthetic else ""), ""]
-    L += [f"Mode: closed-form, **no fitting anywhere**. Proposer: `{a.proposer}`"
-          + (" (mechanical operators, **no LLM**)" if a.proposer == "mock" else "") +
+    L += [f"Mode: closed-form, **no fitting anywhere**. Every candidate written by the Claude API (`{a.model}`)"
           f". Islands: {a.islands}, migration every {a.migrate_every} generation(s). Generations so far: {db.generation()}. "
-          f"Candidates: {len(recs)} records ({sum(r['operator'] != 'migration' for r in recs)} evaluated programs incl. seed copies). "
-          f"Held-out episodes used for the score: {cfg.get('n_val_used', '?')}. Score = held-out "
+          f"Candidates: {len(recs)} records ({sum(r['operator'] != 'migration' for r in recs)} evaluated programs). "
+          f"Validation episodes used for the score: {cfg.get('n_val_used', '?')}. Score = validation "
           f"{a.main_horizon / 12:g} h rollout RMSE from measured history + {a.complexity_weight} K per AST node.", ""]
     L += ["## Where to look", "",
           "| what | where |", "|---|---|",
           "| the system prompt every request shares | [system_prompt.md](system_prompt.md) |",
           "| every LLM request: the prompt it got | `generations/gNNN/island_K/<operator>/prompt.md` |",
           "| the pre-mutation / pre-crossover analysis it was given | `generations/gNNN/island_K/<operator>/analysis.md` |",
-          "| the raw LLM response (Claude proposer) | `generations/gNNN/island_K/<operator>/response.json` |",
-          "| candidates for the `dir` proposer (any LLM or a person) | `generations/gNNN/island_K/<operator>/inbox/*.py` |",
+          "| the raw API response | `generations/gNNN/island_K/<operator>/response.json` |",
           "| every candidate's source | `candidates/<id>_<name>.py` |",
           "| every candidate's scores, parents, operator, analysis | `database.jsonl` (one JSON per line) |",
           "| the timeline (requests, children, Δ vs parent, migrations) | [log.md](log.md) |",
           "| measured vs predicted temperatures, error vs horizon | `plots/<id>_profile.png`, `plots/<id>_horizon.png` |", "",
-          "Operators: **seed** (hand-written start), **mutation** (one parent changed where its analysis points), "
+          "Operators: **init** (generation 0: written from the system prompt alone), **mutation** (one parent changed where its analysis points), "
           "**crossover** (two parents' templates combined), **explore** (structurally new), **migration** (an island's best "
           "copied into the next island; not re-evaluated).", ""]
     if best:
@@ -222,7 +220,7 @@ def write(run_dir: Path, db, a, val, U, final=False):
             gains[r["operator"]].append(r["score"] - bp)
     L += ["## Operators", "", "| operator | proposed | ok | screened (stage 1) | rejected (stage 0) | unstable (stage 2) | error | better than best parent | median Δ |",
           "|---|---|---|---|---|---|---|---|---|"]
-    for op in ("seed", "mutation", "crossover", "explore"):
+    for op in ("init", "mutation", "crossover", "explore"):
         if op in st:
             s = st[op]; g = gains.get(op, [])
             L.append(f"| {op} | {s['proposed']} | {s['ok']} | {s['screened']} | {s['rejected']} | {s['unstable']} | {s['error']} | "

@@ -1,13 +1,14 @@
-"""Launcher for model discovery.  Run from working-code/:
+"""Launcher for model discovery.  Run from working-code/.
 
-  DEFAULT  closed-form discovery, no fitting anywhere, islands + mutation + crossover (code/discovery/evolve.py):
-      .venv/bin/python code/run_discovery.py --run cf --proposer dry --generations 1      # write every prompt, call nothing
-      .venv/bin/python code/run_discovery.py --run cf --proposer mock --generations 3     # no LLM: mechanical operators
-      .venv/bin/python code/run_discovery.py --run cf --proposer claude --generations 20  # the real search
+  INPUT    a folder of finished episodes made by the data repository (the one that runs the starter kit):
+           index.json + one .npz per episode.  Nothing is simulated or generated here.
+  DEFAULT  closed-form discovery, no fitting anywhere, every candidate written by the Claude API
+           (code/discovery/evolve.py; needs `pip install -r requirements-llm.txt` and ANTHROPIC_API_KEY):
+      .venv/bin/python code/run_discovery.py --dataset /path/to/dataset --run main --generations 20 --test --max-usd 50
       .venv/bin/python code/run_discovery.py --help                                       # all options
 
-  SELF-TEST  planted truth on synthetic data (shipped floor plans, made-up inputs): the scorer must give the
-             truth ~0 K and rank it first, and the whole loop runs offline -> outputs/discovery/selftest/REPORT.md
+  SELF-TEST  the scorer on a planted truth (synthetic inputs on the shipped floor plans): the truth must score ~0 K
+             and beat every hand-written model.  No API call.
       .venv/bin/python code/run_discovery.py --selftest
 
   FITTED   the earlier modes that fit constants (comparison only; code/discovery/loop.py):

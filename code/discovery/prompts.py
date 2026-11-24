@@ -416,7 +416,7 @@ def cf_user_mutation(gen, island, parent, analysis_text, profile_text, failures,
         f"Generation {gen}, island {island}.  Operator: MUTATION.",
         _prog(parent, "Parent"),
         "Pre-mutation analysis of the parent (validation buildings): where, when and through which term it errs\n" + analysis_text,
-        ("Measured vs predicted (the parent's 3 h-ahead forecast) for two rooms:\n" + profile_text) if profile_text else "",
+        ("A real trajectory excerpt (one validation day, one room of each type, the parent's 3 h-ahead forecast):\n" + profile_text) if profile_text else "",
         _fails(failures),
         f"Write {n} children of this parent.  Each must change ONE thing that the analysis points to (one "
         "coefficient formula, a different history summary, a history-inferred material value) and keep the rest. "
@@ -435,6 +435,15 @@ def cf_user_crossover(gen, island, a, b, cx_text, failures, n, keys=None):
         "where that coefficient matters (the TERMS lines say which parent's formula is closer to right for each term; the "
         "SPATIAL and TEMPORAL lines say where and when each parent wins), make "
         "the formulas consistent, and state in the hypothesis which formula came from which parent."] if x)
+
+
+def cf_user_init(gen, island, failures, n):
+    return "\n\n".join(x for x in [
+        f"Generation {gen}, island {island}.  Operator: INIT (no programs exist yet on this island).",
+        _fails(failures),
+        f"Write {n} first candidates from the physics and the contract above.  Make them differ from each other in "
+        "structure (which stores they use, how the per-building materials are read from the measured history, how the "
+        "neighbour exchange is written), and state in each hypothesis which physical assumption it tests."] if x)
 
 
 def cf_user_explore(gen, island, elites, failures, n, keys=None):
