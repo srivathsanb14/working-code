@@ -53,22 +53,23 @@ by a mechanical proposer. Open `outputs/discovery/selftest/REPORT.md`. Every fil
 
 | step | what happens | code |
 |---|---|---|
-| data | episodes from `data/dataset` (built by `code/build_dataset.py`), split into train / val / test buildings | `evolve.load_split` |
+| data | episodes from `data/dataset`, split into **validation** (all the search sees) and three held-out **test tiers**: easy (seen building and station, unseen weather window), medium (unseen building), hard (unseen building and the station farthest in Wasserstein distance). No training split: nothing is fitted. The split is computed from the episodes that exist (`splits.split_from_episodes`) unless `split.json` already has the tiers | `evolve.load_split`, `discovery/splits.py`, `code/make_splits.py` |
 | seeds | hand-written starting programs, evaluated once and copied into every island | `code/discovery/seeds_cf/*.py`, `evolve.run` (generation 0) |
-| islands | each island is its own population: its best `--elites` programs | `evolve.DB.elites(island, k)` |
-| parent choice | a 2-way tournament inside the island | `evolve.tournament` |
-| **pre-mutation analysis** | the parent's held-out error by room class (exterior, interior, most exposed), HVAC on/off, comfort hours, reheat, cold/warm outside, by horizon vs persistence, worst rooms; plus a measured-vs-predicted table for two rooms | `closedform.analysis`, `evolve.profile_text` |
+| islands | each island is its own population: its best `--elites` programs by **Pareto rank + crowding** over `--objectives` (default main 3 h score, 1 h, 6 h, exterior rooms, interior rooms; `--selection scalar` for the single score) | `evolve.DB.elites`, `discovery/pareto.py`, `closedform.OBJECTIVES` |
+| parent choice | a 2-way tournament inside the island, by Pareto rank then crowding | `evolve.tournament` |
+| **pre-mutation analysis** | on the validation episodes: TEMPORAL (error and bias vs horizon against persistence, by hour of day, occupancy, HVAC state and switching during the rollout, outside temperature, episode phase; autocorrelation of the one-step error), SPATIAL (by room class, facade side, floor; correlation of each room's bias with its geometry; whether adjacent rooms err together; worst rooms), TERMS (the one-step residual regressed on each term's exact contribution: which coefficient is too strong or too weak); plus a measured-vs-predicted table | `closedform.analysis`, `temporal_stats`, `spatial_stats`, `term_regression`, `evolve.profile_text` |
 | **mutation request** | one LLM request per island: parent source + analysis → `--n-mut` children, each changing one thing | `prompts.cf_user_mutation` |
-| **pre-crossover analysis** | for two parents: who is better on which group, and which templates (functions, constants) differ | `closedform.crossover_analysis` |
+| **pre-crossover analysis** | for two parents: who wins where (spatial groups) and when (temporal groups), per-room wins and the best-of-both bound, which parent's formula is closer to right for each term, which functions differ, coefficient values side by side | `closedform.crossover_analysis` |
 | **crossover request** | one LLM request per island: both parents + that analysis → `--n-cx` children combining templates | `prompts.cf_user_crossover` |
 | **explore request** | one LLM request per island: the island's leaderboard → `--n-exp` structurally new candidates | `prompts.cf_user_explore` |
-| proposal | the proposer answers each request: `dry` (writes the prompt only), `dir` (reads `.py` files you drop in the request's `inbox/`), `mock` (no LLM; rescales numbers or swaps templates), `claude` | `proposers.py`, called in `evolve.run` |
+| proposal | the proposer answers each request: `dry` (writes the prompt only), `dir` (reads `.py` files you drop in the request's `inbox/`), `mock` (no LLM; rescales numbers or swaps templates), `api` (= `claude`: one stateless Claude API request per operator; only the cached system prompt and that request, no history; `--max-usd` budget), `agent` (a coding-agent CLI run headless, default `claude -p`, a fresh session per request) | `proposers.py`, called in `evolve.run` |
 | stage 0 | physics checks on a real floor plan: equilibrium, bounded cooling, heat response, stiff air stream | `closedform.physics_checks` |
-| stage 1 | quick screen: one-step (5 min) RMSE on held-out buildings; worse than `--screen` × persistence is screened out | `closedform.evaluate` |
-| stage 2 | decisive: free-run rollouts from measured history every `--every` steps, horizons `--horizons` (default 1/3/6 h), stability check; score = `--main-horizon` RMSE + complexity | `closedform.episode_scores`, `closedform.rollout` |
+| stage 1 | quick screen: one-step (5 min) RMSE on the validation episodes; worse than `--screen` × persistence is screened out | `closedform.evaluate` |
+| stage 2 | decisive: free-run rollouts from measured history every `--every` steps, horizons `--horizons` (default 1/3/6 h), stability check; score = `--main-horizon` RMSE + complexity; the objectives vector for Pareto selection | `closedform.episode_scores`, `closedform.rollout` |
 | record | one JSON line per candidate: island, operator, parents, scores, analysis | `evolve.record` → `database.jsonl` |
 | migration | every `--migrate-every` generations each island's best is copied into the next island (a ring) | end of the generation loop in `evolve.run` |
 | report | REPORT.md, plots, summary.json, best.py, rewritten after every generation | `report.write` |
+| test tiers | at the end only (`--test`): the chosen model and up to `--test-front` Pareto-front models scored on test_easy / test_medium / test_hard (and test_station); table in log.md, numbers in summary.json | `evolve.score_tests` |
 
 ### Added on Nov 20, 2026
 

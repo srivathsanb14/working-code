@@ -107,12 +107,12 @@ def main(out=ROOT / "outputs" / "discovery" / "selftest", generations=2, islands
         _save_cached(e, ds / f"{e.name}.npz")
         idx[e.name] = dict(file=f"{e.name}.npz", status="ok", policy=e.policy, building=e.building)
     blds = sorted({e.building for e in eps})
-    split = {"_note": "SYNTHETIC self-test split", "train": blds[:3], "val": blds[3:5], "test": blds[5:]}
+    split = {"_note": "SYNTHETIC self-test split (no training split: nothing is fitted)", "val": blds[:5], "test_medium": blds[5:]}
     (ds / "index.json").write_text(json.dumps(idx, indent=1)); (ds / "split.json").write_text(json.dumps(split, indent=1))
-    tr = [e for e in eps if e.building in split["train"]]; va = [e for e in eps if e.building in split["val"]]
+    va = [e for e in eps if e.building in split["val"]]
 
     print("1. the planted truth must score ~0 (scorer alignment)")
-    rt = cf.evaluate(TRUTH_SRC, tr, va, U)
+    rt = cf.evaluate(TRUTH_SRC, va, U)
     print(f"   truth: status {rt['status']}, one-step {rt.get('val_one_step_mean', float('nan')):.2e} K, "
           f"3 h {rt.get('val_3h_mean', float('nan')):.2e} K")
     ok1 = rt["status"] == "ok" and rt["val_3h_mean"] < 1e-6 and rt["val_one_step_mean"] < 1e-6
@@ -120,7 +120,7 @@ def main(out=ROOT / "outputs" / "discovery" / "selftest", generations=2, islands
     seeds = sorted((Path(__file__).parent / "seeds_cf").glob("*.py"))
     res = {}
     for s in seeds:
-        r = cf.evaluate(s.read_text(), tr, va, U); res[s.stem] = r
+        r = cf.evaluate(s.read_text(), va, U); res[s.stem] = r
         print(f"   {s.stem}: {r['status']}, 3 h {r.get('val_3h_mean', float('nan')):.3f} K "
               f"(persistence {r.get('val_persistence_3h_mean', float('nan')):.3f})" + (f" - {r.get('reason')}" if r['status'] != 'ok' else ""))
     ok2 = all(r["status"] != "ok" or r["score"] > rt["score"] for r in res.values())

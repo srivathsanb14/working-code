@@ -14,9 +14,10 @@
 # Usage, from anywhere:
 #   ./run_pipeline.sh                      # everything, LLM step as a dry run (writes every prompt, calls nothing)
 #   PROPOSER=mock GENS=3 ./run_pipeline.sh               # no LLM: mechanical mutation/crossover, to inspect the logs
-#   PROPOSER=claude GENS=20 ./run_pipeline.sh            # real LLM discovery (needs requirements-llm.txt + key)
+#   PROPOSER=api GENS=20 ./run_pipeline.sh               # real LLM discovery through the Claude API (needs requirements-llm.txt + key)
+#   PROPOSER=agent GENS=20 ./run_pipeline.sh             # the same through a coding-agent CLI, a fresh session per request
 #   DEPLOY=offline ./run_pipeline.sh                     # the earlier FITTED modes instead (offline|online|both)
-#   FROM=6 PROPOSER=claude GENS=20 ./run_pipeline.sh     # data already generated: start at discovery
+#   FROM=6 PROPOSER=api GENS=20 ./run_pipeline.sh        # data already generated: start at discovery
 #   WORKERS=32 STEPS=8640 ./run_pipeline.sh              # more cores, full 30-day runs
 set -euo pipefail
 cd "$(dirname "$0")"
@@ -33,7 +34,7 @@ TEST_STATION=${TEST_STATION:-minneapolis}
 POLICIES=${POLICIES:-"all_off bang_bang fixed_setpoint pid pid_water"}
 RUN=${RUN:-main}
 DEPLOY=${DEPLOY:-closedform}         # closedform (default: no fitting anywhere) | offline | online | both (fitted modes)
-PROPOSER=${PROPOSER:-dry}            # dry (no LLM call) | dir (inbox) | mock (no LLM) | claude
+PROPOSER=${PROPOSER:-dry}            # dry (no LLM call) | api (Claude API) | agent (coding-agent CLI) | dir (inbox) | mock (no LLM)
 ISLANDS=${ISLANDS:-3}
 GENS=${GENS:-1}
 FROM=${FROM:-1}                      # first step to run
@@ -48,6 +49,7 @@ step 2 "$PY" code/generate_data.py --train-seeds "$TRAIN" --val-seeds "$VAL" --t
         --val-station "$VAL_STATION" --test-station "$TEST_STATION" --policies $POLICIES --steps "$STEPS" --workers "$WORKERS" --oversample "$OVERSAMPLE" --include-shipped   # shipped six: test split only
 step 3 "$PY" code/audit_data.py
 step 4 "$PY" code/build_dataset.py --workers "$WORKERS"
+step 4 "$PY" code/make_splits.py     # val + test_easy/medium/hard from the episodes that exist (no training split)
 step 5 "$PY" code/audit_data.py
 if [[ "$DEPLOY" == closedform ]]; then
   # step 6 also scores the final best on the test split (--test); step 7 = the fitted ceiling, a diagnostic

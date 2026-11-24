@@ -211,11 +211,25 @@ Exercise islands, mutation and crossover with no LLM (mechanical operators), and
 python code/run_discovery.py --run mock --proposer mock --generations 3
 ```
 
-Run discovery with Claude (needs `requirements-llm.txt` and credentials):
+Run discovery through the Claude API (needs `requirements-llm.txt` and credentials). Each operator is one stateless request: the cached system prompt plus that request only, no chat history:
 
 ```bash
-python code/run_discovery.py --run main --proposer claude --generations 20 --islands 3 --test
+python code/run_discovery.py --run main --proposer api --generations 20 --islands 3 --test --max-usd 50
 ```
+
+Or through a coding-agent CLI run headless, a fresh session per request (`--agent-cmd`, default `claude -p`):
+
+```bash
+python code/run_discovery.py --run main --proposer agent --generations 20 --islands 3 --test
+```
+
+**Splits.** There is no training split (nothing is fitted). The search sees only `val`; `test_easy` (seen building and station, unseen weather window), `test_medium` (unseen building), `test_hard` (unseen building on the station farthest from the others in Wasserstein distance) and `test_station` are scored once at the end. They are computed from the episodes that exist:
+
+```bash
+python code/make_splits.py
+```
+
+`run_discovery.py` computes the same split by itself when `split.json` has no test tiers (`--auto-split` forces it). Selection is multi-objective by default (`--selection pareto --objectives main fast slow exterior interior`).
 
 You can also answer with any other LLM or by hand. Put candidate `.py` files in each request's `generations/gNNN/island_K/<operator>/inbox/`, then run:
 

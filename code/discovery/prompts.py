@@ -328,15 +328,19 @@ Rules:
 CF_SCORING = """\
 How candidates are scored (no fitting anywhere):
   stage 0  the checks above on a real floor plan; failures are rejected with the reason.
-  stage 1  quick screen: one-step (5-minute) RMSE on held-out buildings, from measured history; more than
+  All numbers you see come from the VALIDATION buildings and weather.  There is no training data (nothing is fitted).
+  Separate test buildings and weather (a different time window, unseen buildings, and an unseen climate) are kept
+  aside and scored only once, at the end, so formulas must generalize rather than suit the validation set.
+  stage 1  quick screen: one-step (5-minute) RMSE on the validation episodes, from measured history; more than
            {screen}x the persistence error (T_next = T_now) is screened out.
   stage 2  decisive: from measured history at many moments, free-run {horizons} ahead; a rollout leaving [230, 350] K
            marks the candidate unstable.  One-step accuracy does not guarantee good rollouts.
-           Score = mean {main} RMSE on held-out buildings + {cw} K per AST node of your code, computed AS AT TEST TIME:
+           Score = mean {main} RMSE on the validation episodes + {cw} K per AST node of your code, computed AS AT TEST TIME:
            the controller's own future commands are known, but the future outside temperature and occupancy are not
            (they are held at their last observed values during the rollout).  Rollouts with the true future inputs are
            reported as a diagnostic.
-  The evaluation buildings are unseen: formulas must work for any floor plan; never branch on a building's size or
+{selection}
+  The test buildings are unseen: formulas must work for any floor plan; never branch on a building's size or
   identity (code comparing geo values or array sizes to fixed numbers is rejected)."""
 
 CF_SYSTEM = """\
@@ -372,15 +376,31 @@ Reply only in the JSON format requested: a list of candidates, each with a short
 (what changed and which diagnostic motivates it), and the complete module source in "code"."""
 
 
-def cf_system_prompt(constants_raw, screen=5.0, horizons=(12, 36, 72), main_h=36, cw=0.0001):
+def selection_text(keys):
+    from .closedform import OBJECTIVES
+    if not keys:
+        return "  Selection: islands keep the programs with the lowest score."
+    rows = "\n".join(f"    {k:<11} {OBJECTIVES[k][0]}  (mostly decided by: {OBJECTIVES[k][1]})" for k in keys)
+    return ("  Selection is MULTI-OBJECTIVE: a program survives if no other program is at least as good on every one of\n"
+            "  these objectives and better on one (Pareto front), so getting one group of coefficients right is rewarded\n"
+            "  even before the others are right:\n" + rows)
+
+
+def _objs(rec):
+    o = rec.get("objectives") or {}
+    return ("; objectives " + ", ".join(f"{k} {v:.3f}" if k != "complexity" else f"{k} {v:.0f}" for k, v in o.items())) if o else ""
+
+
+def cf_system_prompt(constants_raw, screen=5.0, horizons=(12, 36, 72), main_h=36, cw=0.0001, keys=None):
     rows = "\n".join(f"  U[\"{k}\"] = {v['value']:<10g} {v['unit']:<7} {v['what']}" for k, v in constants_raw.items() if not k.startswith("_"))
     hz = ", ".join(f"{h / 12:g} h" for h in horizons)
     return CF_SYSTEM.format(data=CF_DATA, constants=rows, contract=CF_CONTRACT,
-                            scoring=CF_SCORING.format(screen=screen, horizons=hz, main=f"{main_h / 12:g} h", cw=cw))
+                            scoring=CF_SCORING.format(screen=screen, horizons=hz, main=f"{main_h / 12:g} h", cw=cw,
+                                                      selection=selection_text(keys)))
 
 
 def _prog(rec, label):
-    return (f"### {label}: {rec['name']}  [{rec['id']}, island {rec['island']}, score {rec['score']:.4f}]\n"
+    return (f"### {label}: {rec['name']}  [{rec['id']}, island {rec['island']}, score {rec['score']:.4f}{_objs(rec)}]\n"
             f"Hypothesis: {rec.get('hypothesis', '')}\n```python\n{rec['code'].strip()}\n```\n")
 
 
@@ -391,31 +411,34 @@ def _fails(failures):
         f"- {f['name']} [{f['status']}]: {f.get('reason', '')}" + ("".join(f"\n    {x}" for x in f.get("failures", [])[:3])) for f in failures)
 
 
-def cf_user_mutation(gen, island, parent, analysis_text, profile_text, failures, n):
+def cf_user_mutation(gen, island, parent, analysis_text, profile_text, failures, n, keys=None):
     return "\n\n".join(x for x in [
         f"Generation {gen}, island {island}.  Operator: MUTATION.",
         _prog(parent, "Parent"),
-        "Pre-mutation analysis of the parent (held-out buildings):\n" + analysis_text,
+        "Pre-mutation analysis of the parent (validation buildings): where, when and through which term it errs\n" + analysis_text,
         ("Measured vs predicted (the parent's 3 h-ahead forecast) for two rooms:\n" + profile_text) if profile_text else "",
         _fails(failures),
         f"Write {n} children of this parent.  Each must change ONE thing that the analysis points to (one "
         "coefficient formula, a different history summary, a history-inferred material value) and keep the rest. "
-        "Say in the hypothesis which diagnostic line motivates the change."] if x)
+        "Use the TERMS slopes, the SPATIAL correlations and the TEMPORAL breakdown to decide which coefficient to change "
+        "and in which direction, and say in the hypothesis which diagnostic line motivates the change and which "
+        "objective it should improve."] if x)
 
 
-def cf_user_crossover(gen, island, a, b, cx_text, failures, n):
+def cf_user_crossover(gen, island, a, b, cx_text, failures, n, keys=None):
     return "\n\n".join(x for x in [
         f"Generation {gen}, island {island}.  Operator: CROSSOVER.",
         _prog(a, "Parent A"), _prog(b, "Parent B"),
         "Pre-crossover analysis:\n" + cx_text,
         _fails(failures),
         f"Write {n} children that COMBINE the parents: take each coefficient formula from the parent that is better "
-        "where that coefficient matters (e.g. the outside-wall conductance from the parent better on exterior rooms), make "
+        "where that coefficient matters (the TERMS lines say which parent's formula is closer to right for each term; the "
+        "SPATIAL and TEMPORAL lines say where and when each parent wins), make "
         "the formulas consistent, and state in the hypothesis which formula came from which parent."] if x)
 
 
-def cf_user_explore(gen, island, elites, failures, n):
-    lb = "\n".join(f"- {e['name']} [{e['id']}]: score {e['score']:.4f}; {e.get('hypothesis', '')[:300]}" for e in elites) or "- none yet"
+def cf_user_explore(gen, island, elites, failures, n, keys=None):
+    lb = "\n".join(f"- {e['name']} [{e['id']}]: score {e['score']:.4f}{_objs(e)}; {e.get('hypothesis', '')[:300]}" for e in elites) or "- none yet"
     return "\n\n".join(x for x in [
         f"Generation {gen}, island {island}.  Operator: EXPLORE.",
         "Programs on this island so far (best first):\n" + lb,

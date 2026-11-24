@@ -2,22 +2,33 @@
  "run": "selftest",
  "dataset": "/Users/srivathsan/Desktop/smart-buildings/working-code/outputs/discovery/selftest_dataset",
  "split": {
-  "_note": "SYNTHETIC self-test split",
-  "train": [
+  "_note": "SYNTHETIC self-test split (no training split: nothing is fitted)",
+  "val": [
    "building_train_1",
    "building_train_2",
-   "building_train_4"
-  ],
-  "val": [
+   "building_train_4",
    "building_train_5",
    "building_train_7"
   ],
-  "test": [
+  "test_medium": [
    "building_train_8"
   ]
  },
+ "auto_split": false,
  "policies": null,
  "proposer": "mock",
+ "agent_cmd": "claude -p",
+ "max_usd": null,
+ "selection": "pareto",
+ "objectives": [
+  "main",
+  "fast",
+  "slow",
+  "exterior",
+  "interior",
+  "complexity"
+ ],
+ "test_front": 5,
  "generations": 2,
  "islands": 2,
  "migrate_every": 1,
@@ -37,7 +48,6 @@
  "screen": 5.0,
  "complexity_weight": 0.0001,
  "score": "deploy",
- "max_train": 8,
  "max_val": 30,
  "ceiling": true,
  "test": false,
@@ -48,6 +58,8 @@
  "effort": "high",
  "mode": "closedform",
  "n_runs": 12,
- "n_train_used": 6,
- "n_val_used": 4
+ "n_val_used": 10,
+ "n_test": {
+  "test_medium": 2
+ }
 }

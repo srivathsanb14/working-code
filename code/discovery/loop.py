@@ -68,7 +68,7 @@ def split_episodes(eps, split):
         return any(hit(e, p) for p in pats if not p.startswith("!"))
     out = {k: [e for e in eps if match(e, v)] for k, v in split.items() if not k.startswith("_")}
     for k, v in out.items():
-        if not v and k != "test":
+        if not v and not k.startswith("test"):
             raise SystemExit(f"split '{k}' matched no episodes; adjust --split")
     return out
 

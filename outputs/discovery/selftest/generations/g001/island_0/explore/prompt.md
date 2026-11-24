@@ -7,8 +7,8 @@ see ../../../../system_prompt.md
 Generation 1, island 0.  Operator: EXPLORE.
 
 Programs on this island so far (best first):
-- seed_cf_network_observer [g000_i0_0002]: score 2.4331; Stateful seed: the audited room network (air, slab, facade, partitions, doors) with a measurement-corrected state.
-- seed_cf_history_slab [g000_i0_0000]: score 2.5778; Room air plus a slow store summarised from history, and the facade U-value inferred from history.
-- seed_cf_one_node [g000_i0_0004]: score 2.9331; One temperature per room, nominal materials, no history beyond the last measurement.
+- seed_cf_network [g000_i0_0002]: score 2.2602; objectives main 2.183, fast 1.807, slow 2.384, exterior 2.339, interior 1.253, passive 3.050, driven 0.814, complexity 772; Starting model: the audited room network, written as coefficient formulas of the fixed state-space function.
+- seed_cf_history [g000_i0_0000]: score 2.8173; objectives main 2.744, fast 2.591, slow 2.926, exterior 3.098, interior 1.546, passive 3.720, driven 1.685, complexity 731; Starting model: room air plus a slab store, with the outside-wall U-value computed from the measured history.
+- seed_cf_one_node [g000_i0_0004]: score 2.8151; objectives main 2.799, fast 2.230, slow 3.475, exterior 3.052, interior 3.277, passive 3.879, driven 2.392, complexity 156; Starting model: one temperature per room (its air), nominal materials, nothing read from history.
 
-Write 1 candidates with a STRUCTURALLY different hypothesis from all of the above (a different slow-store summary, a different way to infer per-building materials from history, different coupling laws), not a re-tuning.
+Write 1 candidates with a STRUCTURALLY different hypothesis from all of the above (a different use of the stores, a different way to infer per-building materials from history, different coupling laws), not a re-tuning.

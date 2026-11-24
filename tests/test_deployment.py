@@ -28,7 +28,7 @@ def test_building_specific_branching_is_rejected(body):
 def test_test_time_score_does_not_peek_at_future_weather(toy_episodes, U):
     """The planted truth is exact with the true future inputs, but not when the future outside temperature and occupancy
     are unknown: the score must use the latter."""
-    r = cf.evaluate(st.TRUTH_SRC, toy_episodes[:1], toy_episodes[1:], U, every=24)
+    r = cf.evaluate(st.TRUTH_SRC, toy_episodes[1:], U, every=24)
     assert r["val_3h_mean"] < 1e-9 and r["val_3h_deploy_mean"] > 1e-3
     assert abs(r["score"] - r["complexity"] * 1e-4 - r["val_3h_deploy_mean"]) < 1e-9
 

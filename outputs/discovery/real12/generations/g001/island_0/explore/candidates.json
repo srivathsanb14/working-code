@@ -1,0 +1,12 @@
+{
+ "candidates": [
+  {
+   "name": "mock_exp_g1_0",
+   "hypothesis": "[mock explore, no LLM] rescaled 2.5 -> 3.125, 2 -> 1.2, 25 -> 40 in seed_cf_one_node",
+   "code": "\"\"\"Starting model: one temperature per room (its air), nominal materials, nothing read from history.\n\nCoefficients: supply air and heat through the air capacity (floor area); outside wall = facade area x a nominal\n2 W/m2K; neighbour exchange through shared walls and doors = contact area x a nominal conductance per m2.  No slab or\nwall store.  This is the baseline the other starting models and every LLM candidate must beat.\n\"\"\"\nimport numpy as np\nHISTORY = 1\nREFRESH = 288\n\ndef coefficients(geo, hist, U):\n    face = U['CELL'] * U['HEIGHT']\n    dt = U['DT']\n    C_air = U['RHO_C_AIR'] * U['HEIGHT'] * geo['area']\n    G_nb = (geo['wall_cells'] * face * 3.125 + geo['door_cells'] * face * 40.0) * (1 - np.eye(geo['V']))\n    return {'air': dt / C_air, 'heat': dt / C_air, 'neighbours': dt * G_nb / C_air[:, None], 'outside': dt * geo['facade_faces'] * face * 1.2 / C_air}\n"
+  }
+ ],
+ "parents": [],
+ "best_parent": null,
+ "usage": null
+}

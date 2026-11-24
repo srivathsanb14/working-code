@@ -6,110 +6,108 @@ see ../../../../system_prompt.md
 
 Generation 2, island 0.  Operator: MUTATION.
 
-### Parent: mock_cro_g1_0  [g001_i0_0008, island 0, score 2.4331]
-Hypothesis: [mock crossover, no LLM] seed_cf_network_observer with nothing taken from seed_cf_history_slab
+### Parent: seed_cf_one_node  [g000_i0_0004, island 0, score 2.8151; objectives main 2.799, fast 2.230, slow 3.475, exterior 3.052, interior 3.277, passive 3.879, driven 2.392, complexity 156]
+Hypothesis: Starting model: one temperature per room (its air), nominal materials, nothing read from history.
 ```python
-"""Stateful seed: the audited room network (air, slab, facade, partitions, doors) with a measurement-corrected state.
+"""Starting model: one temperature per room (its air), nominal materials, nothing read from history.
 
-Nothing is fitted.  Every material number is a universal constant: the middle (geometric mean for log-drawn
-properties) of the starter-kit generator's range (smart_control/utils/materials.py), and the outdoor film is the
-middle of the stations' range.  The state is corrected every step by the measured room temperatures (room-air
-nodes take the measurement; slab, facade and partition nodes follow), so the slow stores are estimated from
-history instead of being fitted.  Stateful contract: init_state / predict / correct (see prompts.CF_CONTRACT).
+Coefficients: supply air and heat through the air capacity (floor area); outside wall = facade area x a nominal
+2 W/m2K; neighbour exchange through shared walls and doors = contact area x a nominal conductance per m2.  No slab or
+wall store.  This is the baseline the other starting models and every LLM candidate must beat.
 """
 import numpy as np
-import dlib
-K_EXT = (0.15 * 0.55) ** 0.5
-RC_EXT = (350 * 2400) ** 0.5 * 920.0
-K_IW = 0.525
-RC_IW = (110 * 700) ** 0.5 * 900.0
-RC_MASS = (10 * 40) ** 0.5 * 1000.0
-H_FILM = 17.75
-H_SLAB, A_SPREAD, K_AIR = (5.0, 0.6, 50.0)
 
-def _spread(area, length):
-    return A_SPREAD * np.log1p(np.sqrt(area) / np.maximum(length, 1e-09)) / (np.pi * K_AIR * dlib.HEIGHT)
+HISTORY = 1
+REFRESH = 288
 
-def prepare(geo, U):
-    V = geo['V']
-    A = geo['area']
-    H = U['HEIGHT']
-    c = U['CELL']
-    face = H * c
-    wi, wj, wn = dlib.pairs(geo['wall_cells'])
-    di, dj, dn = dlib.pairs(geo['door_cells'])
-    N = 3 * V + len(wi)
-    C = np.empty(N)
-    G = np.zeros((N, N))
-    G_amb = np.zeros(N)
-    air, slab, fac = (np.arange(V), V + np.arange(V), 2 * V + np.arange(V))
-    C[air] = U['RHO_C_AIR'] * H * A
-    C[slab] = RC_MASS * H * A
-    G[air, slab] = G[slab, air] = H_SLAB * A
-    nf = geo['facade_faces']
-    has_f = nf > 0
-    C[fac] = np.where(has_f, RC_EXT * nf * face * c / 2, 1.0)
-    g_in = nf * face / (c / (2 * K_AIR) + c / (4 * K_EXT))
-    G[air, fac] = G[fac, air] = np.where(has_f, 1 / (1 / np.maximum(g_in, 1e-09) + _spread(A, nf * c)), 0.0)
-    G_amb[fac] = np.where(has_f, nf * face / (c / (4 * K_EXT) + 1 / H_FILM), 0.0)
-    for k in range(len(wi)):
-        i, j, n = (wi[k], wj[k], wn[k])
-        w = 3 * V + k
-        C[w] = RC_IW * n * face * c
-        g_half = n * face / (c / (2 * K_AIR) + c / (2 * K_IW))
-        G[i, w] = G[w, i] = 1 / (1 / g_half + _spread(A[i], n * c))
-        G[j, w] = G[w, j] = 1 / (1 / g_half + _spread(A[j], n * c))
-    for i, j, n in zip(di, dj, dn):
-        g_door = n * face / (2 * c / K_AIR)
-        G[i, j] = G[j, i] = G[i, j] + 1 / (1 / g_door + _spread(A[i], n * c) + _spread(A[j], n * c))
-    return dict(net=dlib.LinearNetwork(C, G, G_amb, V), V=V)
 
-def init_state(coef, geo, U):
-    return np.full(coef['net'].N, U['T0'])
-
-def predict(coef, geo, state, u, U):
-    Q = u['Q_reheat'] + u['Q_gain'] + U['OCC_W'] * np.asarray(u['occupants'])[:, None] / geo['V']
-    return dlib.network_predict(coef['net'], state, u['T_out'], u['g'], u['T_supply'], Q)
-
-def correct(coef, geo, state, T_measured, U):
-    return dlib.correct_rooms(state, T_measured, coef['V'])
+def coefficients(geo, hist, U):
+    face = U["CELL"] * U["HEIGHT"]; dt = U["DT"]
+    C_air = U["RHO_C_AIR"] * U["HEIGHT"] * geo["area"]
+    G_nb = (geo["wall_cells"] * face * 2.5 + geo["door_cells"] * face * 25.0) * (1 - np.eye(geo["V"]))
+    return {"air": dt / C_air, "heat": dt / C_air, "neighbours": dt * G_nb / C_air[:, None],
+            "outside": dt * geo["facade_faces"] * face * 2.0 / C_air}
 ```
 
 
-Pre-mutation analysis of the parent (held-out buildings):
-held-out rollout RMSE by horizon (model / persistence), K: 1h 1.961/1.464, 3h 2.268/3.005, 6h 2.512/4.722
-one-step (5 min) RMSE 0.8822 K (persistence 0.2169); train buildings 3h 2.016 K
-3h rollout error by group (rmse, bias), K:
-  all rooms                              2.284  +1.167
-  exterior rooms                         2.480  +1.301
-  interior rooms                         1.603  +0.788
-  most exposed third of exterior rooms   2.773  +1.482
-  HVAC air on                            0.810  -0.228
-  HVAC air off                           3.361  +3.026
-  comfort hours                          0.810  -0.228
-  night/weekend                          3.361  +3.026
-  room being reheated                    0.746  +0.117
-  room not reheated                      2.520  +1.423
-  colder half of outside temps           3.324  +2.927
-  warmer half                            0.833  -0.197
-skill vs persistence by horizon (ratio <1 is better): 1h 1.34, 3h 0.75, 6h 0.53
-worst rooms: held-out episode 1 room #6 (rmse 3.15, bias +0.78, facade faces 74, area 35 m2, doors 0); held-out episode 1 room #13 (rmse 3.04, bias +1.73, facade faces 72, area 44 m2, doors 0); held-out episode 2 room #6 (rmse 3.00, bias +1.66, facade faces 74, area 35 m2, doors 0); held-out episode 4 room #17 (rmse 2.98, bias +1.66, facade faces 135, area 77 m2, doors 1)
-complexity 990 AST nodes, history 1 steps
+Pre-mutation analysis of the parent (validation buildings): where, when and through which term it errs
+OBJECTIVES (validation, lower is better): main 2.799, fast 2.230, slow 3.475, exterior 3.052, interior 3.277, passive 3.879, driven 2.392, complexity 156
+
+TEMPORAL
+  error vs horizon (rmse / bias / persistence rmse, K):
+     0.08 h   0.481 / +0.163 / 0.565
+     0.50 h   1.646 / +0.316 / 1.116
+     1.00 h   2.263 / +0.084 / 1.330
+     2.00 h   2.941 / -0.241 / 2.088
+     3.00 h   3.259 / -0.415 / 2.774
+     4.00 h   3.389 / -0.487 / 3.394
+     6.00 h   3.515 / -0.637 / 4.399
+    -> half of the long-horizon error is already there after 1 h: the fast terms (air, heat, neighbours) are off
+  one-step error autocorrelation at 1 h lag: +0.75 (persistent: a slow state or a slowly varying input is missing or mis-scaled)
+  3h rollout error by time (rmse, bias, K):
+    target hour 00-04                            4.584  -4.365
+    target hour 04-08                            4.109  -1.962
+    target hour 08-12                            3.129  +2.561
+    target hour 12-16                            1.714  +1.073
+    target hour 16-20                            1.247  +0.823
+    target hour 20-24                            3.297  -2.922
+    occupied (comfort) hours                     2.392  +1.737
+    nights and weekends                          3.879  -3.294
+    HVAC air on at the target                    2.392  +1.737
+    HVAC air off at the target                   3.879  -3.294
+    HVAC switched off during the rollout         1.242  -0.522
+    HVAC switched on during the rollout          3.589  +3.162
+    colder half of outside temperatures          4.125  -2.475
+    warmer half of outside temperatures          1.994  +1.198
+    first 3 days of the episode                  3.117  -0.419
+
+SPATIAL
+  3h rollout error by place (rmse, bias, K):
+    exterior rooms                               3.052  -0.219
+    interior rooms                               3.277  -0.926
+    corner rooms (outside wall on 2+ sides)      3.001  -0.058
+    outside wall on the top side of the plan     2.957  -0.190
+    outside wall on the bottom side of the plan  3.025  -0.120
+    outside wall on the left side of the plan    2.987  -0.212
+    outside wall on the right side of the plan   3.049  -0.215
+    floor 1                                      3.016  -0.401
+    floor 2                                      3.046  -0.369
+    floor 3                                      3.422  -0.453
+    floor 4                                      3.252  -0.731
+  correlation of a room's bias with its geometry (over all validation rooms):
+    shared-wall length per floor area            -0.46   <- the formula's dependence on this is wrong
+    outside-wall length per floor area           +0.43   <- the formula's dependence on this is wrong
+    number of neighbours                         -0.33
+    door width per floor area                    -0.25
+    floor area                                   +0.18
+  error series correlation, adjacent rooms +0.97 vs non-adjacent +0.94 (similar: a building-wide cause, e.g. supply air or outside term)
+  worst rooms: episode 1 room #35 (rmse 6.29, bias +1.06, outside-wall faces 0, area 193 m2, doors 3); episode 1 room #38 (rmse 6.12, bias +2.09, outside-wall faces 189, area 346 m2, doors 1); episode 2 room #35 (rmse 5.99, bias +0.90, outside-wall faces 0, area 193 m2, doors 3); episode 2 room #38 (rmse 5.97, bias +2.04, outside-wall faces 189, area 346 m2, doors 1)
+
+TERMS (one-step residual regressed on each term's contribution; slope s means the term should be about (1+s) times as large)
+  residual rms 0.4662 K per step; the terms explain 93% of it
+    air         size 0.3812 K/step   slope -0.751 +- 0.001   -> too strong by about 75%
+    outside     size 0.4267 K/step   slope -0.730 +- 0.001   -> too strong by about 73%
+    neighbours  size 0.2717 K/step   slope -0.784 +- 0.002   -> too strong by about 78%
+    heat        size 0.4666 K/step   slope -0.860 +- 0.001   -> too strong by about 86%
+  exterior rooms only: outside -0.725 (too strong by about 72%)
+  (terms that move together, e.g. outside and wall, share the residual: read their slopes together)
+
+complexity 156 AST nodes, history 1 steps, horizons 1h, 3h, 6h
 
 Measured vs predicted (the parent's 3 h-ahead forecast) for two rooms:
-a held-out episode; room #57 = most exposed exterior room, room #10 = largest interior room
-time  | room #57 measured / predicted | room #10 measured / predicted | T_out | HVAC air
-   0h |   5.02 /  10.23 C |  14.00 /  15.64 C |  -2.0 C | off
-   2h |   2.91 /   8.44 C |  12.74 /  14.96 C |  -3.9 C | off
-   4h |   1.70 /   6.69 C |  11.39 /  14.02 C |  -4.0 C | off
-   6h |   1.68 /   5.27 C |  10.12 /  12.90 C |  -2.2 C | off
-   8h |   9.05 /   8.48 C |  13.73 /  14.26 C |   1.0 C | on
-  10h |  12.64 /  11.55 C |  14.71 /  14.42 C |   4.6 C | on
-  12h |  13.26 /  12.08 C |  15.85 /  15.05 C |   7.7 C | on
-  14h |  13.96 /  13.06 C |  16.21 /  15.44 C |   9.5 C | on
-  16h |  13.74 /  13.28 C |  16.70 /  16.00 C |   9.4 C | on
-  18h |  13.52 /  13.76 C |  16.91 /  16.38 C |   7.7 C | on
-  20h |  10.26 /  12.58 C |  16.11 /  16.01 C |   4.5 C | off
-  22h |   7.57 /  11.56 C |  15.34 /  15.93 C |   0.8 C | off
+a held-out episode; room #0 = most exposed exterior room, room #35 = largest interior room
+time  | room #0 measured / predicted | room #35 measured / predicted | T_out | HVAC air
+   0h |   5.57 /   2.31 C |  13.59 /   6.84 C |  -2.2 C | off
+   2h |   3.30 /  -0.06 C |  11.88 /   4.22 C |  -4.1 C | off
+   4h |   1.87 /  -0.94 C |  10.19 /   2.66 C |  -4.1 C | off
+   6h |   1.56 /  -0.16 C |   8.72 /   2.49 C |  -2.3 C | off
+   8h |   9.23 /  13.84 C |  10.18 /  14.21 C |   0.8 C | on
+  10h |  11.61 /  14.92 C |  11.51 /  20.31 C |   4.4 C | on
+  12h |  13.08 /  14.64 C |  13.07 /  21.34 C |   7.6 C | on
+  14h |  13.57 /  15.04 C |  14.44 /  21.57 C |   9.5 C | on
+  16h |  13.87 /  15.08 C |  15.57 /  22.11 C |   9.4 C | on
+  18h |  13.68 /  14.68 C |  16.39 /  21.61 C |   7.6 C | on
+  20h |  10.86 /  10.13 C |  15.37 /  16.60 C |   4.5 C | off
+  22h |   8.33 /   5.53 C |  14.40 /   9.84 C |   0.9 C | off
 
-Write 2 children of this parent.  Each must change ONE thing that the analysis points to (a template's formula, a new template, a different history summary, a history-inferred material value) and keep the rest. Say in the hypothesis which diagnostic line motivates the change.
+Write 2 children of this parent.  Each must change ONE thing that the analysis points to (one coefficient formula, a different history summary, a history-inferred material value) and keep the rest. Use the TERMS slopes, the SPATIAL correlations and the TEMPORAL breakdown to decide which coefficient to change and in which direction, and say in the hypothesis which diagnostic line motivates the change and which objective it should improve.

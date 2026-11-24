@@ -1,6 +1,6 @@
 # Discovery run `selftest` — SYNTHETIC self-test (planted truth, not simulator data)
 
-Mode: closed-form, **no fitting anywhere**. Proposer: `mock` (mechanical operators, **no LLM**). Islands: 2, migration every 1 generation(s). Generations so far: 2. Candidates: 26 records (23 evaluated programs incl. seed copies). Held-out episodes used for the score: 4. Score = held-out 3 h rollout RMSE from measured history + 0.0001 K per AST node.
+Mode: closed-form, **no fitting anywhere**. Proposer: `mock` (mechanical operators, **no LLM**). Islands: 2, migration every 1 generation(s). Generations so far: 2. Candidates: 21 records (20 evaluated programs incl. seed copies). Held-out episodes used for the score: 10. Score = held-out 3 h rollout RMSE from measured history + 0.0001 K per AST node.
 
 ## Where to look
 
@@ -20,31 +20,77 @@ Operators: **seed** (hand-written start), **mutation** (one parent changed where
 
 ## Best so far
 
-**[g002_i0_0017] `mock_mut_g2_0`** — island 0, mutation, score 2.1245
+**[g002_i1_0019] `mock_exp_g2_0`** — island 1, explore, score 2.1163
 
-Hypothesis: [mock mutation, no LLM] rescaled 0.55 -> 0.88, 900 -> 720 in mock_cro_g1_0
+Hypothesis: [mock explore, no LLM] rescaled 0.5 -> 0.4, 17.75 -> 10.65, 0.525 -> 0.84, 50 -> 80 in mock_mut_g1_0
 
-Source: [candidates/g002_i0_0017_mock_mut_g2_0.py](candidates/g002_i0_0017_mock_mut_g2_0.py)
+Source: [candidates/g002_i1_0019_mock_exp_g2_0.py](candidates/g002_i1_0019_mock_exp_g2_0.py)
 
 ```
-held-out rollout RMSE by horizon (model / persistence), K: 1h 1.658/1.464, 3h 1.930/3.005, 6h 2.130/4.722
-one-step (5 min) RMSE 0.7577 K (persistence 0.2169); train buildings 3h 1.705 K
-3h rollout error by group (rmse, bias), K:
-  all rooms                              1.940  +0.898
-  exterior rooms                         2.088  +0.969
-  interior rooms                         1.444  +0.698
-  most exposed third of exterior rooms   2.311  +1.071
-  HVAC air on                            0.776  -0.341
-  HVAC air off                           2.825  +2.551
-  comfort hours                          0.776  -0.341
-  night/weekend                          2.825  +2.551
-  room being reheated                    0.661  -0.063
-  room not reheated                      2.139  +1.133
-  colder half of outside temps           2.790  +2.434
-  warmer half                            0.807  -0.292
-skill vs persistence by horizon (ratio <1 is better): 1h 1.13, 3h 0.64, 6h 0.45
-worst rooms: held-out episode 1 room #6 (rmse 2.72, bias +0.38, facade faces 74, area 35 m2, doors 0); held-out episode 1 room #13 (rmse 2.54, bias +1.31, facade faces 72, area 44 m2, doors 0); held-out episode 2 room #6 (rmse 2.50, bias +1.25, facade faces 74, area 35 m2, doors 0); held-out episode 4 room #17 (rmse 2.50, bias +1.21, facade faces 135, area 77 m2, doors 1)
-complexity 990 AST nodes, history 1 steps
+OBJECTIVES (validation, lower is better): main 2.039, fast 1.560, slow 2.270, exterior 2.193, interior 0.968, passive 2.848, driven 0.644, complexity 772
+
+TEMPORAL
+  error vs horizon (rmse / bias / persistence rmse, K):
+     0.08 h   0.682 / +0.307 / 0.565
+     0.50 h   1.386 / +0.681 / 1.116
+     1.00 h   1.573 / +0.801 / 1.330
+     2.00 h   1.806 / +0.926 / 2.088
+     3.00 h   1.973 / +1.026 / 2.774
+     4.00 h   2.090 / +1.102 / 3.394
+     6.00 h   2.289 / +1.255 / 4.399
+    -> half of the long-horizon error is already there after 1 h: the fast terms (air, heat, neighbours) are off
+  one-step error autocorrelation at 1 h lag: +0.86 (persistent: a slow state or a slowly varying input is missing or mis-scaled)
+  3h rollout error by time (rmse, bias, K):
+    target hour 00-04                            3.299  +3.019
+    target hour 04-08                            2.858  +2.381
+    target hour 08-12                            0.683  -0.066
+    target hour 12-16                            0.580  -0.345
+    target hour 16-20                            0.652  +0.141
+    target hour 20-24                            2.299  +1.942
+    occupied (comfort) hours                     0.644  -0.102
+    nights and weekends                          2.848  +2.456
+    HVAC air on at the target                    0.644  -0.102
+    HVAC air off at the target                   2.848  +2.456
+    HVAC switched off during the rollout         1.308  +1.009
+    HVAC switched on during the rollout          0.992  +0.523
+    colder half of outside temperatures          2.791  +2.317
+    warmer half of outside temperatures          0.711  -0.046
+    first 3 days of the episode                  1.927  +0.994
+
+SPATIAL
+  3h rollout error by place (rmse, bias, K):
+    exterior rooms                               2.193  +1.272
+    interior rooms                               0.968  +0.291
+    corner rooms (outside wall on 2+ sides)      2.470  +1.484
+    outside wall on the top side of the plan     2.281  +1.333
+    outside wall on the bottom side of the plan  2.278  +1.335
+    outside wall on the left side of the plan    2.231  +1.309
+    outside wall on the right side of the plan   2.203  +1.284
+    floor 1                                      1.915  +1.000
+    floor 2                                      1.837  +0.923
+    floor 3                                      2.054  +1.085
+    floor 4                                      2.149  +1.139
+  correlation of a room's bias with its geometry (over all validation rooms):
+    outside-wall length per floor area           +0.88   <- the formula's dependence on this is wrong
+    number of neighbours                         -0.75   <- the formula's dependence on this is wrong
+    shared-wall length per floor area            -0.53   <- the formula's dependence on this is wrong
+    door width per floor area                    -0.35
+    floor area                                   -0.19
+  error series correlation, adjacent rooms +0.95 vs non-adjacent +0.91 (similar: a building-wide cause, e.g. supply air or outside term)
+  worst rooms: episode 7 room #57 (rmse 3.10, bias +2.00, outside-wall faces 154, area 38 m2, doors 1); episode 6 room #22 (rmse 3.00, bias +1.90, outside-wall faces 181, area 63 m2, doors 1); episode 8 room #57 (rmse 2.98, bias +1.87, outside-wall faces 154, area 38 m2, doors 1); episode 6 room #4 (rmse 2.94, bias +1.91, outside-wall faces 204, area 95 m2, doors 1)
+
+TERMS (one-step residual regressed on each term's contribution; slope s means the term should be about (1+s) times as large)
+  residual rms 0.6695 K per step; the terms explain 97% of it
+    air         size 0.2365 K/step   slope -0.291 +- 0.002   -> too strong by about 29%
+    neighbours  size 0.2509 K/step   slope -0.760 +- 0.002   -> too strong by about 76%
+    slab        size 0.3793 K/step   slope -0.966 +- 0.002   -> too strong by about 97%
+    wall        size 0.2163 K/step   slope +0.007 +- 0.004   -> consistent with its current size
+    inner       size 0.2591 K/step   slope -0.902 +- 0.004   -> too strong by about 90%
+    heat        size 0.2709 K/step   slope -0.455 +- 0.002   -> too strong by about 46%
+  exterior rooms only: wall +0.006 (consistent with its current size)
+  (terms that move together, e.g. outside and wall, share the residual: read their slopes together)
+
+complexity 772 AST nodes, history 1 steps, horizons 1h, 3h, 6h
 ```
 
 ## Leaderboard (held-out, K)
@@ -53,45 +99,42 @@ Score uses test-time information only (future outside temperature and occupancy 
 
 | id | island | operator | parents | name | score | 3 h test-time | 5 min | 1 h | 3 h | 6 h | persistence 3 h |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| g002_i0_0017 | 0 | mutation | g001_i0_0008 | `mock_mut_g2_0` | 2.1245 | 2.025 | 0.758 | 1.658 | 1.930 | 2.130 | 3.005 |
-| g002_i1_0023 | 1 | crossover | g001_i1_0010, g001_i1_0014 | `mock_cro_g2_1` | 2.2701 | 2.171 | 0.780 | 1.777 | 2.097 | 2.336 | 3.005 |
-| g001_i1_0014 | 1 | explore | - | `mock_exp_g1_0` | 2.2714 | 2.172 | 0.775 | 1.775 | 2.099 | 2.340 | 3.005 |
-| g002_i1_0024 | 1 | explore | - | `mock_exp_g2_0` | 2.2975 | 2.218 | 0.545 | 2.109 | 2.339 | 2.035 | 3.005 |
-| g001_i0_0006 | 0 | mutation | g000_i0_0000 | `mock_mut_g1_0` | 2.3663 | 2.287 | 0.555 | 2.136 | 2.346 | 2.126 | 3.005 |
-| g002_i1_0022 | 1 | crossover | g001_i1_0010, g001_i1_0014 | `mock_cro_g2_0` | 2.3925 | 2.294 | 0.865 | 1.923 | 2.224 | 2.461 | 3.005 |
-| g002_i1_0020 | 1 | mutation | g001_i1_0010 | `mock_mut_g2_0` | 2.4202 | 2.321 | 0.883 | 1.949 | 2.254 | 2.495 | 3.005 |
-| g000_i0_0002 | 0 | seed | - | `seed_cf_network_observer` | 2.4331 | 2.334 | 0.882 | 1.961 | 2.268 | 2.512 | 3.005 |
-| g000_i1_0003 | 1 | seed | - | `seed_cf_network_observer` | 2.4331 | 2.334 | 0.882 | 1.961 | 2.268 | 2.512 | 3.005 |
-| g001_i0_0008 | 0 | crossover | g000_i0_0002, g000_i0_0000 | `mock_cro_g1_0` | 2.4331 | 2.334 | 0.882 | 1.961 | 2.268 | 2.512 | 3.005 |
-| g001_i1_0010 | 1 | mutation | g000_i1_0003 | `mock_mut_g1_0` | 2.4331 | 2.334 | 0.882 | 1.961 | 2.268 | 2.512 | 3.005 |
-| g002_i0_0018 | 0 | mutation | g001_i0_0008 | `mock_mut_g2_1` | 2.4331 | 2.334 | 0.882 | 1.961 | 2.268 | 2.512 | 3.005 |
-| g002_i1_0021 | 1 | mutation | g001_i1_0010 | `mock_mut_g2_1` | 2.4812 | 2.382 | 0.902 | 2.006 | 2.321 | 2.572 | 3.005 |
-| g000_i0_0000 | 0 | seed | - | `seed_cf_history_slab` | 2.5778 | 2.498 | 0.660 | 2.339 | 2.498 | 2.326 | 3.005 |
-| g000_i1_0001 | 1 | seed | - | `seed_cf_history_slab` | 2.5778 | 2.498 | 0.660 | 2.339 | 2.498 | 2.326 | 3.005 |
-| ceiling | - | fitted per room (diagnostic) | - | second half of each episode | - | - | - | 0.206 | 0.275 | 0.359 | 2.887 |
+| g002_i1_0019 | 1 | explore | - | `mock_exp_g2_0` | 2.1163 | 2.039 | 0.670 | 1.560 | 1.957 | 2.270 | 2.743 |
+| g000_i0_0002 | 0 | seed | - | `seed_cf_network` | 2.2602 | 2.183 | 0.744 | 1.807 | 2.127 | 2.384 | 2.743 |
+| g000_i1_0003 | 1 | seed | - | `seed_cf_network` | 2.2602 | 2.183 | 0.744 | 1.807 | 2.127 | 2.384 | 2.743 |
+| g002_i1_0017 | 1 | mutation | g001_i1_0011 | `mock_mut_g2_0` | 2.2619 | 2.185 | 0.722 | 1.816 | 2.132 | 2.366 | 2.743 |
+| g001_i1_0011 | 1 | mutation | g000_i1_0003 | `mock_mut_g1_1` | 2.2760 | 2.199 | 0.722 | 1.831 | 2.147 | 2.383 | 2.743 |
+| g001_i1_0010 | 1 | mutation | g000_i1_0003 | `mock_mut_g1_0` | 2.4487 | 2.371 | 0.842 | 2.025 | 2.336 | 2.555 | 2.743 |
+| g001_i0_0006 | 0 | mutation | g000_i0_0004 | `mock_mut_g1_0` | 2.6443 | 2.629 | 0.492 | 2.165 | 2.909 | 3.070 | 2.743 |
+| g001_i0_0009 | 0 | explore | - | `mock_exp_g1_0` | 2.6475 | 2.632 | 0.543 | 2.241 | 2.711 | 2.755 | 2.743 |
+| g002_i0_0015 | 0 | mutation | g000_i0_0004 | `mock_mut_g2_1` | 2.6675 | 2.652 | 0.533 | 2.226 | 2.744 | 2.793 | 2.743 |
+| g001_i0_0007 | 0 | mutation | g000_i0_0004 | `mock_mut_g1_1` | 2.8048 | 2.789 | 0.483 | 2.293 | 3.222 | 3.436 | 2.743 |
+| g000_i0_0004 | 0 | seed | - | `seed_cf_one_node` | 2.8151 | 2.799 | 0.463 | 2.230 | 3.214 | 3.475 | 2.743 |
+| g000_i1_0005 | 1 | seed | - | `seed_cf_one_node` | 2.8151 | 2.799 | 0.463 | 2.230 | 3.214 | 3.475 | 2.743 |
+| g001_i0_0008 | 0 | crossover | g000_i0_0004, g000_i0_0000 | `mock_cro_g1_0` | 2.8151 | 2.799 | 0.463 | 2.230 | 3.214 | 3.475 | 2.743 |
+| g000_i0_0000 | 0 | seed | - | `seed_cf_history` | 2.8173 | 2.744 | 0.731 | 2.591 | 2.808 | 2.926 | 2.743 |
+| g000_i1_0001 | 1 | seed | - | `seed_cf_history` | 2.8173 | 2.744 | 0.731 | 2.591 | 2.808 | 2.926 | 2.743 |
+| ceiling | - | fitted per room (diagnostic) | - | second half of each episode | - | - | - | 0.198 | 0.268 | 0.350 | 2.655 |
 
 ## Operators
 
 | operator | proposed | ok | screened (stage 1) | rejected (stage 0) | unstable (stage 2) | error | better than best parent | median Δ |
 |---|---|---|---|---|---|---|---|---|
 | seed | 6 | 6 | 0 | 0 | 0 | 0 | - | - |
-| mutation | 8 | 7 | 1 | 0 | 0 | 0 | 3 of 7 | +0.0000 |
-| crossover | 5 | 4 | 0 | 0 | 0 | 1 | 1 of 4 | +0.0606 |
-| explore | 4 | 4 | 0 | 0 | 0 | 0 | - | - |
+| mutation | 8 | 7 | 1 | 0 | 0 | 0 | 4 of 7 | -0.0103 |
+| crossover | 2 | 1 | 0 | 1 | 0 | 0 | 0 of 1 | +0.0000 |
+| explore | 4 | 3 | 1 | 0 | 0 | 0 | - | - |
 
 ## Islands
 
 ![progress](plots/progress.png)
 
-- island 0: best [g002_i0_0017] `mock_mut_g2_0` score 2.1245 (mutation)
-- island 1: best [g002_i1_0025] `mock_mut_g2_0` score 2.1245 (migration)
+- island 0: best [g002_i0_0020] `mock_exp_g2_0` score 2.1163 (migration)
+- island 1: best [g002_i1_0019] `mock_exp_g2_0` score 2.1163 (explore)
 
 ## Lineage of the best
 
-- [g002_i0_0017] mutation `mock_mut_g2_0` (island 0): score 2.1245
-  - [g001_i0_0008] crossover `mock_cro_g1_0` (island 0): score 2.4331
-    - [g000_i0_0002] seed `seed_cf_network_observer` (island 0): score 2.4331
-    - [g000_i0_0000] seed `seed_cf_history_slab` (island 0): score 2.5778
+- [g002_i1_0019] explore `mock_exp_g2_0` (island 1): score 2.1163
 
 Family tree of each island's best:
 
@@ -101,64 +144,53 @@ Same tree as mermaid:
 
 ```mermaid
 graph LR
-  g002_i0_0017["mutation<br/>mock_mut_g2_0<br/>2.124"]
-  g001_i0_0008["crossover<br/>mock_cro_g1_0<br/>2.433"]
-  g000_i0_0002["seed<br/>seed_cf_network_observer<br/>2.433"]
-  g000_i0_0000["seed<br/>seed_cf_history_slab<br/>2.578"]
-  g002_i1_0025["migration<br/>mock_mut_g2_0<br/>2.124"]
-  g000_i0_0000 --> g001_i0_0008
-  g000_i0_0002 --> g001_i0_0008
-  g001_i0_0008 --> g002_i0_0017
-  g002_i0_0017 --> g002_i1_0025
+  g002_i0_0020["migration<br/>mock_exp_g2_0<br/>2.116"]
+  g002_i1_0019["explore<br/>mock_exp_g2_0<br/>2.116"]
+  g002_i1_0019 --> g002_i0_0020
 ```
 
 ## Measured vs predicted
 
-**[g002_i0_0017] `mock_mut_g2_0`**
+**[g002_i1_0019] `mock_exp_g2_0`**
 
-![profile](plots/g002_i0_0017_profile.png)
+![profile](plots/g002_i1_0019_profile.png)
 
-![horizon](plots/g002_i0_0017_horizon.png)
+![horizon](plots/g002_i1_0019_horizon.png)
 
-**[g002_i0_0017] `mock_mut_g2_0`**
+**[g002_i1_0019] `mock_exp_g2_0`**
 
-![profile](plots/g002_i0_0017_profile.png)
+![profile](plots/g002_i1_0019_profile.png)
 
-![horizon](plots/g002_i0_0017_horizon.png)
+![horizon](plots/g002_i1_0019_horizon.png)
 
 ## Generation by generation
 
 Each line: island, operator, parents → child, outcome. Open the request folder for its prompt and analysis.
 
 ### Generation 0
-- island 0 seed → [g000_i0_0000] `seed_cf_history_slab`: score 2.5778
-- island 1 seed → [g000_i1_0001] `seed_cf_history_slab`: score 2.5778
-- island 0 seed → [g000_i0_0002] `seed_cf_network_observer`: score 2.4331
-- island 1 seed → [g000_i1_0003] `seed_cf_network_observer`: score 2.4331
-- island 0 seed → [g000_i0_0004] `seed_cf_one_node`: score 2.9331
-- island 1 seed → [g000_i1_0005] `seed_cf_one_node`: score 2.9331
+- island 0 seed → [g000_i0_0000] `seed_cf_history`: score 2.8173
+- island 1 seed → [g000_i1_0001] `seed_cf_history`: score 2.8173
+- island 0 seed → [g000_i0_0002] `seed_cf_network`: score 2.2602
+- island 1 seed → [g000_i1_0003] `seed_cf_network`: score 2.2602
+- island 0 seed → [g000_i0_0004] `seed_cf_one_node`: score 2.8151
+- island 1 seed → [g000_i1_0005] `seed_cf_one_node`: score 2.8151
 
 ### Generation 1
-- island 0 mutation of g000_i0_0000 → [g001_i0_0006] `mock_mut_g1_0`: score 2.3663 — [request](generations/g001/island_0/mutation/prompt.md)
-- island 0 mutation of g000_i0_0000 → [g001_i0_0007] `mock_mut_g1_1`: score 2.5799 — [request](generations/g001/island_0/mutation/prompt.md)
-- island 0 crossover of g000_i0_0002, g000_i0_0000 → [g001_i0_0008] `mock_cro_g1_0`: score 2.4331 — [request](generations/g001/island_0/crossover/prompt.md)
-- island 0 explore → [g001_i0_0009] `mock_exp_g1_0`: score 2.7265 — [request](generations/g001/island_0/explore/prompt.md)
-- island 1 mutation of g000_i1_0003 → [g001_i1_0010] `mock_mut_g1_0`: score 2.4331 — [request](generations/g001/island_1/mutation/prompt.md)
-- island 1 mutation of g000_i1_0003 → [g001_i1_0011] `mock_mut_g1_1`: screened: one-step RMSE 1.0871 K is more than 5.0x persistence (0.2169 K) on held-out buildings — [request](generations/g001/island_1/mutation/prompt.md)
-- island 1 crossover of g000_i1_0001, g000_i1_0003 → [g001_i1_0012] `mock_cro_g1_0`: error: NameError: name 'RC_MASS' is not defined — [request](generations/g001/island_1/crossover/prompt.md)
-- island 1 crossover of g000_i1_0001, g000_i1_0003 → [g001_i1_0013] `mock_cro_g1_1`: score 2.5778 — [request](generations/g001/island_1/crossover/prompt.md)
-- island 1 explore → [g001_i1_0014] `mock_exp_g1_0`: score 2.2714 — [request](generations/g001/island_1/explore/prompt.md)
-- island 1 migration of g001_i0_0006 → [g001_i1_0015] `mock_mut_g1_0`: score 2.3663 — [request](generations/g001/island_0/mutation/prompt.md)
-- island 0 migration of g001_i1_0014 → [g001_i0_0016] `mock_exp_g1_0`: score 2.2714 — [request](generations/g001/island_1/explore/prompt.md)
+- island 0 mutation of g000_i0_0004 → [g001_i0_0006] `mock_mut_g1_0`: score 2.6443 — [request](generations/g001/island_0/mutation/prompt.md)
+- island 0 mutation of g000_i0_0004 → [g001_i0_0007] `mock_mut_g1_1`: score 2.8048 — [request](generations/g001/island_0/mutation/prompt.md)
+- island 0 crossover of g000_i0_0004, g000_i0_0000 → [g001_i0_0008] `mock_cro_g1_0`: score 2.8151 — [request](generations/g001/island_0/crossover/prompt.md)
+- island 0 explore → [g001_i0_0009] `mock_exp_g1_0`: score 2.6475 — [request](generations/g001/island_0/explore/prompt.md)
+- island 1 mutation of g000_i1_0003 → [g001_i1_0010] `mock_mut_g1_0`: score 2.4487 — [request](generations/g001/island_1/mutation/prompt.md)
+- island 1 mutation of g000_i1_0003 → [g001_i1_0011] `mock_mut_g1_1`: score 2.2760 — [request](generations/g001/island_1/mutation/prompt.md)
+- island 1 crossover of g000_i1_0005, g000_i1_0003 → [g001_i1_0012] `mock_cro_g1_0`: rejected: physics checks failed — [request](generations/g001/island_1/crossover/prompt.md)
+- island 1 explore → [g001_i1_0013] `mock_exp_g1_0`: screened: one-step RMSE 1.3540 K is more than 5.0x persistence (0.1897 K) on the validation buildings — [request](generations/g001/island_1/explore/prompt.md)
 
 ### Generation 2
-- island 0 mutation of g001_i0_0008 → [g002_i0_0017] `mock_mut_g2_0`: score 2.1245 — [request](generations/g002/island_0/mutation/prompt.md)
-- island 0 mutation of g001_i0_0008 → [g002_i0_0018] `mock_mut_g2_1`: score 2.4331 — [request](generations/g002/island_0/mutation/prompt.md)
-- island 0 explore → [g002_i0_0019] `mock_exp_g2_0`: score 2.6515 — [request](generations/g002/island_0/explore/prompt.md)
-- island 1 mutation of g001_i1_0010 → [g002_i1_0020] `mock_mut_g2_0`: score 2.4202 — [request](generations/g002/island_1/mutation/prompt.md)
-- island 1 mutation of g001_i1_0010 → [g002_i1_0021] `mock_mut_g2_1`: score 2.4812 — [request](generations/g002/island_1/mutation/prompt.md)
-- island 1 crossover of g001_i1_0010, g001_i1_0014 → [g002_i1_0022] `mock_cro_g2_0`: score 2.3925 — [request](generations/g002/island_1/crossover/prompt.md)
-- island 1 crossover of g001_i1_0010, g001_i1_0014 → [g002_i1_0023] `mock_cro_g2_1`: score 2.2701 — [request](generations/g002/island_1/crossover/prompt.md)
-- island 1 explore → [g002_i1_0024] `mock_exp_g2_0`: score 2.2975 — [request](generations/g002/island_1/explore/prompt.md)
-- island 1 migration of g002_i0_0017 → [g002_i1_0025] `mock_mut_g2_0`: score 2.1245 — [request](generations/g002/island_0/mutation/prompt.md)
+- island 0 mutation of g000_i0_0004 → [g002_i0_0014] `mock_mut_g2_0`: score 3.1170 — [request](generations/g002/island_0/mutation/prompt.md)
+- island 0 mutation of g000_i0_0004 → [g002_i0_0015] `mock_mut_g2_1`: score 2.6675 — [request](generations/g002/island_0/mutation/prompt.md)
+- island 0 explore → [g002_i0_0016] `mock_exp_g2_0`: score 2.8259 — [request](generations/g002/island_0/explore/prompt.md)
+- island 1 mutation of g001_i1_0011 → [g002_i1_0017] `mock_mut_g2_0`: score 2.2619 — [request](generations/g002/island_1/mutation/prompt.md)
+- island 1 mutation of g001_i1_0011 → [g002_i1_0018] `mock_mut_g2_1`: screened: one-step RMSE 1.7909 K is more than 5.0x persistence (0.1897 K) on the validation buildings — [request](generations/g002/island_1/mutation/prompt.md)
+- island 1 explore → [g002_i1_0019] `mock_exp_g2_0`: score 2.1163 — [request](generations/g002/island_1/explore/prompt.md)
+- island 0 migration of g002_i1_0019 → [g002_i0_0020] `mock_exp_g2_0`: score 2.1163 — [request](generations/g002/island_1/explore/prompt.md)
 

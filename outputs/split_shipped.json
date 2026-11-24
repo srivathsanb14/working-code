@@ -1,0 +1,127 @@
+{
+ "val": [
+  "building_train_1/denver_7",
+  "building_train_1/phoenix_5",
+  "building_train_1/singapore_8",
+  "building_train_4/atlanta_5",
+  "building_train_4/phoenix_8",
+  "building_train_4/singapore_3",
+  "building_train_5/atlanta_6",
+  "building_train_5/denver_3",
+  "building_train_5/singapore_4",
+  "building_train_7/atlanta_8",
+  "building_train_7/denver_5",
+  "building_train_7/phoenix_3"
+ ],
+ "test_easy": [
+  "building_train_1/atlanta_2",
+  "building_train_4/denver_2",
+  "building_train_5/phoenix_1",
+  "building_train_7/singapore_6"
+ ],
+ "test_medium": [
+  "building_train_2/atlanta_3",
+  "building_train_2/denver_8",
+  "building_train_2/phoenix_6",
+  "building_train_2/singapore_1",
+  "building_train_8/atlanta_1",
+  "building_train_8/denver_6",
+  "building_train_8/phoenix_4",
+  "building_train_8/singapore_7"
+ ],
+ "test_hard": [
+  "building_train_2/fairbanks_2",
+  "building_train_8/fairbanks_8"
+ ],
+ "test_station": [
+  "building_train_1/fairbanks_1",
+  "building_train_4/fairbanks_4",
+  "building_train_5/fairbanks_5",
+  "building_train_7/fairbanks_7"
+ ],
+ "test": [
+  "building_train_1/atlanta_2",
+  "building_train_4/denver_2",
+  "building_train_5/phoenix_1",
+  "building_train_7/singapore_6",
+  "building_train_2/atlanta_3",
+  "building_train_2/denver_8",
+  "building_train_2/phoenix_6",
+  "building_train_2/singapore_1",
+  "building_train_8/atlanta_1",
+  "building_train_8/denver_6",
+  "building_train_8/phoenix_4",
+  "building_train_8/singapore_7",
+  "building_train_2/fairbanks_2",
+  "building_train_8/fairbanks_8"
+ ],
+ "_why": {
+  "rule": "no training split: the search scores on val only; test_* are scored once at the end",
+  "computed_from": "scenario folders",
+  "hard_station": "fairbanks",
+  "station_wasserstein_to_rest_K": {
+   "fairbanks": 21.89,
+   "singapore": 14.61,
+   "phoenix": 11.88,
+   "denver": 7.49,
+   "atlanta": 5.12
+  },
+  "station_wasserstein_pairwise_K": {
+   "atlanta": {
+    "atlanta": 0.0,
+    "denver": 4.3,
+    "fairbanks": 18.2,
+    "phoenix": 8.8,
+    "singapore": 10.1
+   },
+   "denver": {
+    "atlanta": 4.3,
+    "denver": 0.0,
+    "fairbanks": 14.0,
+    "phoenix": 13.0,
+    "singapore": 14.3
+   },
+   "fairbanks": {
+    "atlanta": 18.2,
+    "denver": 14.0,
+    "fairbanks": 0.0,
+    "phoenix": 27.0,
+    "singapore": 28.3
+   },
+   "phoenix": {
+    "atlanta": 8.8,
+    "denver": 13.0,
+    "fairbanks": 27.0,
+    "phoenix": 0.0,
+    "singapore": 7.2
+   },
+   "singapore": {
+    "atlanta": 10.1,
+    "denver": 14.3,
+    "fairbanks": 28.3,
+    "phoenix": 7.2,
+    "singapore": 0.0
+   }
+  },
+  "held_out_buildings": [
+   "building_train_2",
+   "building_train_8"
+  ],
+  "building_atypicality_z": {
+   "building_train_2": 2.93,
+   "building_train_8": 1.98,
+   "building_train_5": 1.81,
+   "building_train_7": 1.71,
+   "building_train_1": 1.63,
+   "building_train_4": 1.62
+  },
+  "counts": {
+   "val": 12,
+   "test_easy": 4,
+   "test_medium": 8,
+   "test_hard": 2,
+   "test_station": 4,
+   "test": 14
+  }
+ }
+}

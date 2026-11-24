@@ -28,7 +28,7 @@ def test_network_form_matches_the_stateful_network(toy_episodes, U):
 
 @pytest.mark.parametrize("seed", ["seed_cf_network.py", "seed_cf_history.py", "seed_cf_one_node.py"])
 def test_starting_models_pass_checks_and_score(seed, toy_episodes, U):
-    r = cf.evaluate((D / "seeds_cf" / seed).read_text(), toy_episodes[:1], toy_episodes[1:], U, every=24, screen_factor=1e9)
+    r = cf.evaluate((D / "seeds_cf" / seed).read_text(), toy_episodes[1:], U, every=24, screen_factor=1e9)
     assert r["status"] in ("ok", "unstable"), r.get("reason")
     assert "failures" not in r
 
@@ -68,7 +68,7 @@ def test_bad_coefficients_are_rejected_with_a_reason(bad, msg, toy_episodes, U):
     src = ("import numpy as np\nHISTORY = 1\nREFRESH = 12\n"
            "def coefficients(geo, hist, U):\n    a = 300.0 / (1206.0 * 3.0 * geo['area'])\n"
            f"    return {bad}\n")
-    r = cf.evaluate(src, toy_episodes[:1], toy_episodes[1:], U, every=24, screen_factor=1e9)
+    r = cf.evaluate(src, toy_episodes[1:], U, every=24, screen_factor=1e9)
     assert r["status"] in ("error", "rejected") and msg in (r.get("reason", "") + " ".join(r.get("failures", [])))
 
 
@@ -97,5 +97,5 @@ def test_crossover_analysis_compares_coefficient_values(toy_episodes, U):
     b = (D / "seeds_cf" / "seed_cf_one_node.py").read_text()
     g = {"all rooms": {"rmse": 1.0, "bias": 0.0}}
     r = cf.crossover_analysis({"analysis": {"groups": g}, "code": a}, {"analysis": {"groups": g}, "code": b}, ep=toy_episodes[0], U=U)
-    assert "coefficient values on a held-out building" in r["text"]
+    assert "COEFFICIENT VALUES on a validation building" in r["text"]
     assert "slab" in r["text"] and "outside" in r["text"]

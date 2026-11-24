@@ -1,0 +1,141 @@
+{
+ "run": "real12",
+ "dataset": "/private/tmp/claude-501/-Users-srivathsan-Desktop-smart-buildings/5cdb8737-bff6-4cdc-95c0-8b0d2ee6f41a/scratchpad/ds12",
+ "split": {
+  "val": [
+   "building_train_4/denver_2",
+   "building_train_5/phoenix_1",
+   "building_train_7/singapore_6"
+  ],
+  "test_easy": [],
+  "test_medium": [
+   "building_train_2/atlanta_3",
+   "building_train_8/atlanta_1"
+  ],
+  "test_hard": [],
+  "test_station": [
+   "building_train_1/fairbanks_1"
+  ],
+  "test": [
+   "building_train_2/atlanta_3",
+   "building_train_8/atlanta_1"
+  ],
+  "_why": {
+   "rule": "no training split: the search scores on val only; test_* are scored once at the end",
+   "computed_from": "available episodes",
+   "hard_station": "fairbanks",
+   "station_wasserstein_to_rest_K": {
+    "fairbanks": 36.92,
+    "singapore": 22.53,
+    "denver": 12.48,
+    "atlanta": 10.7,
+    "phoenix": 9.7
+   },
+   "station_wasserstein_pairwise_K": {
+    "atlanta": {
+     "atlanta": 0.0,
+     "denver": 10.2,
+     "fairbanks": 36.6,
+     "phoenix": 2.2,
+     "singapore": 12.9
+    },
+    "denver": {
+     "atlanta": 10.2,
+     "denver": 0.0,
+     "fairbanks": 26.5,
+     "phoenix": 8.9,
+     "singapore": 23.1
+    },
+    "fairbanks": {
+     "atlanta": 36.6,
+     "denver": 26.5,
+     "fairbanks": 0.0,
+     "phoenix": 35.3,
+     "singapore": 49.5
+    },
+    "phoenix": {
+     "atlanta": 2.2,
+     "denver": 8.9,
+     "fairbanks": 35.3,
+     "phoenix": 0.0,
+     "singapore": 14.2
+    },
+    "singapore": {
+     "atlanta": 12.9,
+     "denver": 23.1,
+     "fairbanks": 49.5,
+     "phoenix": 14.2,
+     "singapore": 0.0
+    }
+   },
+   "held_out_buildings": [
+    "building_train_2",
+    "building_train_8"
+   ],
+   "building_atypicality_z": {
+    "building_train_2": 2.93,
+    "building_train_8": 1.99,
+    "building_train_5": 1.82,
+    "building_train_7": 1.72,
+    "building_train_4": 1.62,
+    "building_train_1": 1.61
+   },
+   "counts": {
+    "val": 3,
+    "test_easy": 0,
+    "test_medium": 2,
+    "test_hard": 0,
+    "test_station": 1,
+    "test": 2
+   }
+  }
+ },
+ "auto_split": false,
+ "policies": null,
+ "proposer": "mock",
+ "agent_cmd": "claude -p",
+ "max_usd": null,
+ "selection": "pareto",
+ "objectives": [
+  "main",
+  "fast",
+  "slow",
+  "exterior",
+  "interior"
+ ],
+ "test_front": 5,
+ "generations": 1,
+ "islands": 2,
+ "migrate_every": 3,
+ "mut_requests": 1,
+ "n_mut": 2,
+ "n_cx": 2,
+ "n_exp": 1,
+ "elites": 6,
+ "horizons": [
+  12,
+  36,
+  72
+ ],
+ "main_horizon": 36,
+ "every": 12,
+ "warmup": 36,
+ "screen": 5.0,
+ "complexity_weight": 0.0001,
+ "score": "deploy",
+ "max_val": 30,
+ "ceiling": false,
+ "test": true,
+ "timeout": 1800,
+ "workers": 4,
+ "seed": 0,
+ "model": "claude-opus-5-5",
+ "effort": "high",
+ "mode": "closedform",
+ "n_runs": 12,
+ "n_val_used": 6,
+ "n_test": {
+  "test_medium": 4,
+  "test_station": 2
+ }
+}

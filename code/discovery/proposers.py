@@ -5,7 +5,9 @@
   SeedProposer       hand-written starting programs in seeds/ (no LLM)
   DirectoryProposer  *.py files dropped into an inbox folder (any LLM, a human, another tool)
   DryRunProposer     writes the exact prompt to disk and returns nothing (inspect before spending)
-  ClaudeProposer     the Claude API (anthropic SDK); only used when explicitly selected
+  ClaudeProposer     the Claude API (anthropic SDK): one stateless request per operator, nothing carried between
+                     requests except the (cached) system prompt; only used when explicitly selected (--proposer api)
+  AgentCLIProposer   a coding-agent CLI run headless (default `claude -p`), a fresh session per request (--proposer agent)
   MockProposer       NO LLM: mechanical mutation (rescale numbers) and crossover (swap templates) of the
                      parents, so the island / lineage / logging machinery can be exercised and inspected offline
 
@@ -70,17 +72,19 @@ class ClaudeProposer:
     Server-side refusal fallbacks are enabled ("default" routing).
     """
 
-    def __init__(self, model="claude-opus-5-5", effort="high", max_tokens=64000, log_dir=None):
+    def __init__(self, model="claude-opus-5-5", effort="high", max_tokens=64000, log_dir=None, max_usd=None):
         import anthropic  # imported lazily: nothing here runs unless this proposer is chosen
         self.anthropic = anthropic
         self.client = anthropic.Anthropic()
         self.model, self.effort, self.max_tokens = model, effort, max_tokens
         self.log_dir = Path(log_dir) if log_dir else None
-        self.usage = {}; self.last_usage = None
+        self.usage = {}; self.last_usage = None; self.max_usd = max_usd
 
     PRICE_PER_MTOK = {"input": 15.0, "output": 75.0, "cache_read": 1.5, "cache_write": 18.75}   # USD, edit to the current price list
 
     def _call(self, system, messages, ctx, generation, tag=""):
+        if self.max_usd is not None and self.usage.get("usd", 0) >= self.max_usd:
+            raise RuntimeError(f"budget reached: ${self.usage['usd']:.2f} spent of --max-usd {self.max_usd}")
         with self.client.beta.messages.stream(
             model=self.model,
             max_tokens=self.max_tokens,
@@ -120,6 +124,28 @@ class ClaudeProposer:
             messages += [{"role": "assistant", "content": text},
                          {"role": "user", "content": f"Your answer could not be used: {e}. Reply again with only the JSON object."}]
             return prompts.parse_response(self._call(system, messages, ctx, generation, tag="_retry"))[:n]
+
+
+class AgentCLIProposer:
+    """A coding-agent harness run headless, one fresh process (and session) per request: the prompt is the system
+    prompt + this request only, written to the command's stdin; the JSON answer is read from stdout.  No chat history
+    is carried between requests.  The prompt and the raw answer are saved next to the request."""
+
+    def __init__(self, cmd="claude -p", timeout=1800):
+        import shlex
+        self.cmd, self.timeout = shlex.split(cmd), timeout
+
+    def propose(self, system, user, n, generation, ctx=None):
+        import subprocess
+        prompt = f"{system}\n\n---\n\n{user}\n\nReply with only the JSON object."
+        p = subprocess.run(self.cmd, input=prompt, capture_output=True, text=True, timeout=self.timeout)
+        if ctx and ctx.get("dir"):
+            (Path(ctx["dir"]) / "response_agent.txt").write_text(p.stdout + ("\n\n[stderr]\n" + p.stderr if p.stderr else ""))
+        if p.returncode != 0:
+            raise RuntimeError(f"{self.cmd[0]} exited {p.returncode}: {p.stderr.strip()[:300]}")
+        text = p.stdout
+        a, b = text.find("{"), text.rfind("}")
+        return prompts.parse_response(text[a:b + 1] if a >= 0 and b > a else text)[:n]
 
 
 class MockProposer:
