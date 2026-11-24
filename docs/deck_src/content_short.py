@@ -15,12 +15,17 @@ s(id="m_cover", kind="statement", eyebrow="NeurIPS 2026 · Smart Buildings Chall
   sub="How we let an LLM discover the formulas of a physics model that forecasts every room of any building, and what we know so far",
   foot="9 slides · the full working deck follows as the appendix", notes="")
 
-s(id="m_problem", kind="stats", eyebrow="The problem", title="One policy, dropped into buildings and weather it has never seen",
-  stats=[["30", "hidden scenarios: 6 unseen buildings × 5 unseen climates, 30 days each"],
-         ["0.125 s", "per 5-minute step for everything, simulator included"],
-         ["12×", "lower loss for today's leader (0.0045) than the kit's best controller (0.054)"]],
-  callout="Score per step = 0.6 comfort + 0.2 energy + 0.2 carbon. Planning ahead needs a forecast of every room, in a building never seen before.",
-  src="appendix: evaluation, budget, scoring, leaderboard slides ([website] scoring.html; [kit] baseline_returns.json; [Kaggle] leaderboard)")
+s(id="m_problem", kind="figure", eyebrow="The problem: every building is different",
+  title="One policy, dropped into buildings it has never seen",
+  img="buildings.png", h=530,
+  callout="The six shipped buildings, floor 1 of each, at one scale. The test uses 6 others, never released; every room is scored on comfort, energy and carbon.",
+  src="[kit] training_scenarios/*/zone_map.npy; room types: code/explore_zone_map.py (outputs/building_*_rooms.csv); [website] scoring.html; make_figs11.py")
+
+s(id="m_weather", kind="figure", eyebrow="The problem: every climate is different",
+  title="…and into weather from −42 °C to +46 °C",
+  img="weather.png", h=530,
+  callout="The test runs 30 days at 5 unseen stations. Fairbanks in January and Singapore all year need opposite things from one controller.",
+  src="[kit] weather/csv/*.csv (2023, hourly) and weather/<scenario>.yaml start dates of the 30 shipped scenarios; make_figs11.py")
 
 s(id="m_idea", kind="image", side="right", eyebrow="Our approach", title="Forecast every room with physics whose numbers are formulas, not fits",
   img="ep30_profile_pred.png",
@@ -37,15 +42,8 @@ s(id="m_data", kind="figure", eyebrow="Data and split", title="Whole scenarios a
 s(id="m_loop", kind="flow", eyebrow="LLM discovery", title="The Claude API writes formulas; the scorer judges them; evolution keeps the best",
   steps=[["Write", "API: 3 first programs per island"], ["Check", "physics sanity"], ["Score", "5 forecast errors on validation"],
          ["Diagnose", "where, when, which term"], ["Improve", "mutate · cross · explore"], ["Test", "held-out tiers, once"]],
-  callout="3 islands, 5 new programs each per generation. A program survives unless another beats it on all five errors (Pareto).",
+  callout="Each request is ≈3,400 tokens of code and diagnosis; the 15 M data values never leave our machine. A program survives unless another beats it on all five errors.",
   src="appendix: discflow, islands, pareto, operators slides; [our code] discovery/evolve.py, pareto.py")
-
-s(id="m_io", kind="stats", eyebrow="The LLM's input and output", title="The data stays here; the LLM gets a diagnosis and returns code",
-  stats=[["15 M", "numbers in the 6 validation runs: never sent; every candidate is run on all of them here"],
-         ["3,400", "tokens per request: the parent's code, its scores, the diagnosis and one real day"],
-         ["11", "coefficient formulas back, as code: numbers only appear when they run on a building"]],
-  callout="Each request stands alone (no chat history), and no test-tier number, building or station name is ever in it.",
-  src="appendix: proposers, llmout, sysprompt slides; [measured] prompt parts; [our code] prompts.py, proposers.py; tests/test_api_loop.py")
 
 s(id="m_feedback", kind="figure", eyebrow="The diagnosis that drives each mutation (real output)", title="Which term is wrong, for which rooms, under which conditions",
   img="term_heatmap.png", h=470,

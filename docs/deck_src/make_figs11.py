@@ -4,6 +4,10 @@
                       grid, and each station's Wasserstein distance to the others (the same file's _why)
   term_heatmap.png    the network model's per-term residual slopes by room type and condition (closedform.analysis
                       on the 6 validation runs, saved as outputs/term_slopes_network.json)
+  buildings.png       the six shipped buildings' real floor plans at one scale, rooms coloured by type (kit zone_map.npy;
+                      room types from outputs/building_train_*_rooms.csv, written by code/explore_zone_map.py)
+  weather.png         a year of outside temperature at each of the 5 stations, with the 30-day windows of the shipped
+                      scenarios marked (kit weather/csv/*.csv and weather/<scenario>.yaml)
   tiers_bars.png      3 h forecast error of persistence and the hand-written models on validation and held-out runs
                       (closedform.evaluate on the 12 thirty-day runs, as on the 'tiers' slide)
 
@@ -19,6 +23,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 from matplotlib.colors import LinearSegmentedColormap  # noqa: E402
+import matplotlib.patches  # noqa: E402,F401
 
 WC, ANALYSIS, OUT = Path(sys.argv[1]), Path(sys.argv[2]), Path(sys.argv[3])
 INK, INK2, GRID, SURF = "#13213A", "#52514E", "#D9D6CE", "#FBFAF7"
@@ -99,4 +104,71 @@ ax.set_xticks(x, groups); ax.set_ylabel("3 h error (K), lower = better"); ax.set
 ax.spines[["top", "right"]].set_visible(False); ax.yaxis.grid(True, color=GRID, lw=0.8); ax.set_axisbelow(True); ax.tick_params(length=0)
 ax.legend(frameon=False, loc="upper left", fontsize=16)
 fig.tight_layout(); fig.savefig(OUT / "tiers_bars.png", dpi=110); plt.close(fig)
-print("wrote split_grid.png, term_heatmap.png, tiers_bars.png")
+
+# ---------------------------------------------------------------- D. building floor plans
+import csv  # noqa: E402
+import datetime as dt  # noqa: E402
+from scipy import ndimage  # noqa: E402
+KIT = WC.parent / "smart-buildings-starter-kit" / "smart_buildings"
+ZS = json.loads((WC / "outputs" / "zone_map_summary.json").read_text())
+FA = json.loads((WC / "outputs" / "floors_and_ahus.json").read_text())
+TYPE = {"corner": ("#2a78d6", "corner room"), "edge": ("#1baf7a", "one outside wall"), "interior": ("#eda100", "interior room")}
+fig, axs = plt.subplots(2, 3, figsize=(16, 6.8))
+for ax, b in zip(axs.ravel(), sorted(ZS, key=lambda b: int(b.rsplit("_", 1)[1]))):
+    zm = np.load(KIT / "training_scenarios" / b / ZS[b]["scenario"] / "zone_map.npy")
+    lab, n = ndimage.label(zm == 0)
+    rows_ = list(csv.DictReader(open(WC / "outputs" / f"{b}_rooms.csv")))
+    img = np.ones(zm.shape + (3,)); img[zm == 1] = matplotlib.colors.to_rgb(INK2); img[zm == 2] = matplotlib.colors.to_rgb(SURF)
+    for r in rows_:
+        l = lab[int(round(float(r["cy"]))), int(round(float(r["cx"])))]
+        if l > 0:
+            img[lab == l] = matplotlib.colors.to_rgb(TYPE[r["type"]][0])
+    fl, nf = ndimage.label(ndimage.binary_dilation(zm != 2, iterations=3))      # one component per floor
+    r0, r1 = np.nonzero((fl == fl[np.nonzero(zm != 2)[0][0], np.nonzero(zm != 2)[1][np.argmin(np.nonzero(zm != 2)[0])]]).any(1))[0][[0, -1]]
+    c0, c1 = np.nonzero((zm != 2).any(0))[0][[0, -1]]
+    img = img[r0:r1 + 1, c0:c1 + 1]
+    cv = ZS[b]["cv_m"]; H, W = img.shape[:2]
+    ax.imshow(img, extent=[0, W * cv, H * cv, 0], interpolation="nearest")
+    ax.set_xlim(0, 90); ax.set_ylim(64, 0); ax.set_aspect("equal"); ax.axis("off")
+    t = ZS[b]["types"]
+    ax.set_title(f"Building {b.rsplit('_', 1)[1]}: {ZS[b]['rooms']} rooms, {FA[b]['floors']} floors\n"
+                 f"{t['interior']} interior of {ZS[b]['rooms']}", fontsize=17, loc="left", color=INK)
+axs[1, 2].plot([60, 80], [62, 62], color=INK, lw=3); axs[1, 2].text(70, 60.5, "20 m", ha="center", fontsize=15)
+fig.legend(handles=[matplotlib.patches.Patch(color=c, label=l) for c, l in TYPE.values()], loc="lower center", ncol=3,
+           frameon=False, fontsize=17)
+fig.subplots_adjust(left=0.01, right=0.99, top=0.9, bottom=0.09, wspace=0.03, hspace=0.3)
+fig.savefig(OUT / "buildings.png", dpi=100); plt.close(fig)
+
+# ---------------------------------------------------------------- E. weather at the five stations
+STN = ["singapore", "phoenix", "atlanta", "denver", "fairbanks"]
+win = {}
+for bd in sorted((KIT / "training_scenarios").iterdir()):
+    for sd in bd.iterdir():
+        st = sd.name.rsplit("_", 1)[0]
+        start = re.search(r"start_timestamp:\s*(\S+)", (KIT / "weather" / f"{sd.name}.yaml").read_text()).group(1)
+        win.setdefault(st, []).append(dt.datetime.fromisoformat(start))
+fig, axs = plt.subplots(len(STN), 1, figsize=(16, 6.6), sharex=True, sharey=True)
+for ax, st in zip(axs, STN):
+    rr = list(csv.DictReader(open(KIT / "weather" / "csv" / f"{st}.csv")))
+    t = np.array([dt.datetime.strptime(r["Time"], "%Y%m%d-%H%M") for r in rr]); T = np.array([float(r["TempC"]) for r in rr])
+    day = np.array([x.timetuple().tm_yday for x in t])
+    d = np.arange(1, day.max() + 1)
+    lo = np.array([T[day == k].min() for k in d]); hi = np.array([T[day == k].max() for k in d])
+    ax.fill_between(d, lo, hi, color="#C9C6BE", lw=0, label="daily range, whole year")
+    inw = []
+    for s0 in win[st]:
+        m = (t >= s0) & (t < s0 + dt.timedelta(days=30)); inw.append(T[m])
+        ax.plot([x.timetuple().tm_yday + x.hour / 24 for x in t[m]], T[m], color="#eb6834", lw=1.0)
+    a = np.concatenate(inw)
+    ax.text(1.01, 0.5, f"{st.capitalize()}\n{a.min():.0f} to {a.max():.0f} °C", transform=ax.transAxes, va="center", fontsize=17, color=INK)
+    ax.axhline(21, color=INK2, lw=0.8, ls=":")
+    ax.spines[["top", "right"]].set_visible(False); ax.tick_params(length=0); ax.yaxis.grid(True, color=GRID, lw=0.6)
+    ax.set_yticks([-40, 0, 40])
+axs[0].plot([], [], color="#eb6834", lw=2, label="the shipped 30-day windows (6 per station)")
+axs[0].legend(loc="lower left", ncol=2, frameon=False, fontsize=15, bbox_to_anchor=(0, 1.0))
+mo = [dt.date(2023, m, 1).timetuple().tm_yday for m in range(1, 13)]
+axs[-1].set_xticks(mo, ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]); axs[-1].set_xlim(1, 365)
+fig.text(0.01, 0.5, "outside °C (dotted: 21 °C)", rotation=90, va="center", fontsize=16, color=INK2)
+fig.subplots_adjust(left=0.08, right=0.82, top=0.92, bottom=0.06, hspace=0.15)
+fig.savefig(OUT / "weather.png", dpi=100); plt.close(fig)
+print("wrote split_grid.png, term_heatmap.png, tiers_bars.png, buildings.png, weather.png")
