@@ -188,7 +188,11 @@ for (const d of ST.slides) {
       box(s, x, Y0, bw, 1.35, t, b, i === n - 1 ? "accent2" : undefined);
       if (i < n - 1) arrow(s, x + bw + gap, Y0 + 0.56, aw);
     });
-    bullets(s, d.points, X0, Y0 + 1.85, W, 2.5, 16);
+    if (d.points && d.points.length) bullets(s, d.points, X0, Y0 + 1.85, W, 2.5, 16);
+    cbox(d.callout, Y0 + (d.points && d.points.length ? 4.0 : 1.85));
+  } else if (k === "figure") {
+    const r = img(s, d.img, X0, Y0 - 0.15, W, d.callout ? 3.55 : 4.4, d.title);
+    cbox(d.callout, Y0 - 0.15 + r.h + 0.2);
   }
 }
 

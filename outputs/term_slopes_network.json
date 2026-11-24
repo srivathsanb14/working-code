@@ -1,0 +1,81 @@
+{
+ "all rooms": {
+  "air": 0.015,
+  "neighbours": -0.742,
+  "slab": 0.418,
+  "wall": -0.45,
+  "inner": -0.722,
+  "heat": -0.001
+ },
+ "corner rooms (outside wall, 2+ sides)": {
+  "air": -0.009,
+  "neighbours": -0.684,
+  "slab": 0.355,
+  "wall": -0.437,
+  "inner": -0.733,
+  "heat": 0.016
+ },
+ "one-side exterior rooms": {
+  "air": 0.033,
+  "neighbours": -0.852,
+  "slab": 0.683,
+  "wall": -0.42,
+  "inner": -1.169,
+  "heat": -0.031
+ },
+ "interior rooms": {
+  "air": 0.159,
+  "neighbours": -0.756,
+  "slab": 1.064,
+  "inner": -1.05,
+  "heat": 0.003
+ },
+ "larger half of rooms (by floor area)": {
+  "air": 0.008,
+  "neighbours": -0.752,
+  "slab": 0.326,
+  "wall": -0.491,
+  "inner": -0.737,
+  "heat": -0.034
+ },
+ "smaller half of rooms": {
+  "air": 0.018,
+  "neighbours": -0.725,
+  "slab": 0.5,
+  "wall": -0.427,
+  "inner": -0.772,
+  "heat": 0.009
+ },
+ "HVAC air on (room mean > 50 W/K)": {
+  "air": 0.025,
+  "neighbours": -0.505,
+  "slab": 0.04,
+  "wall": -0.216,
+  "inner": 0.205,
+  "heat": 0.072
+ },
+ "HVAC air off": {
+  "air": -0.497,
+  "neighbours": -0.795,
+  "slab": 0.068,
+  "wall": -0.607,
+  "inner": -1.144,
+  "heat": -0.312
+ },
+ "occupied (comfort) hours": {
+  "air": 0.023,
+  "neighbours": -0.658,
+  "slab": 0.258,
+  "wall": -0.38,
+  "inner": -0.213,
+  "heat": 0.028
+ },
+ "colder half of outside temperatures": {
+  "air": 0.052,
+  "neighbours": -0.829,
+  "slab": 0.485,
+  "wall": -0.471,
+  "inner": -0.6,
+  "heat": 0.009
+ }
+}

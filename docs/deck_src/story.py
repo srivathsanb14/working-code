@@ -79,6 +79,8 @@ for s in S:
                          + f'<div class="col grow" style="gap:20px;">{ul(s["points"], 28)}{callout(s.get("callout"))}</div></div>\n')
             else:
                 body += im(s["img"], "width:100%; max-height:370px;") + "\n" + cap(s.get("caption")) + ul(s["points"], 26).replace('padding-left:1.1em;"', 'padding-left:1.1em; columns:2; column-gap:60px;"') + callout(s.get("callout"))
+        elif k == "figure":                       # one full-width figure and one takeaway line
+            body += im(s["img"], f'width:100%; max-height:{s.get("h", 600)}px;') + "\n" + callout(s.get("callout"))
         elif k == "cards":
             body += '<div class="cards">' + "".join(card(*c) for c in s["cards"]) + "</div>\n" + callout(s.get("callout"))
         elif k == "table":
@@ -93,7 +95,7 @@ for s in S:
             body += f'<div class="eq big" style="font-size:{s.get("eqsize") or (36 if chr(10) in s["eq"] else 44)}px; text-align:{"left" if chr(10) in s["eq"] else "center"}; white-space:{"pre" if chr(10) in s["eq"] else "normal"};">{E(s["eq"]).replace(chr(10), "<br>")}</div>\n' + ul(s["points"], 28)
         elif k == "flow":
             body += '<div class="row" style="gap:12px;">' + '<x-shape kind="arrow-right" class="arrow" style="align-self:center;"></x-shape>'.join(
-                f'<div class="box {"cool" if i == len(s["steps"]) - 1 else ""} grow"><p class="bt">{E(t)}</p><p class="bs">{E(b)}</p></div>' for i, (t, b) in enumerate(s["steps"])) + "</div>\n" + ul(s["points"], 30)
+                f'<div class="box {"cool" if i == len(s["steps"]) - 1 else ""} grow"><p class="bt">{E(t)}</p><p class="bs">{E(b)}</p></div>' for i, (t, b) in enumerate(s["steps"])) + "</div>\n" + (ul(s["points"], 30) if s.get("points") else "") + callout(s.get("callout"))
     if s.get("src"):
         col = "#C9D3E3" if cls == "dark" else "#5B6676"
         body += f'<p style="position:absolute; left:120px; right:200px; bottom:30px; font-size:17px; line-height:1.25; color:{col}; margin:0;">Sources: {E(s["src"])}</p>\n'
