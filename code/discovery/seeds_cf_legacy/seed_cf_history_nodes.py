@@ -55,7 +55,6 @@ def facade_u(geo, hist, U):
 
 
 def coefficients(geo, hist, U, net):
-    V = geo["V"]
     face, G_nb = _geo(geo, U)
     _, _, g_nb = dlib.pairs(G_nb)
     A = geo["area"]; G_slow = H_SLOW * A
