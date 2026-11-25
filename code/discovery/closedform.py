@@ -147,7 +147,7 @@ def _rollout_coef(mod, cm, prep, U, starts, horizon, freeze=None):
 
 
 def filter_states(mod, coef, prep, U):
-    """Stateful candidates (backlog O3): state after correcting with each measurement, S[k] <-> X[k].
+    """Stateful candidates: state after correcting with each measurement, S[k] <-> X[k].
     Computed once per episode by the candidate's own fixed predict/correct rules (nothing fitted)."""
     if getattr(prep, "S", None) is not None:
         return prep.S
@@ -225,7 +225,7 @@ class _Synth:
 
 
 def shift_warning(mod, coef, ep, U, n=288, c=5.0):
-    """Warning only (backlog F4): shifting every temperature (start, outside, supply, water) by c should shift the
+    """Warning only: shifting every temperature (start, outside, supply, water) by c should shift the
     forecast by c when no heat is added (the heat flows depend on temperature differences)."""
     V = ep.V
     base = {k: np.zeros((n, V)) if v.ndim == 2 else np.zeros(n) for k, v in ep.inputs.items()}
@@ -244,7 +244,7 @@ def shift_warning(mod, coef, ep, U, n=288, c=5.0):
 
 
 def long_run(mod, coef, ep, U, horizon=288, warmup=36):
-    """Diagnostic (backlog F5): 24 h free runs from measured history, one per day; RMSE and mean drift at 24 h."""
+    """Diagnostic: 24 h free runs from measured history, one per day; RMSE and mean drift at 24 h."""
     prep = Prepared(ep, mod.HISTORY)
     starts = np.arange(max(warmup, 288), ep.n - horizon, 288)
     if not len(starts):
@@ -276,7 +276,7 @@ def physics_checks(mod, coef, ep, U, n=576):
             fails.append(f"bounds: cooling from 294 K toward a 274 K outside left [274, 294] K (range {T.min():.2f}-{T.max():.2f})")
         elif not (T[-1] < T[0] + 1e-6).all():
             fails.append("relaxation: some rooms did not cool toward a colder outside")
-        Tw = run(284.0)                                   # backlog F4: a warmer outside never makes a room colder
+        Tw = run(284.0)                                   # a warmer outside never makes a room colder
         if (Tw[-1] < T[-1] - 1e-6).any():
             fails.append("monotone: a 10 K warmer outside left some room colder")
         Q = np.zeros((n, V)); Q[:, 0] = 2000.0

@@ -1,4 +1,4 @@
-"""The reward as a cost a controller can evaluate on predictions (backlog K4).
+"""The reward as a cost a controller can evaluate on predictions.
 
 Comfort is exact given room temperatures, the active band and occupants per room (the kit's shortfall: linear up
 to 5 K outside the band, then quadratic, unbounded; regret = - occupancy-weighted mean shortfall).  Energy and

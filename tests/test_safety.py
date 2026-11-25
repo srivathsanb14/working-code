@@ -1,4 +1,4 @@
-"""Backlog L2: whatever the controller returns, the gateway gets a valid action."""
+"""Whatever the controller returns, the gateway gets a valid action."""
 import numpy as np
 
 from submission.safety import SafeAction

@@ -1,4 +1,4 @@
-"""Per-room and per-pair geometry from floor_plan.npy and zone_map.npy only (backlog D1/D2).
+"""Per-room and per-pair geometry from floor_plan.npy and zone_map.npy only.
 
     python code/geometry_cli.py <scenario_dir>                       # a folder holding floor_plan.npy, zone_map.npy (and config.gin)
     python code/geometry_cli.py --floor-plan fp.npy --zone-map zm.npy --out geo/

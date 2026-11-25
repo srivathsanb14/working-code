@@ -228,7 +228,7 @@ def main():
     ap.add_argument("--results-dir", type=Path, default=DATA / "results",
                     help="evaluate.py --results-dir: <building>/<weather>/<policy>/timeseries.csv, ahu_log.csv, reward_components.csv")
     ap.add_argument("--policies", nargs="*", default=None, help="only these policy folders (default: all found)")
-    ap.add_argument("--split", help="JSON file {train: [...], val: [...], test: [...]} of glob patterns (see split_episodes, split_example.json)")
+    ap.add_argument("--split", help="JSON file {train: [...], val: [...], test: [...]} of glob patterns (see split_episodes)")
     ap.add_argument("--proposer", default="api", choices=["api"])
     ap.add_argument("--generations", type=int, default=0)
     ap.add_argument("--n", type=int, default=6, help="candidates per generation")

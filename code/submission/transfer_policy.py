@@ -1,4 +1,4 @@
-"""The policy core the Kaggle notebook wraps (backlog L1/L2/L3).
+"""The policy core the Kaggle notebook wraps.
 
     core = TransferPolicyCore(building_meta_data, action_spec, model_src=None)
     core.get_action(obs) -> {"continuous_action": float32 (3K+2+2V,), "discrete_action": int32 (K+1,)}

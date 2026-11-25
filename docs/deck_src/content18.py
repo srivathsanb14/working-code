@@ -64,3 +64,33 @@ B["histnotfit"]["points"][0] = ("It is a fixed function of the last 288 measurem
 B["histnotfit"]["src"] = B["histnotfit"]["src"].replace("prompts.CF_CONTRACT (", "prompts.CF_SYSTEM (")
 B["llmreads"]["points"][1] = "Then the operator-specific part: parents, their analysis, recent rejected children and children that scored worse"
 B["datarecipe"]["points"][1] = "Every run becomes one episode: one building, one weather window (its first 7 days in this plan), one controller"
+
+# ---- the data plan (Nov 25): every shipped building in every window first, then new buildings
+B["datarecipe"]["title"] = "The plan: every shipped building in every window, then new buildings"
+B["datarecipe"]["steps"] = [["Stage 1: 6 shipped buildings", "× all 48 windows (6 stations × 8) = 288 scenarios"],
+                            ["× 5 controllers", "all_off, bang_bang, fixed_setpoint, pid, pid_water"],
+                            ["= 1,440 runs", "30 days each (8,640 steps); about 100–200 CPU-hours"],
+                            ["Stage 2: new buildings", "kit generator from seed 500; 20 to start, one window per station each: 600 runs"]]
+B["datarecipe"]["points"] = [
+    "Made beforehand with the starter kit's own commands; this pipeline only reads the finished runs",
+    "Every run becomes one episode: one building, one 30-day weather window, one controller",
+    "Stage 1 gives every building every season at every station; stage 2 adds new floor plans, which is what the hidden test varies",
+    "The split (next slides) is computed from whatever episodes exist. Not generated yet: every result in this deck uses the 30 shipped scenarios"]
+B["datarecipe"]["src"] = "[kit] run_floor_generator.py, run_scenario_generator.py (naming --buildings takes the cross product), evaluate.py; GUIDE.md A.4; [measured] 0.025–0.057 s per step"
+_r = {r[0]: r for r in B["decdatagen"]["rows"]}
+_r["Which weather?"][1:] = ["shipped buildings: all 48 windows; new buildings: one window per station, rotated",
+                            "every season at every station; the split then holds out the farthest station (Wasserstein)"]
+_r["How long?"][1:] = ["30 days per run (8,640 steps)", "the scored length; every phase of the month"]
+B["change"]["left"][1][1] = "Which weather: all 48 windows for the shipped buildings, one per station for new ones"
+B["change"]["left"][1][3] = "How long: full 30-day runs, as scored"
+
+# ---- the old backlog (docs/next_tasks.*) is gone: Planning/ is the task list
+_task = {"K1": "Planning 14", "K7": "Planning 12", "K8": "Planning 13", "I5": "Planning 11", "L6": "Planning 15"}
+B["gate"]["rows"][0] = ["Item", "Status (task)"]
+for _r in B["gate"]["rows"][1:]:
+    for _k, _v in _task.items():
+        _r[1] = _r[1].replace(f"({_k})", f"({_v})")
+    _r[1] = _r[1].replace("done (I7)", "done")
+B["gate"]["src"] = "docs/RUNBOOK.md §11; Planning/index.md"
+B["status"]["src"] = "[our code]; Planning/index.md (pending tasks)"
+B["roadmap"]["src"] = "[plan] Planning/index.md (18 pending tasks); [Kaggle] timeline, limits"

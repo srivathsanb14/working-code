@@ -1,4 +1,4 @@
-"""Dataset summary (backlog C3): what the built dataset contains, by split, station, season, policy and size.
+"""Dataset summary: what the built dataset contains, by split, station, season, policy and size.
 
     python code/dataset_report.py                       # data/dataset -> docs/DATASET_REPORT.md
     python code/dataset_report.py --dataset /big/disk/data/dataset --out docs/DATASET_REPORT.md

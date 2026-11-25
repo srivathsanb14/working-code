@@ -1,4 +1,4 @@
-"""Action safety layer (backlog L2): whatever the controller returns, the gateway gets a valid action.
+"""Action safety layer: whatever the controller returns, the gateway gets a valid action.
 
 - exact shapes (n_continuous_action, n_discrete_action); float32 / int32
 - every continuous value finite and inside [-1, 1]; NaN or inf replaced by the fallback's value

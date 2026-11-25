@@ -119,7 +119,7 @@ def _mermaid(db, ids):
 
 
 def _lineage_png(run_dir, db, ids, islands):
-    """Static family tree (backlog H2): x = generation, y = island lane; colour = operator; arrows parent -> child."""
+    """Static family tree: x = generation, y = island lane; colour = operator; arrows parent -> child."""
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt

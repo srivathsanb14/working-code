@@ -1,4 +1,4 @@
-"""Check the cost model (control/costs.py) against the kit's logged costs (backlog K4).
+"""Check the cost model (control/costs.py) against the kit's logged costs.
 
     python code/control/validate_costs.py --results <kit results dir> --runs building_train_2/atlanta_3/pid_water ...
 

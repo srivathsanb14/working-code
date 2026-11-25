@@ -1,4 +1,4 @@
-# Lint (backlog M3): pyflakes errors and a few safe pycodestyle rules; long lines allowed (dense numeric code).
+# Lint: pyflakes errors and a few safe pycodestyle rules; long lines allowed (dense numeric code).
 line-length = 140
 extend-exclude = ["docs/deck_src", "code/submission/vendor", "code/discovery/seeds", "code/discovery/seeds_cf", "outputs", "dist"]
 

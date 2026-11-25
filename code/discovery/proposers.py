@@ -64,7 +64,7 @@ class ClaudeProposer:
             self.log_dir.mkdir(parents=True, exist_ok=True)
             (self.log_dir / f"response_gen{generation:03d}{tag}.json").write_text(msg.to_json())
         u = getattr(msg, "usage", None)
-        if u is not None:                               # backlog E4: tokens and cost per request
+        if u is not None:                               # tokens and cost per request
             tok = dict(input=getattr(u, "input_tokens", 0) or 0, output=getattr(u, "output_tokens", 0) or 0,
                        cache_read=getattr(u, "cache_read_input_tokens", 0) or 0, cache_write=getattr(u, "cache_creation_input_tokens", 0) or 0)
             tok["usd"] = round(sum(tok[k] * self.PRICE_PER_MTOK[k] for k in self.PRICE_PER_MTOK) / 1e6, 4)
@@ -82,7 +82,7 @@ class ClaudeProposer:
         text = self._call(system, messages, ctx, generation)
         try:
             return prompts.parse_response(text)[:n]
-        except prompts.ParseError as e:                 # backlog E5: one retry, telling the model what was wrong
+        except prompts.ParseError as e:                 # one retry, telling the model what was wrong
             messages += [{"role": "assistant", "content": text},
                          {"role": "user", "content": f"Your answer could not be used: {e}. Reply again with only the JSON object."}]
             return prompts.parse_response(self._call(system, messages, ctx, generation, tag="_retry"))[:n]

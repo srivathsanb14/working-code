@@ -37,7 +37,7 @@ with the kit; they are kept for reference.
 
 Put the generated data on another disk with `SB_DATA=/path/to/data`; every script reads it.
 
-Background: `GUIDE.md` covers what may and may not be changed in data generation (Part A) and what the observation, action, state, inputs and outputs of the model are (Part B). `docs/LLM_DISCOVERY.md` covers how the LLM is used.
+Background: `GUIDE.md` covers what may and may not be changed in data generation (Part A) and what the observation, action, state, inputs and outputs of the model are (Part B). `docs/DISCOVERY_WALKTHROUGH.md` covers how the LLM is used; `Planning/index.md` lists what is left to do.
 
 ---
 
@@ -104,13 +104,17 @@ Every line must say `[ok]`. It checks:
 ## 2. The data: made with the starter kit, not here
 
 This repository generates and simulates nothing. The data is made beforehand, on the machine that will run the
-pipeline, with the starter kit's own commands (see the kit's README), for example:
+pipeline, with the starter kit's own commands. The plan (exact commands in GUIDE.md A.4):
+
+- **Stage 1:** the six shipped buildings × all 48 weather windows (6 stations × 8) × the 5 shipped controllers, full
+  30-day runs: 288 scenarios, 1,440 runs, roughly 100–200 CPU-hours.
+- **Stage 2:** new buildings from the kit's generator (seeds from 500; 20 to start), each on one window per station
+  with the window index rotated, × 5 controllers: 600 runs for 20 buildings.
 
 ```bash
 cd smart-buildings-starter-kit
-python -m smart_buildings.run_floor_generator --start-seed 500 --count 100 --output-dir <buildings>
-python -m smart_buildings.run_scenario_generator --buildings <building stems or YAML paths> --weathers <strips> --output-dir <scenarios>
-python -m smart_buildings.evaluate --scenarios-dir <scenarios> --results-dir <results> --policies <controllers> --steps <n>
+python -m smart_buildings.run_scenario_generator --buildings building_train_1 building_train_2 building_train_4 building_train_5 building_train_7 building_train_8 --output-dir <scenarios>
+python -m smart_buildings.evaluate --scenarios-dir <scenarios> --results-dir <results> --policies all_off bang_bang fixed_setpoint pid pid_water
 ```
 
 What this pipeline needs afterwards is only two folders:

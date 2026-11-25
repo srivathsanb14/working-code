@@ -183,7 +183,7 @@ def _eval_worker(code):
 
 
 def evaluate_many(codes, val, U, args):
-    """Evaluate candidates serially, or in --workers forked processes (backlog F3); same results either way."""
+    """Evaluate candidates serially, or in --workers forked processes; same results either way."""
     global _G
     if args.workers <= 1 or len(codes) <= 1:
         return [evaluate(c, val, U, args) for c in codes]
@@ -348,7 +348,7 @@ def run(a):
 
     start = db.generation() + 1
     flag = run_dir / "in_progress.json"
-    if flag.exists():                                     # backlog G6: an interrupted generation is finished first
+    if flag.exists():                                     # an interrupted generation is finished first
         start = json.loads(flag.read_text())["generation"]
         log(f"\nresuming unfinished generation {start} (saved LLM answers are reused; evaluated candidates are skipped)")
     for gen in range(start, start + a.generations):

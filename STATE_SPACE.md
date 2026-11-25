@@ -1027,7 +1027,7 @@ One-step accuracy is misleading, since nearly any model predicts `T_{t+1} ≈ T_
 
 ### 17.7 The LLM discovery loop
 
-`code/discovery/` implements symbolic discovery with an LLM as the proposer. The LLM writes small simulation programs, numerical optimization fits every constant, and a held-out simulation decides. The LLM only proposes structure; numbers and verdicts never come from it. No LLM is called unless `--proposer claude` is chosen. Run it from `working-code/` with `.venv/bin/python code/run_discovery.py`; usage is in `docs/LLM_DISCOVERY.md` and `docs/RUNBOOK.md`.
+`code/discovery/` implements symbolic discovery with an LLM as the proposer. The LLM writes small simulation programs, numerical optimization fits every constant, and a held-out simulation decides. The LLM only proposes structure; numbers and verdicts never come from it. No LLM is called unless `--proposer claude` is chosen. Run it from `working-code/` with `.venv/bin/python code/run_discovery.py`; usage is in `docs/DISCOVERY_WALKTHROUGH.md` and `docs/RUNBOOK.md`.
 
 ```
  starter-kit outputs (evaluate.py results + scenario folders) ──► replay ──► episodes: inference-time inputs + geometry + measured T
@@ -1126,7 +1126,7 @@ As a cross-check, the full §14 network with the true materials, driven by these
 7. `test_model.py`, every θ mode on the test split;
 8. `run_policy.py`, the submission's Policy class on the test scenarios (§17.9).
 
-The data rules and the model's variables are in `GUIDE.md`; how to use the LLM is in `docs/LLM_DISCOVERY.md`.
+The data rules and the model's variables are in `GUIDE.md`; how to use the LLM is in `docs/DISCOVERY_WALKTHROUGH.md`.
 
 ### 17.8 Reconciling the method with the plan: deployment, state, status and limits
 
@@ -1160,7 +1160,7 @@ The planning sets out a model built **only from geometry, measured history and u
 | Controlled every 5 min | per AHU on/off, supply temperature, pressure, recirculation; boiler on/off, water temperature, pump; per room damper and reheat | inputs u, turned into airflow, supply temperature and reheat |
 | Never given | materials, future weather, per-room occupancy, the simulator | universal constants learned offline, or noise |
 
-**How we rehearse it.** Generated buildings are named by the generator's random seed (`building_0500` is building number 500, not a time). Seeds 500–599 are training buildings, 700–719 validation, 800–819 test, and the test weather station is one never used in training, so a test scenario is new in both building and weather, like the hidden set. `code/run_policy.py` then plays the submission's Policy class (`code/runtime/model_policy.py`) through the starter kit's own harness on those held-out scenarios. The policy builds the model from the metadata alone (`code/runtime/online_model.py`), feeds it each observation and its own action, and keeps a filtered state. Control still comes from `pid_water`, so the score must equal `pid_water`'s.
+**How we rehearse it.** Generated buildings are named by the generator's random seed (`building_0500` is building number 500, not a time). The held-out scenarios come from the split that `make_splits.py` computes (an unseen building, and at the hard station an unseen climate too), so a test scenario is new in building and, for the hard tier, in weather, like the hidden set. `code/run_policy.py` then plays the submission's Policy class (`code/runtime/model_policy.py`) through the starter kit's own harness on those held-out scenarios. The policy builds the model from the metadata alone (`code/runtime/online_model.py`), feeds it each observation and its own action, and keeps a filtered state. Control still comes from `pid_water`, so the score must equal `pid_water`'s.
 
 **What the rehearsal checks.** The score must equal `pid_water`'s, because the model does not make decisions yet; the report gives the model's live 1/3/6 h forecast error and its time per step, which must fit the roughly 0.125 s per step the 9-hour session allows (§4.3). The live forecasts should equal the offline `test_model.py` numbers for the same constants. Two details only show up inside the real interface: the observation's occupancy is a head count (not normalized), and room temperatures arrive one step late, so the filtered state runs one step behind the sensors.
 
@@ -1353,7 +1353,7 @@ Items 1, 2 and 5 can be closed with the repo's existing commands; Appendix B is 
 | `outputs/roomdata_<building>_<weather>_<policy>.npz` | 3-day rollouts with the solver's exact per-room inputs logged beside the observations (§14.5) |
 | `outputs/room_model_validate.json`, `room_coeff_targets.npz`, `room_coeff_fit.json`, `room_spread_fit.json`, `room_model_eval.json`, `room_model_identify.json`, `room_model_forecast.json` | results of §14.1 and §14.5 |
 | `code/` | the scripts listed in §20.1 |
-| `README.md`, `docs/RUNBOOK.md`, `docs/LLM_DISCOVERY.md`, `GUIDE.md`; `code/setup_check.py`, `audit_data.py`, `build_dataset.py`, `run_discovery.py`, `test_model.py`, `code/discovery/`; `outputs/discovery/<run>/`, `outputs/test/`; `split_example.json`, `data/` | the LLM discovery loop, its runs, the data-generation rules and model variable definitions, and the starter-kit data it reads (§17.7) |
+| `README.md`, `docs/RUNBOOK.md`, `docs/DISCOVERY_WALKTHROUGH.md`, `GUIDE.md`; `code/setup_check.py`, `audit_data.py`, `build_dataset.py`, `run_discovery.py`, `test_model.py`, `code/discovery/`; `outputs/discovery/<run>/`, `outputs/test/`; `data/` | the LLM discovery loop, its runs, the data-generation rules and model variable definitions, and the starter-kit data it reads (§17.7) |
 
 The scripts run from the starter-kit root (the gin configs use relative paths) with the environment in `.venv/` (Python 3.12, dependencies pinned in the starter kit's `pyproject.toml`), for example `cd smart-buildings-starter-kit && PYTHONDONTWRITEBYTECODE=1 ../working-code/.venv/bin/python ../working-code/code/rollout_checks.py 600`.
 

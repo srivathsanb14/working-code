@@ -11,6 +11,7 @@
   tiers_bars.png      3 h forecast error of persistence and the hand-written models on validation and held-out runs
                       (closedform.evaluate on the 12 thirty-day runs, as on the 'tiers' slide)
 
+  eq_model.png        the fixed per-room update of prompts.CF_CONTRACT, typeset (the LLM writes each coefficient's formula)
   episode.png         one real episode (building 4 x denver_2 x pid_water, a validation run) and every column it holds,
                       from the episode file build_dataset.py writes from the kit's run (optional 4th argument)
 
@@ -27,6 +28,7 @@ import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 from matplotlib.colors import LinearSegmentedColormap  # noqa: E402
 import matplotlib.patches  # noqa: E402,F401
+import matplotlib.lines  # noqa: E402,F401
 
 WC, ANALYSIS, OUT = Path(sys.argv[1]), Path(sys.argv[2]), Path(sys.argv[3])
 INK, INK2, GRID, SURF = "#13213A", "#52514E", "#D9D6CE", "#FBFAF7"
@@ -175,13 +177,33 @@ fig.text(0.01, 0.5, "outside °C (dotted: 21 °C)", rotation=90, va="center", fo
 fig.subplots_adjust(left=0.08, right=0.82, top=0.92, bottom=0.06, hspace=0.15)
 fig.savefig(OUT / "weather.png", dpi=100); plt.close(fig)
 
+# ---------------------------------------------------------------- E2. the fixed equation, typeset (prompts.CF_CONTRACT)
+fig = plt.figure(figsize=(14, 3.8))
+num = (r"$T_i \,+\, \mathrm{air}_i\, g_i\, T_{\mathrm{supply},i} \,+\, \mathrm{outside}_i\, T_{\mathrm{out}} \,+\, \sum_j \mathrm{nb}_{ij}\, T_j"
+       r" \,+\, \mathrm{slab}_i\, S_i \,+\, \mathrm{wall}_i\, W_i \,+\, \mathrm{inner}_i\, P_i \,+\, \mathrm{heat}_i\, Q_i$")
+den = (r"$1 \,+\, \mathrm{air}_i\, g_i \,+\, \mathrm{outside}_i \,+\, \sum_j \mathrm{nb}_{ij} \,+\, \mathrm{slab}_i"
+       r" \,+\, \mathrm{wall}_i \,+\, \mathrm{inner}_i$")
+fig.text(0.01, 0.73, r"$T_i(t + 5\,\mathrm{min}) \,=$", fontsize=20, color=INK, va="center")
+fig.text(0.595, 0.86, num, fontsize=17, color=INK, ha="center", va="center")
+fig.add_artist(matplotlib.lines.Line2D([0.2, 0.99], [0.73, 0.73], color=INK, lw=1.4))
+fig.text(0.595, 0.6, den, fontsize=17, color=INK, ha="center", va="center")
+fig.text(0.01, 0.3, r"each coefficient ($\mathrm{air}_i,\ \mathrm{outside}_i,\ \mathrm{nb}_{ij},\ \mathrm{slab}_i, \ldots$)  $=\ f\,($"
+         "floor plan,  last 24 h of measurements,  physical constants$)$", fontsize=16.5, color=INK, va="center")
+fig.text(0.01, 0.1, "the LLM writes each f;  everything else in the equation is fixed", fontsize=18, color="#eb6834", va="center", weight="bold")
+fig.savefig(OUT / "eq_model.png", dpi=110); plt.close(fig)
+
 # ---------------------------------------------------------------- F. one episode = one kit run, and its columns
 if len(sys.argv) > 4:
     EP = np.load(sys.argv[4]); meta = json.loads(str(EP["meta"]))
     b, st = meta["building"], meta["weather"]
     n, V = EP["T_meas"].shape; days = np.arange(n) / 288
+    fs, ff, area = EP["geo__facade_sides"], EP["geo__facade_faces"], EP["geo__area"]
+    def pick(m):                                            # the median-size room of a type, from the episode's own geometry
+        idx = np.nonzero(m)[0]; return int(idx[np.argsort(area[idx])[len(idx) // 2]])
+    rooms = [(pick(fs >= 2), "corner room", TYPE["corner"][0]), (pick((fs == 1) & (ff > 0)), "one outside wall", TYPE["edge"][0]),
+             (pick(ff == 0), "interior room", TYPE["interior"][0])]
+    w0, w1 = 7 * 288, 14 * 288; t = days[w0:w1]; occ = EP["in__comfort"][w0:w1] > 0.5
     fig = plt.figure(figsize=(13, 7.0))
-    # left: the three ingredients
     zm = np.load(KIT / "training_scenarios" / b / st / "zone_map.npy"); lab, _ = ndimage.label(zm == 0)
     img = np.ones(zm.shape + (3,)); img[zm == 1] = matplotlib.colors.to_rgb(INK2); img[zm == 2] = matplotlib.colors.to_rgb(SURF)
     for r in csv.DictReader(open(WC / "outputs" / f"{b}_rooms.csv")):
@@ -190,32 +212,34 @@ if len(sys.argv) > 4:
             img[lab == l] = matplotlib.colors.to_rgb(TYPE[r["type"]][0])
     fl, _ = ndimage.label(ndimage.binary_dilation(zm != 2, iterations=3)); rr, cc = np.nonzero(zm != 2)
     r0, r1 = np.nonzero((fl == fl[rr[0], cc[0]]).any(1))[0][[0, -1]]; c0, c1 = cc.min(), cc.max()
-    a1 = fig.add_axes([0.01, 0.5, 0.22, 0.34]); a1.imshow(img[r0:r1 + 1, c0:c1 + 1], interpolation="nearest"); a1.axis("off")
+    a1 = fig.add_axes([0.01, 0.5, 0.2, 0.32]); a1.imshow(img[r0:r1 + 1, c0:c1 + 1], interpolation="nearest"); a1.axis("off")
     a1.set_title(f"1 building\n{b.replace('building_train_', 'building ')}: {V} rooms", loc="left", fontsize=16, color=INK)
-    a2 = fig.add_axes([0.04, 0.2, 0.19, 0.18]); a2.plot(days, EP["in__T_out"] - 273.15, color="#eb6834", lw=0.8)
-    a2.set_title(f"× 1 weather window\n{st}: 30 days", loc="left", fontsize=16, color=INK); a2.set_xticks([0, 10, 20, 30])
-    a2.set_ylabel("°C", fontsize=13); a2.tick_params(labelsize=12, length=0); a2.spines[["top", "right"]].set_visible(False)
-    fig.text(0.03, 0.06, f"× 1 controller\n{meta['policy']}", fontsize=16, color=INK, va="bottom")
-    # right: every column, over the 30 days
-    per_room = [("T_meas", "room temperature (target)", "°C", -273.15), ("in__g", "supply air", "W/K", 0),
-                ("in__T_supply", "supply-air temperature", "°C", -273.15), ("in__Q_reheat", "reheat heat", "W", 0),
-                ("in__Q_gain", "lights & equipment", "W", 0)]
-    bw = [("in__T_out", "outside temperature", "°C", -273.15), ("in__occupants", "people in building", "", 0),
-          ("in__comfort", "occupied hours (1/0)", "", 0), ("in__T_water", "boiler water temp.", "°C", -273.15)]
-    H = len(per_room) + len(bw); top, bot, gap = 0.9, 0.08, 0.012; h = (top - bot - gap * (H - 1)) / H
-    fig.text(0.29, 0.95, f"= 1 episode: these columns at every 5-minute step for 30 days ({n:,} rows)", fontsize=17, color=INK)
-    for k, (key, name, unit, off) in enumerate(per_room + bw):
-        ax = fig.add_axes([0.29, top - (k + 1) * h - k * gap, 0.46, h])
-        A = EP[key] + off
-        if A.ndim == 2:
-            ax.imshow(A.T, aspect="auto", cmap="Blues", interpolation="nearest", extent=[0, n / 288, V, 0])
-            ax.set_yticks([])
+    fig.text(0.02, 0.36, f"× 1 weather window\n{st}: 30 days", fontsize=16, color=INK, va="top")
+    fig.text(0.02, 0.18, f"× 1 controller\n{meta['policy']}", fontsize=16, color=INK, va="top")
+    fig.text(0.27, 0.95, "= 1 episode: every 5 minutes for 30 days (one week shown)", fontsize=17, color=INK)
+    panels = [("room temperature, °C\n(what we forecast)", "T_meas", -273.15, True), ("outside temperature, °C", "in__T_out", -273.15, False),
+              ("supply air into the room, W/K", "in__g", 0, True), ("reheat heat, W", "in__Q_reheat", 0, True),
+              ("people in the building", "in__occupants", 0, False)]
+    top, bot, gap = 0.9, 0.1, 0.02; h = (top - bot - gap * (len(panels) - 1)) / len(panels)
+    for k, (name, key, off, per) in enumerate(panels):
+        ax = fig.add_axes([0.27, top - (k + 1) * h - k * gap, 0.5, h])
+        A = EP[key][w0:w1] + off
+        y0, y1 = (np.nanmin(A[:, [r[0] for r in rooms]]), np.nanmax(A[:, [r[0] for r in rooms]])) if per else (np.nanmin(A), np.nanmax(A))
+        ax.fill_between(t, y0, y1, where=occ, color="#E4EFE6", lw=0, step="mid")
+        if per:
+            for i, lab_, col in rooms:
+                ax.plot(t, A[:, i], color=col, lw=1.2, label=lab_)
         else:
-            ax.plot(days, A, color=INK2, lw=0.7); ax.set_xlim(0, n / 288); ax.set_yticks([])
-        ax.set_xticks([0, 7, 14, 21, 28] if k == H - 1 else []); ax.tick_params(labelsize=12, length=0)
-        [sp.set_visible(False) for sp in ax.spines.values()]
-        shape = f"per room ({V})" if A.ndim == 2 else "building-wide"
-        ax.text(1.01, 0.5, f"{name}\n{shape}" + (f", {unit}" if unit else ""), transform=ax.transAxes, va="center", fontsize=14.5, color=INK)
-    fig.text(0.52, 0.015, "day   (per-room columns: one row per room, darker = higher)", ha="center", fontsize=14, color=INK2)
+            ax.plot(t, A, color=INK2, lw=1.0)
+        ax.set_xlim(7, 14); ax.margins(y=0.08); ax.tick_params(labelsize=11, length=0)
+        ax.spines[["top", "right"]].set_visible(False); ax.spines[["left", "bottom"]].set_color(GRID)
+        ax.set_xticks(range(7, 15) if k == len(panels) - 1 else [])
+        if k == len(panels) - 1:
+            ax.set_xticklabels([f"day {d}" for d in range(7, 15)])
+        ax.text(1.02, 0.5, name, transform=ax.transAxes, va="center", fontsize=14, color=INK)
+        if k == 0:
+            ax.legend(loc="upper left", bbox_to_anchor=(0, 1.45), ncol=3, frameon=False, fontsize=13)
+    fig.text(0.27, 0.025, "Shaded: occupied hours.  Also in every step: supply-air temperature, lights & equipment, boiler water, clock.",
+             fontsize=12.5, color=INK2)
     fig.savefig(OUT / "episode.png", dpi=100); plt.close(fig)
 print("wrote split_grid.png, term_heatmap.png, tiers_bars.png, buildings.png, weather.png" + (", episode.png" if len(sys.argv) > 4 else ""))

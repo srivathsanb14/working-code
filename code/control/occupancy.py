@@ -1,4 +1,4 @@
-"""Occupancy forecast for the comfort term (backlog K5).
+"""Occupancy forecast for the comfort term.
 
 Only the building's total head count is observed (two steps late), so the forecast is a per-building daily profile:
   prior   the kit's schedule: arrivals spread over 06-12, departures over 13-19, workdays only, about 1.5 people

@@ -1,4 +1,4 @@
-"""Build the folder to upload as the Kaggle Dataset attached to the submission notebook (backlog L3).
+"""Build the folder to upload as the Kaggle Dataset attached to the submission notebook.
 
     python code/package_submission.py                                   # policy code only (pid_water + safety)
     python code/package_submission.py --model outputs/discovery/main/best.py   # also the discovered formulas

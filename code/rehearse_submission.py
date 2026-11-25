@@ -1,4 +1,4 @@
-"""Local rehearsal of the Kaggle submission (backlog L4): the notebook's policy core through the kit's own harness.
+"""Local rehearsal of the Kaggle submission: the notebook's policy core through the kit's own harness.
 
     python code/rehearse_submission.py                       # all 30 shipped scenarios, 8,640 steps (comparable with baselines)
     python code/rehearse_submission.py --scenarios building_train_8/atlanta_1 --steps 576     # quick check

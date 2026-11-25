@@ -229,7 +229,7 @@ def _strip_fence(code):
 
 
 def parse_response(text):
-    """Robust parse of the LLM answer (backlog E5): tolerates code fences, prose around the JSON, a bare list,
+    """Robust parse of the LLM answer: tolerates code fences, prose around the JSON, a bare list,
     missing hypotheses and duplicate names.  Raises ParseError with a reason the proposer can send back."""
     data = _json_blob(text)
     cands = data.get("candidates", []) if isinstance(data, dict) else data if isinstance(data, list) else []

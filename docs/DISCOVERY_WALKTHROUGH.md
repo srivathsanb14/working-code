@@ -1,8 +1,8 @@
 # LLM discovery: where everything happens, and how to tell whether it works
 
 This is the guide to the default discovery mode: **closed-form formulas with no fitting anywhere**, searched by an
-LLM with islands, mutation and crossover. The earlier fitted modes (`--deployment offline|online|both`) are still
-available for comparison; see [LLM_DISCOVERY.md](LLM_DISCOVERY.md).
+LLM with islands, mutation and crossover. The earlier fitted modes (`--deployment offline|online|both`, `code/discovery/loop.py`) are still
+in the code for comparison.
 
 ## 0. What the LLM writes: the coefficient formulas of a fixed state-space function
 

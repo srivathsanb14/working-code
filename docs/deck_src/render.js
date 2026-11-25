@@ -76,7 +76,7 @@ function card(s, x, y, w, h, { title, body, tag, tone = "accent1", fill = "backg
 function box(s, x, y, w, h, title, sub, tone) {
   const dark = tone === "fill";
   s.addShape(pres.ShapeType.roundRect, { x, y, w, h, rectRadius: 0.1, fill: { color: dark ? C.text1 : C.background1 }, line: { color: dark ? C.text1 : (tone ? C[tone] : C.text1), width: 1.5 } });
-  const tl = Math.max(1, Math.ceil(title.length / Math.max(6, (w - 0.3) * 8.6)));   // ~8.6 bold 15 pt characters per inch
+  const tl = Math.max(1, Math.ceil(title.length / Math.max(6, (w - 0.3) * 10.5)));  // ~10.5 bold 15 pt characters per inch
   text(s, title, { x: x + 0.15, y: y + 0.12, w: w - 0.3, h: 0.27 * tl + 0.05, fontSize: 15, bold: true, color: dark ? C.background2 : C.text1 });
   if (sub) text(s, sub, { x: x + 0.15, y: y + 0.2 + 0.27 * tl, w: w - 0.3, h: h - 0.3 - 0.27 * tl, fontSize: 12, color: dark ? C.accent4 : C.accent3 });
 }
@@ -159,7 +159,9 @@ for (const d of ST.slides) {
       if (d.caption) caption(s, d.caption, X0, Y0 - 0.1 + r.h + 0.08, 6.6);
       bullets(s, d.points, X0 + 6.95, Y0, W - 6.95, 4.4, 15);
     } else {
-      const np = (d.points || []).length, r = img(s, d.img, X0, Y0 - 0.15, W, 3.25 - 0.3 * Math.max(0, np - 3), d.caption || d.img, true);
+      const pts = d.points || [], lines = pts.reduce((a, p) => a + Math.ceil(p.length / 125), 0);   // ~125 characters per 14 pt line
+      const room = (YMAX - 0.05) - (Y0 - 0.15) - 0.45 - (d.caption ? 0.35 : 0) - (lines * 0.26 + pts.length * 0.11);
+      const r = img(s, d.img, X0, Y0 - 0.15, W, Math.min(3.25, room), d.caption || d.img, true);
       if (d.caption) caption(s, d.caption, X0, Y0 - 0.15 + r.h + 0.05, W);
       bullets(s, d.points, X0, Y0 + r.h + 0.35, W, YMAX - (Y0 + r.h + 0.35), 14);
     }
@@ -192,10 +194,10 @@ for (const d of ST.slides) {
     const n = d.steps.length, aw = 0.36, gap = 0.12, bw = (W - (n - 1) * (aw + 2 * gap)) / n;
     d.steps.forEach(([t, b], i) => {
       const x = X0 + i * (bw + aw + 2 * gap);
-      box(s, x, Y0, bw, 1.35, t, b, i === n - 1 ? "accent2" : undefined);
-      if (i < n - 1) arrow(s, x + bw + gap, Y0 + 0.56, aw);
+      box(s, x, Y0, bw, 1.5, t, b, i === n - 1 ? "accent2" : undefined);
+      if (i < n - 1) arrow(s, x + bw + gap, Y0 + 0.64, aw);
     });
-    if (d.points && d.points.length) bullets(s, d.points, X0, Y0 + 1.85, W, 2.5, 16);
+    if (d.points && d.points.length) bullets(s, d.points, X0, Y0 + 1.95, W, 2.4, 16);
     cbox(d.callout, Y0 + (d.points && d.points.length ? 4.0 : 1.85));
   } else if (k === "figure") {
     const top = oneLine(d.title) ? 1.62 : 2.08, ch = d.callout ? 0.8 : 0;

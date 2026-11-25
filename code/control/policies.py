@@ -1,4 +1,4 @@
-"""Model-based controllers with the submission interface (backlog K2, K3, K6).
+"""Model-based controllers with the submission interface.
 
     FeedForwardPolicy(meta, action_spec, model_src)   pid_water, plus model-chosen pre-heat before the morning start
                                                        and early set-back before the evening end
@@ -74,7 +74,7 @@ class _ModelBased:
 
 
 class FeedForwardPolicy(_ModelBased):
-    """pid_water everywhere, except two model-decided transitions (backlog K2)."""
+    """pid_water everywhere, except two model-decided transitions."""
 
     def __init__(self, building_meta_data, action_spec=None, model_src=None, lead_steps=36, replan=1):
         super().__init__(building_meta_data, action_spec, model_src, horizon=lead_steps + 12, replan=replan)
@@ -96,4 +96,4 @@ class FeedForwardPolicy(_ModelBased):
 
 
 class MPCPolicy(_ModelBased):
-    """Mode MPC over a reduced action (backlog K3): schedule / comfort / eco / off, replanned every few steps."""
+    """Mode MPC over a reduced action: schedule / comfort / eco / off, replanned every few steps."""

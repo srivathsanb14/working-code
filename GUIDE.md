@@ -18,13 +18,13 @@ A working reference for building the room dynamics model. Part A is what may and
 
 | Option | Command / flag | Why it matters for the evaluation | Guideline |
 |---|---|---|---|
-| Which buildings, and how many | `run_floor_generator --start-seed --count` (or `--seeds`) | The hidden buildings are new draws from this generator; the building is the unit of generalization | As many distinct buildings as compute allows. Disjoint seed ranges for train, val and test |
-| Batch composition | `--count` per call | Materials are spread evenly across each batch, and a different `--count` redraws them | One batch per split, so each split covers the material ranges |
-| Which weather strips | `run_scenario_generator --weathers` (48 shipped strips: 6 stations × 8 dates, about 6 weeks apart) | Hidden stations are unseen; windows can fall in any season | Each building gets strips from several stations and seasons. Keep **Minneapolis** (shipped, but in no shipped scenario) for test only |
-| Building–weather pairing | one `run_scenario_generator` call per building (it takes the cross product) | Avoids every building seeing the same weather | Rotate strip indices across buildings |
+| Which buildings, and how many | `run_floor_generator --start-seed --count` (or `--seeds`) | The hidden buildings are new draws from this generator; the building is the unit of generalization | The six shipped buildings, then as many new seeds as compute allows (stage 2, A.4) |
+| Batch composition | `--count` per call | Materials are spread evenly across each batch, and a different `--count` redraws them | One batch per stage, so it covers the material ranges |
+| Which weather strips | `run_scenario_generator --weathers` (48 shipped strips: 6 stations × 8 dates, about 6 weeks apart) | Hidden stations are unseen; windows can fall in any season | Shipped buildings: all 48 (every season at every station, Minneapolis included). New buildings: one per station. Which station is held out is decided by the split (`make_splits.py`), not here |
+| Building–weather pairing | naming `--buildings` and/or `--weathers` takes the cross product | Every building seen in every season | Shipped buildings: the full cross product. New buildings: rotate the strip index across buildings |
 | Behaviour policies | `evaluate --policies` | Excitation decides what can be identified | All five shipped policies: `all_off` (free-float), `bang_bang` (strong steps), `fixed_setpoint`, `pid`, `pid_water` (realistic) |
-| Episode length | `evaluate --steps` | Longer runs give more forecast windows (and, with online identification, day 1 for θ and later days to score) | ≥ 864 (3 days). 2016 (7 days) recommended. 8640 on a subset for final checks |
-| Where outputs go | `--output-dir`, `--scenarios-dir`, `--results-dir` | — | Under `working-code/data/` |
+| Episode length | `evaluate --steps` | Longer runs give more forecast windows and every phase of the month | 8640 (the full, scored 30 days, the default). Shorter only to save compute |
+| Where outputs go | `--output-dir`, `--scenarios-dir`, `--results-dir` | — | Outside the kit, on the data machine (for example `working-code/data/`) |
 
 **Must not change** (configurable, but fixed in every shipped scenario and assumed identical in the hidden set; the model hard-codes them):
 
@@ -55,26 +55,22 @@ A working reference for building the room dynamics model. Part A is what may and
 - `run_scenario_generator` rejects floor plans with a room under 20 m², and `min_room_size` does not prevent it, so skip failing seeds.
 - `num_ahus` is a floor; the realized count can be higher. A generated building reached 12 AHUs and 120 rooms, larger than any shipped one.
 - Materials are stratified per batch, so the same command reproduces a batch, but a different `--count` redraws it.
-- Shorter `--steps` are fine for fitting but are not comparable competition scores.
+- Shorter `--steps` save compute but are not comparable competition scores.
 
 ### A.3 Validation must mirror the evaluation
 
+There is no training split (nothing is fitted). `code/make_splits.py` computes the split from whatever episodes exist, by
+rule; nothing is written by hand:
+
 | Hidden-set condition | How the split reproduces it |
 |---|---|
-| Unseen building | val and test buildings come from seed ranges never used in train |
-| Unseen station | test uses Minneapolis only; val holds out one other station, rotated (leave-one-station-out) |
-| No per-building fit | p and θ are fitted on train only. **Offline (default):** nothing is fitted on val/test scenarios; they are scored by forecasts from a Kalman-filtered state (geometry + measured history + universal constants). **Online (optional):** θ is fitted on **day 1** of each val/test scenario, then scored open loop on the following days |
-| All regimes | every split spans seasons and all five policies |
+| Unseen building | the most unusual quarter of buildings by floor-plan numbers is held out: all their windows go to test (medium, or hard at the hard station) |
+| Unseen station | the station whose outside temperatures are farthest from the rest (Wasserstein-1) is the hard station: held-out buildings there are test_hard, seen buildings there are test_station |
+| Unseen month | about one window in four of a seen building at a seen station is test_easy |
+| No per-building fit | nothing is fitted anywhere; candidates are scored on validation by forecasts from measured history, as at test time |
 
-Template (`split_example.json`). Patterns are globs: with `/` they match `building/weather`, without they match the building, and `!` excludes.
-
-```json
-{"train": ["building_05*", "!*/phoenix*", "!*/minneapolis*"],
- "val":   ["building_07[01]*/phoenix*"],
- "test":  ["building_08[01]*/minneapolis*"]}
-```
-
-The test score is looked at once, at the end, never while choosing models.
+Whole scenarios (a building and a window, every controller's run on it) go to one split, and the script stops if any would
+be in two. The test tiers are scored once, at the end, never while choosing models.
 
 ### A.4 Commands
 
@@ -87,27 +83,27 @@ export NUMBA_CACHE_DIR=../working-code/.numba_cache PYTHONDONTWRITEBYTECODE=1 MP
 D=../working-code/data
 ```
 
-Buildings, one batch per split (repeat for `--start-seed 700 --count 20 … /val` and `800 … /test`):
+**Stage 1: every shipped building in every window.** Naming only `--buildings` gives all 48 windows: 6 × 48 = 288
+scenarios, × 5 controllers = 1,440 runs of 30 days.
 
 ```bash
-python -m smart_buildings.run_floor_generator --start-seed 500 --count 100 --output-dir $D/buildings/train --no-pdf
+python -m smart_buildings.run_scenario_generator --buildings building_train_1 building_train_2 building_train_4 building_train_5 building_train_7 building_train_8 --output-dir $D/scenarios
+python -m smart_buildings.evaluate --scenarios-dir $D/scenarios --policies all_off bang_bang fixed_setpoint pid pid_water --results-dir $D/results
 ```
 
-Scenarios, one call per building (rotate strip indices between buildings; test buildings get Minneapolis strips only):
+**Stage 2: new buildings.** Start with 20 (ask for about 26: the kit rejects about one seed in five), each on one window
+per station with the window index rotated across buildings, × 5 controllers = 600 runs; add more as compute allows.
 
 ```bash
-for b in $D/buildings/train/*.yaml $D/buildings/val/*.yaml; do python -m smart_buildings.run_scenario_generator --buildings $b --weathers fairbanks_1 denver_3 atlanta_5 phoenix_7 singapore_2 --output-dir $D/scenarios || true; done
+python -m smart_buildings.run_floor_generator --start-seed 500 --count 26 --output-dir $D/buildings --no-pdf
+k=1; for b in $D/buildings/*.yaml; do python -m smart_buildings.run_scenario_generator --buildings $b --weathers atlanta_$k denver_$k fairbanks_$k minneapolis_$k phoenix_$k singapore_$k --output-dir $D/scenarios || true; k=$((k % 8 + 1)); done
+python -m smart_buildings.evaluate --scenarios-dir $D/scenarios --policies all_off bang_bang fixed_setpoint pid pid_water --results-dir $D/results
 ```
 
-Runs, with all five shipped policies:
+Then, in `working-code`: `SCENARIOS=$D/scenarios RESULTS=$D/results ./run_pipeline.sh` (episodes, split, discovery).
+Delete the partial scenario folders of rejected seeds.
 
-```bash
-python -m smart_buildings.evaluate --scenarios-dir $D/scenarios --policies all_off bang_bang fixed_setpoint pid pid_water --steps 2016 --results-dir $D/results
-```
-
-By hand you must write `split.json` yourself (A.3) and delete partial scenario folders of rejected seeds.
-
-**Cost.** Roughly 100 steps/s on a small building, slower on large ones (generated buildings reach 120+ rooms); runs are independent, so run them in parallel. Start small.
+**Cost.** The simulator took 0.025–0.057 s per step on the shipped buildings, so a 30-day run is about 4–8 minutes: stage 1 is roughly 100–200 CPU-hours, and generated buildings (up to 120+ rooms) are slower. Runs are independent, so run them in parallel.
 
 **Resulting layout** (what the working code reads):
 

@@ -90,7 +90,7 @@ Their footprints are below the generator's current `DEFAULT_RANGES` (400–700 �
 | building seed | yes, the only building knob | `run_floor_generator --start-seed N --count M` (or `--seeds`) |
 | weather window | yes, any of the 48 | `run_scenario_generator --weathers …` |
 | driving policy | yes | `evaluate.py --policies …` |
-| episode length | yes, with care | 8,640 steps is the scored length; training data uses 2,016 |
+| episode length | yes, with care | 8,640 steps is the scored length, and the plan uses it |
 | generator ranges (`DEFAULT_RANGES`) | no | they define the distribution the hidden buildings come from |
 | the building YAML, by hand | no | a new seed regenerates the whole YAML; never edit it |
 | `config.gin` interface constants (action ranges, normalisers, reward weights) | no | they fix what the gateway hands the policy and how it is scored |
@@ -117,7 +117,7 @@ This repository generates no data: the runs are made with the kit's own commands
   - The outdoor convection coefficient is set per station (8.8–26.7 W/m²K).
   - Minneapolis is in no shipped scenario. The hidden test uses five other stations.
 - **Policies.** 5 shipped: `all_off`, `bang_bang`, `fixed_setpoint`, `pid`, `pid_water`.
-- **What runs on the big machine.** `run_pipeline.sh` with its defaults: train seeds 500–599, val 700–719 (Phoenix), test 800–819 (Minneapolis), 5 policies, 2,016 steps. See `docs/RUNBOOK.md`.
+- **The data plan** (made with the kit's commands; GUIDE.md A.4). Stage 1: the six shipped buildings × all 48 windows × 5 policies, 30-day runs (1,440 runs). Stage 2: new seeds from 500, one window per station each. `run_pipeline.sh` then reads the runs; the split is computed from them.
 
 ## 3. Variables
 
@@ -138,7 +138,7 @@ This repository generates no data: the runs are made with the kit's own commands
 - Live forecasts inside the policy equal the offline scores exactly: one-step error 0.4584 K both ways, 3 h error 2.0203 K both ways, on building_train_8/atlanta_1 over 576 steps (`run_policy.py --check-replay`).
 - The `num_occupants` observation runs **two steps behind** the occupancy the kit logs in `reward_components.total_occupancy`. Offline episodes now use the observable value (`starterkit_data.episode_inputs`).
 
-## 3b. The cost estimate checked against the kit (backlog K4)
+## 3b. The cost estimate checked against the kit
 
 `control/costs.py` estimates electric power (fans, cooling at COP 3.5, pump) and gas power (reheat) from the commands. It then applies the kit's price and carbon tables and the per-AHU normalisation. Checked against `reward_components.csv` on two 30-day pid_water runs:
 
