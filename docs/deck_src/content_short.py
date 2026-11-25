@@ -67,7 +67,7 @@ s(id="m_loop", kind="flow", eyebrow="LLM discovery", title="The Claude API write
 
 s(id="m_io", kind="compare", eyebrow="The LLM's input and output",
   title="In: rules, the parent and a diagnosis. Out: code for 11 formulas",
-  left=["Into the LLM (one request: ≈ 3,400 tokens + fixed 11 KB rules)",
+  left=["Into the LLM (one request: ≈ 3,400–3,900 tokens + fixed 11 KB rules)",
         ["Fixed: the room equation, the column names and units, the rules, how code is scored",
          "The parent's code and five errors; recent edits that made a child worse, and rejected ones",
          "A diagnosis from all validation runs: when, where and through which term it is wrong",

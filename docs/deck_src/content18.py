@@ -49,3 +49,18 @@ B["episode"]["src"] = B["episode"]["src"].replace("; generate_data.py defaults",
 
 # ---- each request now also lists the island's recent children that ran but scored worse than their parent
 B["proposers"]["left"][1][1] = "Parent's code ≈ 4 KB, its five scores; recent rejected children and children that scored worse"
+
+# ---- audit Nov 25: what each request carries, as prompts.cf_user_* build it
+_ops = {r[0]: r for r in B["operators"]["rows"]}
+_ops["Init (generation 0)"][1] = "the system prompt alone (plus the island's recent rejected programs, if any)"
+_ops["Mutation"][1] = ("one parent's code, its five scores, the pre-mutation analysis, a measured-vs-predicted table; the island's "
+                       "recent rejected children and children that scored worse")
+_ops["Crossover"][1] = ("two parents' code and the pre-crossover analysis (where and when each wins, which term each gets right); "
+                        "recent rejected and worse children")
+_ops["Explore"][1] = "the island's programs (names, scores, five objectives, hypotheses); recent rejected and worse children"
+B["proposers"]["left"][1][4] = "≈ 3,400 tokens (≈ 500 more with the worse-children list) plus the system prompt; no history"
+B["histnotfit"]["points"][0] = ("It is a fixed function of the last 288 measurements, recomputed every 3 hours (REFRESH = 36), like a moving "
+                                "average: Û = (Σ x·r + 5·2.0) / (Σ x² + 5)")
+B["histnotfit"]["src"] = B["histnotfit"]["src"].replace("prompts.CF_CONTRACT (", "prompts.CF_SYSTEM (")
+B["llmreads"]["points"][1] = "Then the operator-specific part: parents, their analysis, recent rejected children and children that scored worse"
+B["datarecipe"]["points"][1] = "Every run becomes one episode: one building, one weather window (its first 7 days in this plan), one controller"

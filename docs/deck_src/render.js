@@ -34,8 +34,8 @@ function layout(name, bg, titleColor, numColor) {
     background: { color: bg },
     margin: [0.6, 0.89, 0.75, 0.89],
     objects: [
-      { placeholder: { options: { name: "eyebrow", type: "body", x: X0, y: 0.55, w: W, h: 0.36, fontSize: 12, bold: true, color: C.accent1, charSpacing: 2, margin: 0, valign: "top" }, text: "" } },
-      { placeholder: { options: { name: "title", type: "title", x: X0, y: 0.92, w: W, h: 1.1, fontSize: 30, bold: true, color: titleColor, margin: 0, valign: "top" }, text: "" } },
+      { placeholder: { options: { name: "eyebrow", type: "body", x: X0, y: 0.55, w: W, h: 0.36, fontSize: 12, bold: true, color: C.accent1, charSpacing: 2, margin: 0, valign: "top", align: "left" }, text: "" } },
+      { placeholder: { options: { name: "title", type: "title", x: X0, y: 0.92, w: W, h: 1.1, fontSize: 30, bold: true, color: titleColor, margin: 0, valign: "top", align: "left" }, text: "" } },
     ],
     slideNumber: { x: 12.1, y: 6.95, w: 0.4, h: 0.3, fontSize: 10, color: numColor, align: "right" },
   });
@@ -46,8 +46,8 @@ pres.defineSlideMaster({
   title: "STATEMENT",
   background: { color: C.text1 },
   objects: [
-    { placeholder: { options: { name: "eyebrow", type: "body", x: X0, y: 1.6, w: W, h: 0.4, fontSize: 13, bold: true, color: C.accent1, charSpacing: 2, margin: 0 }, text: "" } },
-    { placeholder: { options: { name: "title", type: "title", x: X0, y: 2.1, w: 10.6, h: 2.0, fontSize: 40, bold: true, color: C.background2, margin: 0, valign: "top" }, text: "" } },
+    { placeholder: { options: { name: "eyebrow", type: "body", x: X0, y: 1.6, w: W, h: 0.4, fontSize: 13, bold: true, color: C.accent1, charSpacing: 2, margin: 0, align: "left" }, text: "" } },
+    { placeholder: { options: { name: "title", type: "title", x: X0, y: 2.1, w: 10.6, h: 2.0, fontSize: 40, bold: true, color: C.background2, margin: 0, valign: "top", align: "left" }, text: "" } },
   ],
   slideNumber: { x: 12.1, y: 6.95, w: 0.4, h: 0.3, fontSize: 10, color: C.accent6, align: "right" },
 });
@@ -68,15 +68,17 @@ function card(s, x, y, w, h, { title, body, tag, tone = "accent1", fill = "backg
   if (tag) { text(s, tag, { x: x + 0.25, y: yy, w: w - 0.5, h: 0.28, fontSize: 11, fontFace: MONO, color: C[tone] }); yy += 0.32; }
   if (title) {
     s.addShape(pres.ShapeType.ellipse, { x: x + 0.25, y: yy + 0.08, w: 0.16, h: 0.16, fill: { color: C[tone] }, line: { color: C[tone] } });
-    text(s, title, { x: x + 0.52, y: yy, w: w - 0.77, h: 0.34, fontSize: 16, bold: true, color: C.text1 }); yy += 0.44;
+    const lines = Math.max(1, Math.ceil(title.length / Math.max(8, (w - 0.77) * 8.2)));   // ~8 bold 16 pt characters per inch
+    text(s, title, { x: x + 0.52, y: yy, w: w - 0.77, h: 0.3 * lines + 0.04, fontSize: 16, bold: true, color: C.text1 }); yy += 0.3 * lines + 0.14;
   }
   if (body) text(s, body, { x: x + 0.25, y: yy, w: w - 0.5, h: y + h - yy - 0.15, fontSize: 13 });
 }
 function box(s, x, y, w, h, title, sub, tone) {
   const dark = tone === "fill";
   s.addShape(pres.ShapeType.roundRect, { x, y, w, h, rectRadius: 0.1, fill: { color: dark ? C.text1 : C.background1 }, line: { color: dark ? C.text1 : (tone ? C[tone] : C.text1), width: 1.5 } });
-  text(s, title, { x: x + 0.15, y: y + 0.12, w: w - 0.3, h: 0.32, fontSize: 15, bold: true, color: dark ? C.background2 : C.text1 });
-  if (sub) text(s, sub, { x: x + 0.15, y: y + 0.46, w: w - 0.3, h: h - 0.55, fontSize: 12, color: dark ? C.accent4 : C.accent3 });
+  const tl = Math.max(1, Math.ceil(title.length / Math.max(6, (w - 0.3) * 8.6)));   // ~8.6 bold 15 pt characters per inch
+  text(s, title, { x: x + 0.15, y: y + 0.12, w: w - 0.3, h: 0.27 * tl + 0.05, fontSize: 15, bold: true, color: dark ? C.background2 : C.text1 });
+  if (sub) text(s, sub, { x: x + 0.15, y: y + 0.2 + 0.27 * tl, w: w - 0.3, h: h - 0.3 - 0.27 * tl, fontSize: 12, color: dark ? C.accent4 : C.accent3 });
 }
 function arrow(s, x, y, w = 0.36) { s.addShape(pres.ShapeType.rightArrow, { x, y, w, h: 0.22, fill: { color: C.accent3 }, line: { color: C.accent3 } }); }
 function stat(s, x, y, w, num, label, tone = "accent1", size = 54) {
@@ -103,14 +105,20 @@ function pill(s, t, x, y, w) {
 // ---- slide bodies (assembled by make_build.sh between head.js and the reused blocks)
 const fs = require("fs");
 const IMG = process.env.DECK_IMG;
-function img(s, file, x, y, maxW, maxH, alt) {
+function fit(file, maxW, maxH) {
   const b = fs.readFileSync(path.join(IMG, file));
   const iw = b.readUInt32BE(16), ih = b.readUInt32BE(20);
   let w = maxW, h = (maxW * ih) / iw;
   if (h > maxH) { h = maxH; w = (maxH * iw) / ih; }
-  s.addImage({ path: path.join(IMG, file), x, y, w, h, altText: alt || file, objectName: alt || file });
   return { w, h };
 }
+function img(s, file, x, y, maxW, maxH, alt, centre = false) {
+  const { w, h } = fit(file, maxW, maxH);
+  const xx = centre ? x + (maxW - w) / 2 : x;
+  s.addImage({ path: path.join(IMG, file), x: xx, y, w, h, altText: alt || file, objectName: alt || file });
+  return { w, h };
+}
+const oneLine = t => !t || t.length <= 52;       // a 30 pt bold title fits ~52 characters on one line of 11.55 in
 function caption(s, t, x, y, w) { text(s, t, { x, y, w, h: 0.32, fontSize: 11, color: C.accent3, italic: true }); }
 
 
@@ -151,8 +159,7 @@ for (const d of ST.slides) {
       if (d.caption) caption(s, d.caption, X0, Y0 - 0.1 + r.h + 0.08, 6.6);
       bullets(s, d.points, X0 + 6.95, Y0, W - 6.95, 4.4, 15);
     } else {
-      const r = img(s, d.img, X0, Y0 - 0.15, W, 3.25, d.caption || d.img);
-      const x = X0 + (W - r.w) / 2; // centre: re-add would duplicate; keep left aligned
+      const np = (d.points || []).length, r = img(s, d.img, X0, Y0 - 0.15, W, 3.25 - 0.3 * Math.max(0, np - 3), d.caption || d.img, true);
       if (d.caption) caption(s, d.caption, X0, Y0 - 0.15 + r.h + 0.05, W);
       bullets(s, d.points, X0, Y0 + r.h + 0.35, W, YMAX - (Y0 + r.h + 0.35), 14);
     }
@@ -191,8 +198,9 @@ for (const d of ST.slides) {
     if (d.points && d.points.length) bullets(s, d.points, X0, Y0 + 1.85, W, 2.5, 16);
     cbox(d.callout, Y0 + (d.points && d.points.length ? 4.0 : 1.85));
   } else if (k === "figure") {
-    const r = img(s, d.img, X0, Y0 - 0.15, W, d.callout ? 3.55 : 4.4, d.title);
-    cbox(d.callout, Y0 - 0.15 + r.h + 0.2);
+    const top = oneLine(d.title) ? 1.62 : 2.08, ch = d.callout ? 0.8 : 0;
+    const r = img(s, d.img, X0, top, W, YMAX - top - (ch ? ch + 0.2 : 0), d.title, true);
+    cbox(d.callout, top + r.h + 0.2, ch);
   }
 }
 
