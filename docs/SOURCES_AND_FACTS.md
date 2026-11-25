@@ -96,13 +96,13 @@ Their footprints are below the generator's current `DEFAULT_RANGES` (400–700 �
 | `config.gin` interface constants (action ranges, normalisers, reward weights) | no | they fix what the gateway hands the policy and how it is scored |
 | the kit's code | no | our code only calls the kit's commands |
 
-`code/generate_data.py` passes only seeds, weather names, policies and steps.
+This repository generates no data: the runs are made with the kit's own commands, which are given only seeds, weather names, controllers and steps.
 
 ## 2. The generator (kit code; nothing generated locally)
 
 - **Seeds.** Any integer works. Geometry depends only on the seed (`run_floor_generator.py`).
   - Materials are a Latin-hypercube draw over the whole batch (`materials.py`), so the same seed in a different batch gets different materials.
-  - The kit rejects a seed whose floor plan has a room under 20 m² (`scenario_generator._check_generated_zone_areas`). `generate_data.py` runs one call per building and records such failures.
+  - The kit rejects a seed whose floor plan has a room under 20 m² (`scenario_generator._check_generated_zone_areas`). Ask the generator for more seeds than the buildings needed.
 - **Ranges** (`DEFAULT_RANGES`):
   - width 400–700 ft, height 300–500 ft, 2–4 floors;
   - rooms 30–60 ft (+11–16 ft span), shape ratio 0.28–0.40, coverage 0.65–0.85;

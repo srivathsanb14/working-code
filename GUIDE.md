@@ -78,15 +78,9 @@ The test score is looked at once, at the end, never while choosing models.
 
 ### A.4 Commands
 
-**The driver (recommended).** `code/generate_data.py` runs the starter kit's three tools with exactly the settings above. It writes everything under `working-code/data` (or `$SB_DATA`), creates `plan.json` and `split.json`, resumes after interruption, and records seeds the scenario generator rejects (a `.failed` marker; the building is skipped):
+This repository has no data generator of its own: the data is made with the starter kit's commands, run from the kit root, as below. The pipeline then only reads the finished runs.
 
-```bash
-python code/generate_data.py --train-seeds 500:600 --val-seeds 700:720 --test-seeds 800:820 --steps 2016 --workers 8
-```
-
-Add `--dry-run` to print the plan, its size and its cost without running anything. The options are listed in `docs/RUNBOOK.md` step 2.
-
-**By hand (the same thing, run from the starter-kit root).** Set up the environment once:
+**With the kit's commands (run from the starter-kit root).** Set up the environment once:
 
 ```bash
 export NUMBA_CACHE_DIR=../working-code/.numba_cache PYTHONDONTWRITEBYTECODE=1 MPLBACKEND=Agg

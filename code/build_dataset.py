@@ -1,7 +1,8 @@
-"""Step 3: turn the starter kit's outputs into the state-space dataset.
+"""Turn the starter kit's finished runs into episodes.  Nothing is generated or simulated here.
 
-For every run under the data root's results folders (see plan.json "sources"), this
-replays the shipped policy to recover the per-room actions, checks the replay against the
+The data is made beforehand with the starter kit's own tools (run_floor_generator, run_scenario_generator,
+evaluate.py).  For every run in the given results folders this reads the logged CSVs, re-runs only the shipped
+controller's decision function on the logged observations to recover the per-room actions, checks the replay against the
 logged per-AHU airflow and run commands, computes each room's physical inputs, and writes
 one file per run:
 
@@ -9,11 +10,11 @@ one file per run:
     data/dataset/index.json                                 per run: split, replay check, sizes, file
     data/dataset/split.json                                 copy of the split used
 
-    python code/build_dataset.py --workers 8
-    python code/build_dataset.py --results data/results --scenarios data/scenarios   # one source, explicit
+    python code/build_dataset.py --scenarios S --results R --out D            # S, R: folders the kit wrote
+    python code/build_dataset.py --scenarios S1 S2 --results R1 R2 --out D    # several pairs, matched in order
 
 Runs whose replay does not reproduce the logged airflow are indexed with status
-"replay mismatch" and excluded from fitting.  Existing up-to-date files are skipped.
+"replay mismatch" and are not used.  Existing up-to-date files are skipped.
 """
 from __future__ import annotations
 
@@ -109,23 +110,23 @@ def _do_scenario(job):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--data", type=Path, default=DATA)
-    ap.add_argument("--scenarios", type=Path, help="override plan.json sources with one scenarios dir ...")
-    ap.add_argument("--results", type=Path, help="... and one results dir")
+    ap.add_argument("--scenarios", type=Path, nargs="+", help="scenario folders the kit wrote (default: <data>/scenarios)")
+    ap.add_argument("--results", type=Path, nargs="+", help="the kit's evaluate.py result folders, same order (default: <data>/results)")
     ap.add_argument("--split", type=Path, help="default: <data>/split.json")
     ap.add_argument("--out", type=Path, help="default: <data>/dataset")
     ap.add_argument("--policies", nargs="*")
     ap.add_argument("--workers", type=int, default=4)
     a = ap.parse_args()
     sys.path.insert(0, str(Path(__file__).resolve().parent))
-    from discovery.starterkit_data import discover_runs, resolve
+    from discovery.starterkit_data import discover_runs
     data = a.data.resolve(); out = (a.out or data / "dataset").resolve()
-    if a.scenarios and a.results:
-        sources = [(a.scenarios.resolve(), a.results.resolve())]
-    else:
-        if not (data / "plan.json").exists():
-            raise SystemExit(f"no {data / 'plan.json'}: generate the data first (code/generate_data.py, docs/RUNBOOK.md step 2)")
-        plan = json.loads((data / "plan.json").read_text())
-        sources = [(resolve(s["scenarios"], data), resolve(s["results"], data)) for s in plan["sources"]]
+    scen = a.scenarios or [data / "scenarios"]; resu = a.results or [data / "results"]
+    if len(scen) != len(resu):
+        raise SystemExit("give as many --scenarios folders as --results folders (matched in order)")
+    sources = [(s.resolve(), r.resolve()) for s, r in zip(scen, resu)]
+    for s, r in sources:
+        if not r.is_dir():
+            raise SystemExit(f"no results folder {r}: generate the runs with the starter kit's evaluate.py first")
     out.mkdir(parents=True, exist_ok=True)
     split_path = a.split or data / "split.json"
     split = json.loads(split_path.read_text()) if split_path.exists() else {}

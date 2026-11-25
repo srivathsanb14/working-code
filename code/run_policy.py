@@ -4,9 +4,8 @@ The hidden evaluation (Kaggle Overview and Data tabs): the submitted notebook's 
 instantiated once per unseen (building, weather) scenario with that building's metadata, then
 get_action(obs) is called every 5 minutes for 8,640 steps (30 days); every step's reward counts.
 This script does the same locally with the starter kit's own harness
-(smart_buildings.evaluate.evaluate_policy_for_config), on our held-out scenarios (the `test` or `val`
-split from generate_data.py: buildings from generator seeds never used for training, on stations
-never used for training).
+(smart_buildings.evaluate.evaluate_policy_for_config), on held-out scenarios (a test tier of
+the split computed by make_splits.py: buildings and stations the discovery search never saw).
 
 The policy is runtime/model_policy.py: control from a base policy (default pid_water), with the
 state-space model built from the metadata and tracking the building (offline constants, no fitting).

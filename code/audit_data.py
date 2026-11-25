@@ -1,6 +1,6 @@
 """Step 2 (and again after step 3): audit the starter-kit data before trusting it.
 
-    python code/audit_data.py                 # after generate_data.py: layout, coverage, leakage
+    python code/audit_data.py                 # after the kit's runs exist: layout, coverage, leakage
     python code/audit_data.py                 # after build_dataset.py: adds replay and dataset checks
 
 Writes data/audit/audit.md (readable) and data/audit/audit.json, and exits with code 1 if
@@ -97,10 +97,10 @@ def main():
     else:
         R.ok("git status clean")
 
-    plan = json.loads((data / "plan.json").read_text()) if (data / "plan.json").exists() else None
+    plan = json.loads((data / "plan.json").read_text()) if (data / "plan.json").exists() else None   # optional manifest
     split = json.loads((data / "split.json").read_text()) if (data / "split.json").exists() else {}
     if plan is None:
-        R.warning("no plan.json (data not made by generate_data.py); using every results folder found under data/results")
+        R.ok("no plan.json manifest; auditing every results folder under data/results")
         sources = [(data / "scenarios", data / "results")]
         steps_req = None
     else:
@@ -131,7 +131,7 @@ def main():
         miss = sorted(expected - have)
         (R.fail if miss else R.ok)(f"planned runs present: {len(expected & have)}/{len(expected)}" + (f"; missing e.g. {miss[:5]}" if miss else ""))
         if plan.get("failures"):
-            R.warning(f"{len(plan['failures'])} generation failures recorded in plan.json (e.g. rooms under 20 m2): {list(plan['failures'].items())[:5]}")
+            R.warning(f"{len(plan['failures'])} generation failures recorded in the manifest (e.g. rooms under 20 m2): {list(plan['failures'].items())[:5]}")
     rejected = sorted(p.parent.name for sdir, _ in sources for p in Path(sdir).glob("*/.failed"))
     if rejected:
         used = sorted({b for _, _, b, _, _ in runs if b in rejected})

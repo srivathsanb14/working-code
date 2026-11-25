@@ -101,50 +101,25 @@ Every line must say `[ok]`. It checks:
 - that one shipped scenario loads through the kit (283 observation fields for `building_train_8`);
 - that the kit is still clean afterwards.
 
-## 2. Generate data
+## 2. The data: made with the starter kit, not here
 
-`code/generate_data.py` calls the kit's own `run_floor_generator`, `run_scenario_generator` and `evaluate`. The settings follow GUIDE.md A.2–A.3:
-- buildings in three disjoint seed batches (train, val, test);
-- train and val buildings get one strip from each of Fairbanks, Denver, Atlanta, Phoenix and Singapore, with the season rotated by seed;
-- test buildings get Minneapolis only;
-- all five shipped policies.
-
-First look at the plan and its size without running anything:
+This repository generates and simulates nothing. The data is made beforehand, on the machine that will run the
+pipeline, with the starter kit's own commands (see the kit's README), for example:
 
 ```bash
-python code/generate_data.py --train-seeds 500:600 --val-seeds 700:720 --test-seeds 800:820 --steps 2016 --dry-run
+cd smart-buildings-starter-kit
+python -m smart_buildings.run_floor_generator --start-seed 500 --count 100 --output-dir <buildings>
+python -m smart_buildings.run_scenario_generator --buildings <building stems or YAML paths> --weathers <strips> --output-dir <scenarios>
+python -m smart_buildings.evaluate --scenarios-dir <scenarios> --results-dir <results> --policies <controllers> --steps <n>
 ```
 
-Then the full set. Generated buildings are large (45–120 rooms), so it takes tens to hundreds of core-hours; it resumes if interrupted:
+What this pipeline needs afterwards is only two folders:
+- `<scenarios>/<building>/<weather>/`: `config.gin`, `floor_plan.npy`, `zone_map.npy` (the kit's shipped
+  `smart_buildings/training_scenarios` is one such folder);
+- `<results>/<building>/<weather>/<controller>/`: `timeseries.csv`, `ahu_log.csv`, `reward_components.csv`, `summary.json`.
 
-```bash
-python code/generate_data.py --train-seeds 500:600 --val-seeds 700:720 --test-seeds 800:820 --steps 2016 --workers 16
-```
-
-| Option | Default | Meaning |
-|---|---|---|
-| `--train-seeds`, `--val-seeds`, `--test-seeds` | 500:600, 700:720, 800:820 | building seed ranges, start:stop (stop excluded); disjoint, one generator batch each |
-| `--stations` | fairbanks denver atlanta phoenix singapore | stations for train and val buildings |
-| `--val-station` | phoenix | held out of train; val = val buildings on this station |
-| `--test-station` | minneapolis | test buildings only (the shipped station that is in no shipped scenario) |
-| `--test-strips` | 3 | strips per test building |
-| `--policies` | the five shipped | behaviour policies (must be replayable, GUIDE.md A.2) |
-| `--steps` | 2016 | steps per run: 864 = 3 days (minimum), 2016 = 7 days, 8640 = full episode |
-| `--include-shipped` | off | also run the 30 shipped scenarios; they go to the test split (the organisers' six buildings are never trained on) |
-| `--workers` | 4 | parallel processes |
-| `--stage` | all | buildings / scenarios / runs, to redo one stage |
-
-Expected messages:
-- `building_NNNN: FAILED (… below the 20.0 m2 minimum floor area …)`. The generator rejects that seed by design; the driver marks it `.failed` and skips it. About one seed in four is rejected.
-- At the end, `wrote …/plan.json and …/split.json (train N, val N, test N scenarios; F failures)`.
-
-**Rotating the val station (leave-one-station-out).** Train and val buildings have every station, so regenerate only `split.json` with a different val station:
-
-```bash
-python code/generate_data.py --val-station denver --stage runs
-```
-
-This is quick: nothing new is simulated.
+Every run must use one of the shipped controllers (their decisions are re-computed from the logs in step 4). The
+validation / test split is computed from whatever runs exist (step 4b, `make_splits.py`); nothing is decided here.
 
 ## 3. Audit the raw data
 
@@ -156,9 +131,9 @@ It writes `data/audit/audit.md` and exits with an error if a hard check fails. R
 - **kit untouched:** git status is clean.
 - **layout:** every planned run has its four files; row counts reach `--steps`; no NaN; CSV row 0 is the reset state (294 K); every episode starts on a Sunday at 06:00.
 - **coverage:** buildings, scenarios and runs per split; building parameters and materials against the generator's own ranges; the station × strip matrix per split.
-- **leakage:** no building in two splits; Minneapolis never in train or val; the val station never in train.
+- **leakage:** no building or scenario in two splits (the split itself comes from `make_splits.py`).
 
-Fix any `[FAIL]` before going on: rerun `generate_data.py`, which resumes, or delete a broken run folder and rerun.
+Fix any `[FAIL]` before going on: regenerate the affected run with the kit, or delete the broken run folder.
 
 ## 4. Build the dataset
 
@@ -386,7 +361,7 @@ Known gaps that do not block deployment:
   python code/dataset_report.py
   ```
 
-- **Rejected seeds:** `run_pipeline.sh` passes `--oversample 1.3` to `generate_data.py`, so each split keeps its planned number of buildings even though the kit rejects about 20% of seeds.
+- **Rejected seeds:** the kit's generator rejects about one seed in five (a room under 20 m²), so ask it for more seeds than the number of buildings you want.
 - **Tests and lint:** install with `pip install -r requirements-dev.txt`, then run:
 
   ```bash

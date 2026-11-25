@@ -33,3 +33,16 @@ B["climates"]["title"] = "The 12 runs we simulated: six buildings, one of their 
 # ---- figure sources
 B["figsources"]["rows"].insert(-1, ["Floor plans of the six buildings; weather year with the 30 simulated episodes",
                                     "real (geometry, weather)", "kit zone_map.npy, weather/csv; make_figs11.py"])
+
+# ---- no data generator in this repository: the data is made with the kit's own commands
+B["change"]["src"] = ("[kit] README and run_floor_generator.py arguments (the kit's commands take seeds, weather names, controllers, steps); "
+                      "[audit] STATE_SPACE.md §12 (interface constants)")
+B["change"]["eyebrow"] = "Making more data, with the kit's own commands"
+B["datarecipe"]["title"] = "The plan, run with the kit's commands: new buildings × weather windows × controllers"
+B["datarecipe"]["steps"][0] = ["100 new buildings", "kit generator, seeds 500–599; ask for ~30% more (it rejects about 1 in 5)"]
+B["datarecipe"]["notes"] = "Run with the kit's own commands on the data machine; this repository generates and simulates nothing."
+B["decdatagen"]["title"] = "How more data will be made with the kit, and why"
+B["decdatagen"]["src"] = "[kit] run_floor_generator.py, run_scenario_generator.py, evaluate.py, README; [our code] run_pipeline.sh (reads the runs)"
+B["decdatagen"]["rows"] = [r if r[0] != "Rejected seeds?" else ["Rejected seeds?", "ask the kit's generator for ~30% extra seeds",
+                           "the kit rejects about 1 seed in 5 (a room under 20 m²)"] for r in B["decdatagen"]["rows"]]
+B["episode"]["src"] = B["episode"]["src"].replace("; generate_data.py defaults", "")

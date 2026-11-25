@@ -1118,7 +1118,7 @@ As a cross-check, the full §14 network with the true materials, driven by these
 
 **The full workflow** is `run_pipeline.sh` (all steps in order, for a big machine), detailed in `docs/RUNBOOK.md`:
 1. `setup_check.py`;
-2. `generate_data.py`, which drives the kit's three tools to the A.2 settings and writes `plan.json` and `split.json`;
+2. the data, made beforehand with the kit's own three tools (outside this repository, which generates nothing);
 3. `audit_data.py`, covering layout, conventions, coverage against the generator's own ranges, and leakage;
 4. `build_dataset.py`, the replay, its check, and the room inputs;
 5. `audit_data.py` again, adding replay status and excitation per policy;
@@ -1353,7 +1353,7 @@ Items 1, 2 and 5 can be closed with the repo's existing commands; Appendix B is 
 | `outputs/roomdata_<building>_<weather>_<policy>.npz` | 3-day rollouts with the solver's exact per-room inputs logged beside the observations (§14.5) |
 | `outputs/room_model_validate.json`, `room_coeff_targets.npz`, `room_coeff_fit.json`, `room_spread_fit.json`, `room_model_eval.json`, `room_model_identify.json`, `room_model_forecast.json` | results of §14.1 and §14.5 |
 | `code/` | the scripts listed in §20.1 |
-| `README.md`, `docs/RUNBOOK.md`, `docs/LLM_DISCOVERY.md`, `GUIDE.md`; `code/setup_check.py`, `generate_data.py`, `audit_data.py`, `build_dataset.py`, `run_discovery.py`, `test_model.py`, `code/discovery/`; `outputs/discovery/<run>/`, `outputs/test/`; `split_example.json`, `data/` | the LLM discovery loop, its runs, the data-generation rules and model variable definitions, and the starter-kit data it reads (§17.7) |
+| `README.md`, `docs/RUNBOOK.md`, `docs/LLM_DISCOVERY.md`, `GUIDE.md`; `code/setup_check.py`, `audit_data.py`, `build_dataset.py`, `run_discovery.py`, `test_model.py`, `code/discovery/`; `outputs/discovery/<run>/`, `outputs/test/`; `split_example.json`, `data/` | the LLM discovery loop, its runs, the data-generation rules and model variable definitions, and the starter-kit data it reads (§17.7) |
 
 The scripts run from the starter-kit root (the gin configs use relative paths) with the environment in `.venv/` (Python 3.12, dependencies pinned in the starter kit's `pyproject.toml`), for example `cd smart-buildings-starter-kit && PYTHONDONTWRITEBYTECODE=1 ../working-code/.venv/bin/python ../working-code/code/rollout_checks.py 600`.
 

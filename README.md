@@ -17,13 +17,14 @@ Everything here works **beside** the starter kit, never inside it. The kit is on
 
 ## The pipeline
 
-All steps in order, for a big machine: `./run_pipeline.sh` (settings are environment variables at its top; see `docs/RUNBOOK.md`). Layout: `<root>/smart-buildings-starter-kit` beside `<root>/working-code`; generated data goes to `working-code/data/` (or `SB_DATA`).
+All steps in order, for a big machine: `./run_pipeline.sh` (settings are environment variables at its top; see `docs/RUNBOOK.md`). Layout: `<root>/smart-buildings-starter-kit` beside `<root>/working-code`; the data is made beforehand with the starter kit's own commands (this repository generates nothing; `docs/RUNBOOK.md` step 2) and read from `working-code/data/` (or `SB_DATA`).
 
 ```
  python code/setup_check.py                  0-1  environment and kit checks (writes nothing)
- python code/generate_data.py ...            2    starter-kit CLIs -> data/buildings, scenarios, results, plan.json, split.json
+   (data made with the starter kit)         2    the kit's own commands -> scenarios/ and results/ (outside this repo)
  python code/audit_data.py                   3    layout, conventions, coverage, leakage            -> data/audit/
- python code/build_dataset.py                4    replay policies, check, compute room inputs       -> data/dataset/*.npz
+ python code/build_dataset.py --scenarios S --results R   4    read runs, recover commands, room inputs  -> data/dataset/*.npz
+ python code/make_splits.py --dataset D     4b   whole episodes -> validation + test tiers      -> D/split.json
  python code/audit_data.py                   5    + replay status, dataset sanity, excitation
  python code/run_discovery.py ...            6    LLM symbolic discovery                            -> outputs/discovery/<run>/
  python code/test_model.py MODEL.py ...      7    held-out test: open loop + filtered forecasts     -> outputs/test/
@@ -38,7 +39,6 @@ Default discovery: **closed-form formulas, no fitting anywhere**, with islands, 
 code/
   common.py              paths (STARTER_KIT, SB_DATA) and safe ways to run / import the kit
   setup_check.py         step 1
-  generate_data.py       step 2
   audit_data.py          steps 3 and 5
   build_dataset.py       step 4
   run_discovery.py       step 6 (default: discovery/evolve.py, closed-form; --deployment offline|online|both: discovery/loop.py)

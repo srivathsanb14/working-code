@@ -23,7 +23,7 @@ TASKS = [
      "./run_pipeline.sh with FROM=1 TO=2 using the default seeds (train 500-599, val 700-719, test 800-819) and the five shipped policies.",
      "data/plan.json and data/split.json exist; every planned run has summary.json or a recorded failure; kit unchanged.", "A1", "P0", "L"),
     ("B2", "Data", "Handle rejected seeds by oversampling",
-     "The kit rejects seeds whose plan has a room under 20 m2. Add an option to generate_data.py to top up each split with extra seeds until a target number of accepted buildings is reached.",
+     "The kit rejects seeds whose plan has a room under 20 m2. Ask the kit's generator for extra seeds so that the target number of accepted buildings is reached.",
      "--target-buildings N (or equivalent) yields N accepted buildings per split; failures listed in plan.json; split sizes reported.", "B1", "P1", "M"),
     ("B3", "Data", "Decide training episode length",
      "Compare 2,016-step and 8,640-step training runs for discovery quality versus cost (a small subset).",
@@ -244,7 +244,7 @@ TASKS = [
 # Status after the Nov 20, 2026 build session: done / partial / open, with what was built and where.
 STATUS = {
     "A3": ("partial", "Every constant now cites its kit source (universal_constants.json 'source'); a person still sets _reviewed."),
-    "B2": ("done", "generate_data.py --oversample (run_pipeline.sh OVERSAMPLE=1.3): extra seeds 10000 above each range, first N accepted kept; tested on seeds 905-912 (4 rejected, 4 topped up)."),
+    "B2": ("dropped", "data is made with the kit's own commands outside this repository; ask the generator for about 30% extra seeds."),
     "C3": ("done", "code/dataset_report.py -> docs/DATASET_REPORT.md; run it after step 4."),
     "D1": ("done", "code/geometry_cli.py (rooms.csv, pairs.csv); outputs/geometry/ for the six shipped buildings."),
     "D2": ("done", "geo gains facade_top/bottom/left/right, facade_sides (corner = 2+ sides with >= 2 m), boundary_faces, n_neighbours, aspect; in the prompt."),
