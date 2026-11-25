@@ -3,7 +3,8 @@
 Each file below is one pending task, with its goal, the exact commands or code to change, and when it counts as done.
 The order is roughly the order to do them in; tasks 13 and 14 do not wait for anything and can start now.
 
-Status as of 25 Nov 2026: the pipeline, scorer, split, LLM loop and submission code are built and tested; no data
+Status as of 25 Nov 2026: the pipeline, scorer, split, LLM loop and submission code are built and tested (closed-form
+only: the earlier fitted code has been removed); no data
 beyond the kit's 30 shipped scenarios has been generated, and no real API generation has run.
 
 | # | Task | Phase | Priority | Depends on | Status |
@@ -24,10 +25,9 @@ beyond the kit's 30 shipped scenarios has been generated, and no real API genera
 | 14 | [Submit the safe pid_water notebook to Kaggle](14_kaggle_baseline_submission.md) | Submission | P0 | — | partial |
 | 15 | [Package the discovered model and pass the readiness gate](15_package_and_readiness_gate.md) | Submission | P0 | 08, 11, 12, 13, 14 | partial |
 | 16 | [Robustness checks on assumptions](16_robustness_checks.md) | Validation | P2 | 08, 11 | pending |
-| 17 | [Bring the long docs in line with the current design](17_docs_cleanup.md) | Docs | P2 | — | pending |
-| 18 | [Choose the two final submissions, and write the paper](18_final_submissions_and_paper.md) | Final | P0 / P1 | 08, 11, 15 | pending |
+| 17 | [Choose the two final submissions, and write the paper](17_final_submissions_and_paper.md) | Final | P0 / P1 | 08, 11, 15 | pending |
 
-**Critical path:** 01 → 03 → 04 → 06 → 07 → 08 → 11 → 15 → 18. Tasks 05, 13, 14 and 17 can run alongside it now.
+**Critical path:** 01 → 03 → 04 → 06 → 07 → 08 → 11 → 15 → 17. Tasks 05, 13 and 14 can run alongside it now.
 
 **Deadlines:** entry and team merger 3 Jan 2027; final submission and paper 15 Jan 2027.
 

@@ -1,7 +1,6 @@
 """Room inputs exactly as a submitted policy can compute them on a NEW building.
 
-Shared by every runtime model (online_model.OnlineBuildingModel for the fitted network,
-closedform_tracker.ClosedFormTracker for closed-form candidates).  It reads only:
+Used by the runtime model (closedform_tracker.ClosedFormTracker).  It reads only:
   1. building_meta_data (once): floor plan, zone map, AHU assignment, field names, action indices,
      normalisation metadata;
   2. the observation of each call;

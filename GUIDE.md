@@ -39,7 +39,7 @@ A working reference for building the room dynamics model. Part A is what may and
 **Cannot change** (fixed by the kit; matches the evaluation):
 
 - Every strip starts on a **Sunday at 06:00**. Day 1 is therefore an unoccupied eco-mode Sunday, exactly as for a deployed policy (and the only day online identification could use).
-- The wind film coefficient of each station (in the strip YAML) is part of θ: learned as a universal value offline by default, estimated per building only with online identification.
+- The wind film coefficient of each station (in the strip YAML) is not given to a policy: formulas must infer its effect from the measured history.
 - The occupant random seed is fixed, so runs are deterministic. Total occupancy is logged; which room people are in is not.
 - The reset state: every node at 294 K, boiler tank at 340 K.
 
@@ -171,8 +171,8 @@ Run it after generation and again after the build. It exits non-zero on hard fai
 | **d** (disturbance) | `T_out`; building occupants `n`; comfort flag; time of day and week | 1 + 1 + 1 + 4 | obs | CSVs (`ahu_log.outside_air`, `reward_components.total_occupancy`), clock |
 | **y** (output) | measured room air temperatures | V | obs (stale) | `timeseries.csv` zone columns (VAV order) |
 | **G** (geometry, static) | per room: area, facade segments, AHU, floor, bounding box. Per pair: shared-wall cells, door cells, doors | V and V×V | metadata `floor_plan`, `zone_map`, `ahu_zone_assignments` | same |
-| **p** (global constants) | shared by every building, such as slab coupling and spreading strength | few | fitted offline on train, shipped with the policy | fitted on train |
-| **θ** (material constants) | facade conductivity and film, facade, partition and slab capacities, partition conductivity (4–5 identifiable) | ~6 | **one universal value learned offline** (default); optionally re-estimated on day 1 | fitted on train: shared (offline) or per scenario (online) |
+| **U** (universal constants) | the same for every building and weather: time step, cell size, floor height, air heat capacity, 70 W per person, internal gains | ~10 | shipped with the policy (`discovery/universal_constants.json`) | from the kit's code |
+| **materials** (per building) | facade conductivity and film, facade, partition and slab capacities, partition conductivity | ~6, never given | **inferred inside the formulas from the measured history**; nothing is fitted | not used |
 
 **What is not in the model:**
 - Energy, cost, carbon and reward are not observed; they are predicted separately from **u** with the plant laws.
@@ -216,27 +216,28 @@ Q_occ,i    ≈ 70 W · n / V
 ### B.6 The model equation
 
 ```
-x_{k+1} = f( x_k, g_k, T_sa,k, Q_k, T_out,k ; G, θ, p )        Q_k = Q_reheat + Q_gain + Q_occ
+x_{k+1} = f( x_k, g_k, T_sa,k, Q_k, T_out,k ; G, U, measured history )        Q_k = Q_reheat + Q_gain + Q_occ
 y_{k+1} = room-air part of x_{k+1}
 ```
 
-The room air receives the air stream `g_i (T_sa,i − T_i)`, which must be integrated implicitly because `g` reaches about 2400 W/K. It also receives `Q_i`, and exchanges heat with its slab, its facade, the partitions and doors to its neighbours, and (through the facade) the outside. In the §14 structure every coefficient is a geometry count from **G** times a closed form in θ and p, so the same `f` applies to a building of any size. A discovered model may choose different hidden states or coefficient laws, but must keep this interface:
-
-- **Inputs:** G, the B.5 inputs, `T_out`, the clock.
-- **Constants:** a few global p and the material constants θ.
-- **Output:** room temperatures.
-- **State correction:** `network(geo, inputs, theta, p)` returning the `dlib.LinearNetwork` and its per-step forcing. This exposes the state, so a Kalman filter can correct it from measured history and forecasts can be scored (B.7). Required for the default offline scoring.
-- **State = compressed history.** A steady-state Kalman filter on a linear network is a fixed linear filter of past measured temperatures and inputs, so the hidden slab and wall nodes play the role of a measured history buffer (STATE_SPACE.md §17.8).
+The room air receives the air stream `g_i (T_sa,i − T_i)`, which must be integrated implicitly because `g` reaches about 2400 W/K. It also receives `Q_i`, and exchanges heat with its slab, its facade, the partitions and doors to its neighbours, and (through the facade) the outside. In the §14 structure every coefficient is a geometry count from **G** times a material property, so the same `f`
+applies to a building of any size. Discovery keeps this structure fixed (`prompts.CF_CONTRACT`): per room, the next air
+temperature is a weighted average of its heat sources and three hidden stores (slab, outside wall, inner walls), and
+the LLM writes a closed-form formula for each of the 11 coefficients from the floor plan, the measured history (up to
+288 steps) and universal constants. Nothing is fitted: per-building materials are inferred from the history inside the
+formulas (see `docs/DISCOVERY_WALKTHROUGH.md`).
 
 ### B.7 How a model is judged
 
-1. **Physics checks:** no drift at equilibrium; bounded cooling; heating warms the room and never cools its neighbours; stable under a full air stream (at the initial values and at both bounds of every constant).
-2. **Fit:** by least squares on open-loop simulation error over the training scenarios: p plus **one shared θ** (`--deployment offline`, default) or p plus one θ per training scenario (`--deployment online`).
-3. **Held-out score**, plus a small price per AST node:
-   - offline: no fitting on val/test; score = mean **3-hour forecast RMSE from a Kalman-filtered state**; open-loop RMSE reported as a diagnostic;
-   - online: θ fitted on day 1 of each val/test scenario; score = open-loop RMSE on the following days.
-4. **For the controller:** the 1-, 3- and 6-hour forecast errors; the target is under 0.5 K at 3 h (Gate G2, STATE_SPACE.md §19.1). `code/test_model.py --theta shared|trainmean|prior|day1` reports all of them (B.6).
-5. **What this does not show:** forecasts use the true future inputs and weather, so they test the model, not a controller. Closed-loop evaluation in the simulator is a separate step (STATE_SPACE.md §17.8).
+1. **Contract and physics checks:** allowed imports only, no fitted tables, no branching on building size; no drift at
+   equilibrium, bounded cooling, heating warms the room and never cools a neighbour, stable under a full air stream.
+2. **Screen:** one-step (5-minute) error on the validation episodes from measured history; more than 5× persistence is
+   dropped.
+3. **Score:** forecasts of 1, 3 and 6 h started every 30 minutes from measured history, with the controller's own future
+   commands known and future outside temperature and occupancy held at their last values (as at test time). Main score =
+   3 h error + 0.0001 K per syntax-tree node; selection is Pareto over five errors (main, fast, slow, exterior, interior).
+4. **Test tiers:** the chosen model and the Pareto front are scored once at the end on test_easy, test_medium, test_hard
+   (and test_station); never used for selection.
 
 ### B.8 The dataset on disk
 

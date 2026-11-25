@@ -1,4 +1,4 @@
-# 18 · Choose the two final submissions, and write the paper
+# 17 · Choose the two final submissions, and write the paper
 
 **Phase:** Final · **Priority:** P0 (selection), P1 (paper) · **Size:** L · **Depends on:** 08, 11, 15
 

@@ -10,9 +10,6 @@
   SELF-TEST  the scorer on a planted truth (synthetic inputs on the shipped floor plans): the truth must score ~0 K
              and beat every hand-written model.  No API call.
       .venv/bin/python code/run_discovery.py --selftest
-
-  FITTED   the earlier modes that fit constants (comparison only; code/discovery/loop.py):
-      .venv/bin/python code/run_discovery.py --deployment offline|online|both ...
 """
 import sys
 from pathlib import Path
@@ -24,10 +21,6 @@ if __name__ == "__main__":
     if "--selftest" in argv:
         from discovery.selftest import main
         main()
-    elif "--deployment" in argv and argv[argv.index("--deployment") + 1] in ("offline", "online", "both"):
-        from discovery.loop import main
-        main()
     else:
-        argv = [x for i, x in enumerate(argv) if not (x == "--deployment" or (i and argv[i - 1] == "--deployment"))]
         from discovery.evolve import main_args
         main_args(argv)

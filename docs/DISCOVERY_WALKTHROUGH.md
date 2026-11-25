@@ -1,8 +1,7 @@
 # LLM discovery: where everything happens, and how to tell whether it works
 
 This is the guide to the default discovery mode: **closed-form formulas with no fitting anywhere**, searched by an
-LLM with islands, mutation and crossover. The earlier fitted modes (`--deployment offline|online|both`, `code/discovery/loop.py`) are still
-in the code for comparison.
+LLM with islands, mutation and crossover. It is the only mode: the earlier fitted modes have been removed.
 
 ## 0. What the LLM writes: the coefficient formulas of a fixed state-space function
 
@@ -191,8 +190,8 @@ On the 12 thirty-day episodes, the stateful seed's 3 h error is 0.959 K at test 
 | Stage 2 rollouts over the MPC horizon (not yet chosen), stability | done; horizon is a flag | `--horizons`, `--main-horizon` |
 | Early-episode error acceptable while the buffer fills | done | `--warmup` steps are not scored; the buffer is padded |
 | Few observed inputs: boiler water, outside temperature, comfort flag, time code | partly | T_out, comfort and time go straight to the formulas. Boiler water temperature enters through `Q_reheat`, which a hand-written conversion computes from commands (`starterkit_data.episode_inputs`). |
-| Nonlinearity (commands → heat: products, limits, on/off) | **hand-written, not discovered** | `starterkit_data.episode_inputs`, `runtime/online_model.py`; the formulas get heat and air streams |
+| Nonlinearity (commands → heat: products, limits, on/off) | **hand-written, not discovered** | `starterkit_data.episode_inputs`, `runtime/inputs.py`; the formulas get heat and air streams |
 | Energy not needed for the dynamics | done (not modelled) | the known gaps are listed in the deck |
 | Real data need filtering; the simulator does not | not built (simulator only) | — |
 | Occupant split between rooms (open question) | seeds split evenly; formulas may do otherwise | seeds |
-| Closed-form model inside the submission policy | **not built yet** | `run_policy.py` still runs the fitted-mode model |
+| Closed-form model inside the submission policy | done | `runtime/closedform_tracker.py`, `run_policy.py --check-replay` |

@@ -7,12 +7,12 @@ This script does the same locally with the starter kit's own harness
 (smart_buildings.evaluate.evaluate_policy_for_config), on held-out scenarios (a test tier of
 the split computed by make_splits.py: buildings and stations the discovery search never saw).
 
-The policy is runtime/model_policy.py: control from a base policy (default pid_water), with the
-state-space model built from the metadata and tracking the building (offline constants, no fitting).
+The policy is runtime/model_policy.py: control from a base policy (default pid_water), with a closed-form model
+(a discovery run's best.py or a hand-written model) built from the metadata and tracking the building; nothing fitted.
 Reported per scenario: the competition score (mean per-step reward), seconds per step, and the
 model's 1/3/6 h forecast error from its filtered state, computed live inside the policy.
 
-    python code/run_policy.py --params outputs/discovery/main_offline/summary.json --on test
+    python code/run_policy.py --model outputs/discovery/main/best.py --on test_medium --check-replay
 """
 from __future__ import annotations
 
@@ -29,9 +29,13 @@ import numpy as np
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 from common import DATA, KIT, WC, import_kit  # noqa: E402
-from discovery import contract  # noqa: E402
-from runtime.model_policy import make_closedform_policy, make_model_policy  # noqa: E402
-from test_model import model_tag  # noqa: E402
+from runtime.model_policy import make_closedform_policy  # noqa: E402
+
+
+def model_tag(path):
+    """Report name for a model file: a discovery run's best.py is named after its run."""
+    path = Path(path)
+    return f"{path.parent.name}_{path.stem}" if path.stem == "best" else path.stem
 
 
 def scenarios_for(split, part, scen_dir):
@@ -42,14 +46,6 @@ def scenarios_for(split, part, scen_dir):
     def m(name, p):
         return fnmatch.fnmatch(name, p) if "/" in p else fnmatch.fnmatch(name.split("/")[0], p)
     return [s for s in allp if any(m(s, p) for p in inc) and not any(m(s, p) for p in exc)]
-
-
-def is_closedform(src):
-    """A closed-form candidate defines nodes() + coefficients() (or step(), or init_state/predict/correct) and no simulate()."""
-    import ast
-    t = ast.parse(src)
-    fns = {n.name for n in t.body if isinstance(n, ast.FunctionDef)}
-    return ("step" in fns or {"init_state", "predict", "correct"} <= fns or "coefficients" in fns) and "simulate" not in fns
 
 
 def replay_check(tracker, run_dir, scenario_dir, base_key):
@@ -87,31 +83,20 @@ def replay_check(tracker, run_dir, scenario_dir, base_key):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--model", type=Path, default=HERE / "discovery/seeds/seed_slab_wall_network.py")
-    ap.add_argument("--params", type=Path, help="summary.json of an OFFLINE discovery run (PARAMS + theta_shared); "
-                                                 "default: the model's initial values")
+    ap.add_argument("--model", type=Path, default=HERE / "discovery/seeds_cf/seed_cf_network.py",
+                    help="a closed-form model: a discovery run's best.py or a hand-written one in discovery/seeds_cf/")
     ap.add_argument("--scenarios-dir", type=Path, default=DATA / "scenarios")
     ap.add_argument("--split", type=Path, default=DATA / "split.json")
-    ap.add_argument("--on", default="test")
+    ap.add_argument("--on", default="test_medium", help="split tier: val, test_easy, test_medium, test_hard, test_station")
     ap.add_argument("--steps", type=int, default=8640, help="8640 = 30 days, the hidden evaluation's length")
     ap.add_argument("--base", default="pid_water", help="starter-kit policy key that makes the control decisions")
     ap.add_argument("--out", type=Path, help="default outputs/policy/<model>_<base>_<on>")
     ap.add_argument("--check-replay", action="store_true",
-                    help="closed-form only: replay the run offline (starterkit_data) and compare inputs and scores with the live tracker")
+                    help="replay the run offline (starterkit_data) and compare inputs and scores with the live tracker")
     a = ap.parse_args()
 
     src_text = a.model.read_text()
-    closed = is_closedform(src_text)
-    mod = None if closed else contract.load(src_text)[0]
-    if closed:
-        params, theta, src = {}, {}, "closed-form: nothing fitted"
-    elif a.params:
-        P = json.loads(a.params.read_text()); b = P.get("best", P)
-        params, theta = b["params"], b.get("theta_shared") or {k: v[0] for k, v in mod.THETA.items()}
-        src = str(a.params) + ("" if b.get("theta_shared") else " (no theta_shared: THETA at initial values)")
-    else:
-        params, theta = {k: v[0] for k, v in mod.PARAMS.items()}, {k: v[0] for k, v in mod.THETA.items()}
-        src = "initial values"
+    src = "closed-form: nothing fitted"
     scen = scenarios_for(json.loads(a.split.read_text()), a.on, a.scenarios_dir)
     if not scen:
         raise SystemExit(f"no scenarios of split '{a.on}' under {a.scenarios_dir}")
@@ -121,8 +106,7 @@ def main():
 
     os.environ.setdefault("NUMBA_CACHE_DIR", str(WC / ".numba_cache"))
     ev = import_kit()
-    cls = (make_closedform_policy(ev.POLICY_MAP[a.base], src_text, name=f"closedform_tracking_{a.base}") if closed
-           else make_model_policy(ev.POLICY_MAP[a.base], mod, params, theta, name=f"model_tracking_{a.base}"))
+    cls = make_closedform_policy(ev.POLICY_MAP[a.base], src_text, name=f"closedform_tracking_{a.base}")
     rows = []
     for s in scen:
         b, w = s.split("/")
@@ -135,7 +119,7 @@ def main():
             os.chdir(cwd)
         pol = cls.instances[-1]
         fc = pol.model.forecast_errors()
-        if closed and a.check_replay:
+        if a.check_replay:
             fc.update(replay_check(pol.model, out / "results" / b / w / pol.name(), sdir, a.base))
         row = dict(scenario=s, rooms=pol.model.V, ahus=pol.model.K, steps=summ["total_steps"],
                    score=-summ["avg_reward"], model_init_s=pol.init_seconds,
@@ -151,7 +135,7 @@ def main():
 
     keys = ["score", "1h", "3h", "6h", "persistence_3h", "model_s_per_step"]
     mean = {k: float(np.nanmean([r[k] for r in rows])) for k in keys}
-    rep = dict(model=str(a.model), constants=src, params=params, theta=theta, base=a.base, split=a.on, steps=a.steps,
+    rep = dict(model=str(a.model), constants=src, base=a.base, split=a.on, steps=a.steps,
                mean=mean, runs=rows)
     (out / "report.json").write_text(json.dumps(rep, indent=1, default=float))
     L = [f"# `{a.model.name}` inside a submission-style policy, on `{a.on}`\n",

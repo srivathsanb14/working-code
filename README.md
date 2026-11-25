@@ -26,11 +26,10 @@ All steps in order, for a big machine: `./run_pipeline.sh` (settings are environ
  python code/make_splits.py --dataset D     4b   whole episodes -> validation + test tiers      -> D/split.json
  python code/audit_data.py                   5    + replay status, dataset sanity, excitation
  python code/run_discovery.py ...            6    LLM symbolic discovery                            -> outputs/discovery/<run>/
- python code/test_model.py MODEL.py ...      7    held-out test: open loop + filtered forecasts     -> outputs/test/
- python code/run_policy.py ...               8    the submission's Policy class on held-out scenarios -> outputs/policy/
+ python code/run_policy.py --model best.py   7    the model inside a submission-style policy, live = offline -> outputs/policy/
 ```
 
-Default discovery: **closed-form formulas, no fitting anywhere**, with islands, mutation and crossover (`run_discovery.py`, `--selftest` to check it on synthetic data). The earlier fitted options remain for comparison: **offline** (constants fitted once on training buildings; nothing fitted on a new building) and **online** (θ re-fitted on each building's day 1). Pick with `run_discovery.py --deployment offline|online|both` and `test_model.py --theta shared|day1|all`; see `docs/RUNBOOK.md` step 6 and STATE_SPACE.md §17.8.
+Discovery: **closed-form formulas, no fitting anywhere**, with islands, mutation, crossover and explore requests to the Claude API (`run_discovery.py`; `--selftest` checks the scorer on a planted truth). `--test` scores the chosen model and the Pareto front once on the held-out tiers at the end; see `docs/DISCOVERY_WALKTHROUGH.md`.
 
 ## Layout
 
@@ -40,15 +39,16 @@ code/
   setup_check.py         step 1
   audit_data.py          steps 3 and 5
   build_dataset.py       step 4
-  run_discovery.py       step 6 (default: discovery/evolve.py, closed-form; --deployment offline|online|both: discovery/loop.py)
-  test_model.py          step 7
+  make_splits.py         step 4b (validation + test tiers, computed from the data)
+  run_discovery.py       step 6 (discovery/evolve.py)
+  run_policy.py          step 7 (closed-form model inside a submission-style policy; --check-replay)
   discovery/             evolve.py (islands, operators, logs), closedform.py (no-fitting scorer, analyses, ceiling),
                          report.py (REPORT.md, plots), selftest.py (planted truth), seeds_cf/, universal_constants.json,
                          starterkit_data.py (replay and room inputs), episodes.py (geometry, episode cache),
-                         contract.py, evaluate.py, diagnostics.py, prompts.py, proposers.py, loop.py, dlib.py,
-                         seeds/ (a naive one-node model and the audited slab-wall network)
-  room_model*.py, room_inputs.py, room_coeff_*.py, room_spread_fit.py
-                         the simulator audit behind STATE_SPACE.md §14 (exact grid reconstruction, coefficient fits)
+                         splits.py, pareto.py, coefform.py, contract.py, prompts.py, proposers.py, dlib.py,
+                         seeds_cf_legacy/ (earlier node-network forms of the hand-written models, used by tests and the deck)
+  room_model*.py, room_inputs.py, room_coeff_targets.py
+                         the simulator audit behind STATE_SPACE.md §14 (exact grid reconstruction, structure checks)
   *.py (others)          the interface analyses behind STATE_SPACE.md §5-§7
 docs/                    RUNBOOK.md, DISCOVERY_WALKTHROUGH.md, SOURCES_AND_FACTS.md; the decks and deck_src/
 Planning/                index.md and one file per pending task

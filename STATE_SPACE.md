@@ -3,6 +3,8 @@
 
 *Based on the starter kit `smart-buildings-2026/starter-kit` · Competition pages: <https://www.kaggle.com/competitions/neurips-2026-smart-buildings/> and <https://smart-buildings-2026.github.io/competition/>*
 
+> **Status note (25 Nov 2026).** This is the full analysis as it was developed. The approach it ends on (constants fitted offline or on day 1, a Kalman-filtered state, `--deployment`, `test_model.py`) was tried and then replaced: nothing is fitted now, the LLM writes a closed-form formula for every coefficient of a fixed state-space function, and the split is computed from the data. The fitted code has been removed; its measured results remain in `outputs/`. The current method is in `docs/DISCOVERY_WALKTHROUGH.md`, the run steps in `docs/RUNBOOK.md`, and the remaining work in `Planning/index.md`. Parts I–III and §14 (the interface and the simulator audit) are current.
+
 ---
 
 ## Summary
@@ -1282,7 +1284,7 @@ If a gate fails, the plan falls back to the previous controller and spends the r
 ## 20. What has been verified and what is still unknown
 
 ### 20.1 How this report was checked
-Most numbers come from reading configs and source and computing over the shipped data files. Everything tagged [R] or [X] comes from running code in `code/`, which imports the starter kit, calls only `reset` and `step` on the environments, and writes only into `outputs/` (the starter-kit checkout stayed unchanged on `main`). The scripts: `dump_vectors.py` (field and action names for all six buildings), `rollout_checks.py` (600 random-action steps, `train_8`), `explore_zone_map.py`, `floors_and_ahus.py` and `plot_rooms.py` (room geometry), `metadata_only_check.py` (§14.1), `all_off_response.py` (§14.6), the room-model suite of §14 (`room_model.py`, `room_model_validate.py`, `room_model_data.py`, `room_inputs.py`, `room_coeff_targets.py`, `room_coeff_fit.py`, `room_spread_fit.py`, `room_model_eval.py`, `room_model_identify.py`, `room_model_forecast.py`), and `annotate_vectors.py` and `build_appendix.py` for the listings.
+Most numbers come from reading configs and source and computing over the shipped data files. Everything tagged [R] or [X] comes from running code in `code/`, which imports the starter kit, calls only `reset` and `step` on the environments, and writes only into `outputs/` (the starter-kit checkout stayed unchanged on `main`). The scripts: `dump_vectors.py` (field and action names for all six buildings), `rollout_checks.py` (600 random-action steps, `train_8`), `explore_zone_map.py`, `floors_and_ahus.py` and `plot_rooms.py` (room geometry), `metadata_only_check.py` (§14.1), `all_off_response.py` (§14.6), the room-model suite of §14 (`room_model.py`, `room_model_validate.py`, `room_model_data.py`, `room_inputs.py`, `room_coeff_targets.py`, `room_coeff_fit.py`, `room_spread_fit.py` (removed), `room_model_eval.py`, `room_model_identify.py`, `room_model_forecast.py`), and `annotate_vectors.py` and `build_appendix.py` for the listings.
 
 ### 20.2 Confirmed
 **By instantiating the environments [R].** Vector lengths, specs, index layout and metadata keys (§5–§6) were read from all six buildings (a docstring's 271 for the smallest observation is stale; it is 283). Also:
@@ -1351,9 +1353,9 @@ Items 1, 2 and 5 can be closed with the repo's existing commands; Appendix B is 
 | `outputs/rollout_train_8.npz`, `rollout_train_8_checks.json` | raw data and results of the 600-step rollout |
 | `outputs/metadata_only_check.json`, `building_train_N_alloff_response.csv`, `alloff_response_summary.json` | results of §14.1 and §14.6 |
 | `outputs/roomdata_<building>_<weather>_<policy>.npz` | 3-day rollouts with the solver's exact per-room inputs logged beside the observations (§14.5) |
-| `outputs/room_model_validate.json`, `room_coeff_targets.npz`, `room_coeff_fit.json`, `room_spread_fit.json`, `room_model_eval.json`, `room_model_identify.json`, `room_model_forecast.json` | results of §14.1 and §14.5 |
+| `outputs/room_model_validate.json`, `room_coeff_targets.npz`, `room_coeff_fit.json`, `room_spread_fit.json`, `room_model_eval.json`, `room_model_identify.json`, `room_model_forecast.json` (results of the removed fitting scripts) | results of §14.1 and §14.5 |
 | `code/` | the scripts listed in §20.1 |
-| `README.md`, `docs/RUNBOOK.md`, `docs/DISCOVERY_WALKTHROUGH.md`, `GUIDE.md`; `code/setup_check.py`, `audit_data.py`, `build_dataset.py`, `run_discovery.py`, `test_model.py`, `code/discovery/`; `outputs/discovery/<run>/`, `outputs/test/`; `data/` | the LLM discovery loop, its runs, the data-generation rules and model variable definitions, and the starter-kit data it reads (§17.7) |
+| `README.md`, `docs/RUNBOOK.md`, `docs/DISCOVERY_WALKTHROUGH.md`, `GUIDE.md`; `code/setup_check.py`, `audit_data.py`, `build_dataset.py`, `run_discovery.py`, `code/discovery/`; `outputs/discovery/<run>/`, `outputs/test/`; `data/` | the LLM discovery loop, its runs, the data-generation rules and model variable definitions, and the starter-kit data it reads (§17.7) |
 
 The scripts run from the starter-kit root (the gin configs use relative paths) with the environment in `.venv/` (Python 3.12, dependencies pinned in the starter kit's `pyproject.toml`), for example `cd smart-buildings-starter-kit && PYTHONDONTWRITEBYTECODE=1 ../working-code/.venv/bin/python ../working-code/code/rollout_checks.py 600`.
 

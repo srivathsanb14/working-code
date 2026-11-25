@@ -21,8 +21,8 @@ request), generation 0 included. Nothing is generated, simulated or mocked here.
 formulas on the validation episodes with numpy; the episodes themselves never leave the machine (the prompts carry the
 analysis and a short trajectory excerpt; see docs/DISCOVERY_WALKTHROUGH.md).
 
-Optional afterwards: step 7 (`code/test_model.py`), the policy rehearsal (`code/run_policy.py`) and the Kaggle package
-(sections 8–11 below). The sections on generating data (1–5 below) describe how the data machine makes the data
+Optional afterwards: the model inside a policy (`code/run_policy.py`, section 7), the submission rehearsal and the Kaggle
+package (sections 8–11 below). The sections on generating data (1–5 below) describe how the data machine makes the data
 with the kit; they are kept for reference.
 
 **Folder layout.** The only path assumption: one parent folder holds both repositories side by side.
@@ -200,83 +200,26 @@ Selection is multi-objective by default (`--selection pareto --objectives main f
 Results land in `outputs/discovery/main/`. Start with `REPORT.md`, then `log.md`, `generations/` (every prompt,
 analysis and raw API response), `candidates/`, `plots/`, `database.jsonl`, `summary.json` and `best.py`.
 
-### The earlier fitted modes (comparison only)
+## 7. Check the model inside a policy
 
-Both are implemented; choose with `--deployment` (STATE_SPACE.md §17.8 explains the choice).
-
-| | Option A: offline (default) | Option B: online |
-|---|---|---|
-| On a new building | no fitting: floor plan + measured history + universal constants | θ re-fitted on its day 1 |
-| Fitted on train | PARAMS + one shared θ | PARAMS + one θ per training building |
-| Val score | 3 h forecast RMSE from a Kalman-filtered state (needs `network()`) | open-loop RMSE after day 1 |
-| Discovery | `--deployment offline` | `--deployment online` |
-| Test | `--theta shared` (also `trainmean`, `prior`) | `--theta day1` |
-
-Option A:
+The held-out tiers are scored by `run_discovery.py --test` at the end of a run (`summary.json`, `REPORT.md`); look at
+them once. This step checks something else: that the chosen model behaves the same inside a submission-style policy,
+built from the Kaggle-style metadata alone, as it did offline.
 
 ```bash
-python code/run_discovery.py --run main --deployment offline --generations 0
+python code/run_policy.py --model outputs/discovery/main/best.py --on test_medium --check-replay
 ```
 
-```bash
-python code/test_model.py outputs/discovery/main/best.py --params outputs/discovery/main/summary.json --theta shared
-```
+The policy (`code/runtime/model_policy.py`) builds the closed-form model from the metadata, feeds it every observation
+and its own action (`code/runtime/closedform_tracker.py`), and leaves control to a base policy (`--base pid_water`), so
+the score must equal that policy's. `--check-replay` replays the same run offline and compares the live inputs,
+geometry and forecast errors with the offline episode. The report gives the score, the live 1/3/6 h forecast error and
+milliseconds per step, in `outputs/policy/<model>_<base>_<tier>/report.md`.
 
-Option B:
+## 8. Rehearse the submission
 
-```bash
-python code/run_discovery.py --run main --deployment online --generations 0
-```
-
-```bash
-python code/test_model.py outputs/discovery/main/best.py --params outputs/discovery/main/summary.json --theta day1
-```
-
-Both, side by side (writes `outputs/discovery/main_offline/` and `main_online/`, then prints a comparison; with `--proposer claude` the LLM is called for each):
-
-```bash
-python code/run_discovery.py --run main --deployment both --generations 0
-```
-
-```bash
-python code/test_model.py outputs/discovery/main_offline/best.py --params outputs/discovery/main_offline/summary.json --theta all
-```
-
-`--theta all` runs shared, trainmean, prior and day1 and writes `outputs/test/<model>_<split>_compare.md`.
-
-## 7. Test the model
-
-Test the best discovered model on the test split, with the constants it was fitted with (default `--theta shared`: the shared θ from `summary.json`, no fitting on test buildings):
-
-```bash
-python code/test_model.py outputs/discovery/main/best.py --params outputs/discovery/main/summary.json --on test
-```
-
-Any model file works, for example a seed, refitted on train first:
-
-```bash
-python code/test_model.py code/discovery/seeds/seed_slab_wall_network.py --on val
-```
-
-`--theta` picks how θ reaches a test building: `shared` (default, offline: one universal θ), `trainmean` (geometric mean of per-train-building θ), `prior` (initial values), or `day1` (online: fitted on that building's day 1). Only `day1` fits anything on the test building. Use `--deployment online` in step 6 if you want `summary.json` to carry per-building θ.
-
-The report goes to `outputs/test/<model>_<split>_theta-<mode>/report.md`. Per run, station, policy and building it gives:
-- open-loop RMSE on day 1 and on the following days, from the reset state;
-- if the model defines `network()`, the 1-, 3- and 6-hour forecast RMSE from a Kalman-filtered state, against persistence. The target for planning is under 0.5 K at 3 h.
-
-These forecasts are fed the true future inputs and weather: they test the model, not a controller (STATE_SPACE.md §17.8).
-
-Look at the **test** numbers once, at the end. Use `--on val` while iterating.
-
-## 8. Rehearse the submission (fitted mode; closed-form: `run_pipeline.sh` step 8 runs `run_policy.py --check-replay`)
-
-The hidden evaluation runs the submitted notebook's Policy class on each unseen (building, weather) scenario: `__init__(building_meta_data, action_spec)` once, then `get_action(obs)` every 5 minutes for 8,640 steps. Step 8 does exactly that with the starter kit's own harness on our held-out split:
-
-```bash
-python code/run_policy.py --params outputs/discovery/main_offline/summary.json --on test
-```
-
-The policy (`code/runtime/model_policy.py`) builds the model from the metadata alone, feeds it every observation and its own action, and keeps a Kalman-filtered state (`code/runtime/online_model.py`). Control still comes from a base policy (`--base pid_water`), so the score must equal that policy's: a check that the model changes nothing yet. The report gives the score, the model's live 1/3/6 h forecast error and its milliseconds per step. Replacing the base policy's decisions with model-based ones is the controller work (STATE_SPACE.md §18.1).
+`code/rehearse_submission.py` runs the notebook's policy core through the kit's own harness on the 30 shipped scenarios
+(section 10 shows the controllers); section 9 builds the Kaggle package.
 
 ---
 

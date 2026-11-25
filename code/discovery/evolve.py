@@ -57,7 +57,7 @@ def load_split(args):
     """Validation episodes (all the search ever sees) and the held-out test tiers (scored once, at the end).
     There is no training split: nothing is fitted.  A split file that still has "train" is accepted, and its
     train episodes are ignored."""
-    from .loop import split_episodes
+    from .splits import split_episodes
     ds = Path(args.dataset)
     if not (ds / "index.json").exists():
         raise SystemExit(f"no dataset at {ds} (index.json missing): run code/build_dataset.py first (docs/RUNBOOK.md), "

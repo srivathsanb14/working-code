@@ -10,7 +10,7 @@ import pytest
 
 from discovery import evolve, proposers, splits
 from discovery.episodes import _save_cached
-from discovery.loop import split_episodes
+from discovery.splits import split_episodes
 
 D = Path(__file__).resolve().parents[1] / "code" / "discovery"
 NET = (D / "seeds_cf" / "seed_cf_network.py").read_text()

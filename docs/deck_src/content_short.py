@@ -2,7 +2,7 @@
 slide of the full deck (named in each source line), which carries its own sources."""
 import copy
 
-import content18 as FULL
+import deck as FULL
 
 M = []
 

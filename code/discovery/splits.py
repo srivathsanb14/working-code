@@ -212,3 +212,24 @@ def check_whole_episodes(S, tiers=("val", "test_easy", "test_medium", "test_hard
     if bad_ep or bad_sc:
         raise ValueError(f"split cuts data across splits: episodes {bad_ep}, scenarios {bad_sc}")
     return {k: sorted(e.name for e in S.get(k, [])) for k in tiers if S.get(k)}
+
+
+def split_episodes(eps, split):
+    """Assign loaded episodes to the split's parts.  split: {"val": [...], "test_easy": [...], ...} of names or glob
+    patterns.  A pattern with "/" is matched against "building/weather", one without against the building name; a pattern
+    starting with "!" excludes what it matches.  Keys starting with "_" are comments.  Every part except the test tiers
+    must match at least one episode."""
+    from fnmatch import fnmatch
+
+    def hit(e, pat):
+        return fnmatch(e.scenario, pat) if "/" in pat else fnmatch(e.building, pat)
+
+    def match(e, pats):
+        if any(hit(e, p[1:]) for p in pats if p.startswith("!")):
+            return False
+        return any(hit(e, p) for p in pats if not p.startswith("!"))
+    out = {k: [e for e in eps if match(e, v)] for k, v in split.items() if not k.startswith("_")}
+    for k, v in out.items():
+        if not v and not k.startswith("test"):
+            raise SystemExit(f"split '{k}' matched no episodes; adjust --split")
+    return out

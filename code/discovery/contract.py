@@ -1,20 +1,16 @@
-"""The candidate contract: what an LLM must write, and how it is checked and loaded.
+"""The candidate contract: what the LLM must write, and how it is checked and loaded.
 
-A candidate is a short Python module:
+A candidate is a short closed-form Python module (prompts.CF_CONTRACT has the full text):
 
     import numpy as np
-    import dlib                                   # optional helper (LinearNetwork, pairs, softplus)
+    import dlib                                   # optional helper
+    HISTORY = 288                                 # steps of measured history the formulas may read
+    REFRESH = 36                                  # coefficients recomputed every REFRESH steps
+    def coefficients(geo, hist, U): ...           # a formula for every coefficient of the fixed state-space function
 
-    PARAMS = {"name": (init, lo, hi), ...}        # global constants, shared by every building
-    THETA  = {"name": (init, lo, hi), ...}        # per-scenario constants, re-fitted on each new building
-
-    def simulate(geo, inputs, theta, p, T0):
-        '''Return predicted room-air temperatures, shape (n, V), after each step.'''
-
-Rules enforced here: imports limited to numpy, math and dlib; no file, process or
-introspection builtins; finite bounds with lo < init < hi; at most MAX_PARAMS
-constants in total.  This is a correctness filter, not a security boundary --
-run untrusted candidates in a container.
+Rules enforced here: imports limited to numpy, math and dlib; no file, process or introspection builtins; no fitted
+tables (PARAMS/THETA must be absent or empty); no branching on a building's size or geometry.  This is a correctness
+filter, not a security boundary -- run untrusted candidates in a container.
 """
 import ast
 import builtins
@@ -28,7 +24,6 @@ from . import dlib
 ALLOWED_IMPORTS = {"numpy", "math", "dlib"}
 FORBIDDEN_NAMES = {"open", "exec", "eval", "compile", "__import__", "globals", "locals", "vars", "input", "breakpoint",
                    "getattr", "setattr", "delattr", "os", "sys", "subprocess", "socket", "pathlib", "shutil", "importlib"}
-MAX_PARAMS = 16
 _real_import = builtins.__import__
 MAX_SOURCE_CHARS = 20000
 
@@ -64,9 +59,9 @@ def _reject_building_specific(tree):
                                 f"(line {node.lineno}) would special-case the buildings seen in discovery; formulas must work for any floor plan")
 
 
-def check_source(src: str, kind: str = "fitted") -> ast.Module:
-    """kind "fitted": PARAMS/THETA tables + simulate() (the fitted deployment modes).
-    kind "closedform": step() (+ optional prepare(), HISTORY); nothing is fitted, so no PARAMS/THETA."""
+def check_source(src: str) -> ast.Module:
+    """Static checks of a closed-form candidate: allowed imports and names, no building-specific branches, and a model
+    (coefficients(), or one of the other closed-form shapes) present."""
     if len(src) > MAX_SOURCE_CHARS:
         raise ContractError(f"source longer than {MAX_SOURCE_CHARS} characters")
     try:
@@ -86,20 +81,11 @@ def check_source(src: str, kind: str = "fitted") -> ast.Module:
         elif isinstance(node, ast.Attribute) and node.attr.startswith("__"):
             raise ContractError(f"dunder attribute '{node.attr}' not allowed")
     names = {n.name for n in tree.body if isinstance(n, ast.FunctionDef)}
-    assigns = {t.id for n in tree.body if isinstance(n, ast.Assign) for t in n.targets if isinstance(t, ast.Name)}
-    if kind == "closedform":
-        _reject_building_specific(tree)
-        stateful = {"init_state", "predict", "correct"} <= names
-        coef_form = "coefficients" in names
-        if "step" not in names and not stateful and not coef_form:
-            raise ContractError("missing the model: coefficients(geo, hist, U) "
-                                "(or the other forms: nodes + coefficients, step(...), or init_state/predict/correct)")
-        return tree
-    for req in ("PARAMS", "THETA"):
-        if req not in assigns:
-            raise ContractError(f"missing top-level {req} dict")
-    if "simulate" not in names:
-        raise ContractError("missing function simulate(geo, inputs, theta, p, T0)")
+    _reject_building_specific(tree)
+    stateful = {"init_state", "predict", "correct"} <= names
+    if "step" not in names and not stateful and "coefficients" not in names:
+        raise ContractError("missing the model: coefficients(geo, hist, U) "
+                            "(or the other forms: nodes + coefficients, step(...), or init_state/predict/correct)")
     return tree
 
 
@@ -120,21 +106,10 @@ def complexity(tree: ast.Module) -> int:
     return n
 
 
-def _check_table(name, table):
-    if not isinstance(table, dict):
-        raise ContractError(f"{name} must be a dict")
-    for k, v in table.items():
-        if not (isinstance(v, (tuple, list)) and len(v) == 3):
-            raise ContractError(f"{name}['{k}'] must be (init, lo, hi)")
-        init, lo, hi = map(float, v)
-        if not (math.isfinite(lo) and math.isfinite(hi) and lo < hi and lo <= init <= hi):
-            raise ContractError(f"{name}['{k}'] needs finite lo <= init <= hi, got {v}")
-
-
 def load_closedform(src: str):
     """Validate and execute a closed-form candidate; return (module, complexity).
     Any PARAMS/THETA table must be empty: in this mode no number is fitted, ever."""
-    tree = check_source(src, kind="closedform")
+    tree = check_source(src)
     mod = _exec(tree)
     for t in ("PARAMS", "THETA"):
         if getattr(mod, t, None):
@@ -172,28 +147,3 @@ def _exec(tree):
     mod.__dict__["__builtins__"] = safe_builtins
     exec(compile(tree, "<candidate>", "exec"), mod.__dict__)
     return mod
-
-
-def load(src: str):
-    """Validate and execute candidate source; return (module, complexity)."""
-    tree = check_source(src)
-    mod = types.ModuleType("candidate")
-    safe_builtins = {k: __builtins__[k] if isinstance(__builtins__, dict) else getattr(__builtins__, k)
-                     for k in ("abs", "min", "max", "range", "len", "sum", "float", "int", "dict", "list", "tuple", "zip",
-                               "enumerate", "sorted", "set", "isinstance", "ValueError", "round", "any", "all", "map", "print",
-                               "bool", "str", "Exception", "ZeroDivisionError")}
-
-    def _imp(name, globals=None, locals=None, fromlist=(), level=0):
-        if name in ("numpy", "math", "dlib"):
-            return {"numpy": np, "math": math, "dlib": dlib}[name]
-        if name.startswith("numpy.") and level == 0:    # numpy's own lazy imports (e.g. ndarray.mean) run in this frame
-            return _real_import(name, globals, locals, fromlist, level)
-        raise ImportError(name)
-    safe_builtins["__import__"] = _imp
-    mod.__dict__["__builtins__"] = safe_builtins
-    exec(compile(tree, "<candidate>", "exec"), mod.__dict__)
-    _check_table("PARAMS", mod.PARAMS)
-    _check_table("THETA", mod.THETA)
-    if len(mod.PARAMS) + len(mod.THETA) > MAX_PARAMS:
-        raise ContractError(f"at most {MAX_PARAMS} constants in PARAMS + THETA")
-    return mod, complexity(tree)
