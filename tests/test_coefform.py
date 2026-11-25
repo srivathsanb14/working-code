@@ -1,5 +1,5 @@
-"""Coefficient forms: the LLM writes a formula for every coefficient of the fixed state-space function (term form), or
-for every capacity and conductance of a node network (network form); the framework builds and steps the model."""
+"""Coefficient form: the LLM writes a formula for every coefficient of the fixed state-space function; the framework
+builds and steps the model."""
 from pathlib import Path
 
 import numpy as np
@@ -15,15 +15,6 @@ ALLOWED_INPUTS = {"T_out", "g", "T_supply", "Q_reheat", "Q_gain", "occupants", "
 
 def _load(path):
     return contract.load_closedform(Path(path).read_text())[0]
-
-
-def test_network_form_matches_the_stateful_network(toy_episodes, U):
-    e = toy_episodes[1]; starts = np.arange(36, e.n - 36, 24)
-    old = _load(D / "seeds_cf_legacy" / "seed_cf_network_observer.py")
-    new = _load(D / "seeds_cf_legacy" / "seed_cf_network_nodes.py")
-    a = cf.rollout(old, cf.prepare_model(old, e.geo, U), cf.Prepared(e, old.HISTORY), U, starts, 36)
-    b = cf.rollout(new, cf.prepare_model(new, e.geo, U), cf.Prepared(e, new.HISTORY), U, starts, 36)
-    assert np.abs(a - b).max() < 1e-8
 
 
 @pytest.mark.parametrize("seed", ["seed_cf_network.py", "seed_cf_history.py", "seed_cf_one_node.py"])

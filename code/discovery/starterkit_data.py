@@ -166,7 +166,7 @@ def replay(ctx: ScenarioContext, policy_key: str, R: dict):
 
 
 def episode_inputs(ctx: ScenarioContext, R: dict, C: np.ndarray, Dd: np.ndarray):
-    """Per-step room inputs from replayed native actions + logged sensors (same physics as room_inputs.py)."""
+    """Per-step room inputs from replayed native actions + logged sensors."""
     V = ctx.geo["V"]; K = len(ctx.ahu_names); area = ctx.geo["area"]
     n = len(R["temps"]) - 1                      # step k's result is seen in row k+1
     temps_start = R["temps"][:n]          # CSV row k = room temperatures x_k at the start of step k (row 0 = reset)

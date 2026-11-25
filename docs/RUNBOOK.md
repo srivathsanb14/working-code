@@ -269,39 +269,26 @@ python code/rehearse_submission.py --controller ff --model outputs/discovery/mai
 python code/rehearse_submission.py --controller pid_water
 ```
 
-Check the cost estimate against the kit's logged costs:
-
-```bash
-python code/control/validate_costs.py --results <results dir> --runs <building>/<weather>/<policy>
-```
-
-## 11. Is it ready to deploy? (task L6)
+## 11. Is it ready to deploy? (Planning 15)
 
 The design is building- and weather-agnostic: positions come from the metadata, geometry from the floor plan, nothing is fitted, and occupancy is learned online. It has **not yet been shown** to work at the scale of the hidden test.
 
-**Deployable today:** the pid_water-only notebook (no `best.py` attached, task K1). Submit it first to prove the Kaggle interface.
+**Deployable today:** the pid_water-only notebook (no `best.py` attached; Planning 14). Submit it first to prove the Kaggle interface.
 
 **Before the model-based (MPC) version:**
-- [ ] K1: the pid_water notebook has been scored on Kaggle.
-- [ ] K7: a per-step time guard. Large generated buildings leave the policy only milliseconds per step.
-- [ ] K8: unsupported HVAC variants, such as the kit's heat pump, are detected and fall back to pid_water.
-- [ ] I5: a benchmark on the 30 shipped scenarios at 8,640 steps and on generated hold-out buildings (including the largest) on the held-out station. The MPC must beat pid_water on average and in the worst case, within the time budget.
+- [ ] Planning 14: the pid_water notebook has been scored on Kaggle.
+- [ ] Planning 12: a per-step time guard. Large generated buildings leave the policy only milliseconds per step.
+- [ ] Planning 13: unsupported HVAC variants, such as the kit's heat pump, are detected and fall back to pid_water.
+- [ ] Planning 11: a benchmark on the 30 shipped scenarios at 8,640 steps and on generated hold-out buildings (including the largest) on the hard station. The MPC must beat pid_water on average and in the worst case, within the time budget.
 - [ ] The packaged dataset has been rehearsed locally (`rehearse_submission.py`), and the fallback to pid_water verified by injecting faults.
 
 Known gaps that do not block deployment:
-- the model is about persistence level at 3 h (tasks G2, G8);
-- some simulator constants are assumed equal in the hidden set (I6);
-- holidays and the gas price by month are not handled (K9).
+- the model is about persistence level at 3 h (Planning 08);
+- some simulator constants are assumed equal in the hidden set (Planning 16);
+- holidays and the gas price by month are not handled (Planning 16).
 
 ## Other tools
 
-- **Geometry of any building** from `floor_plan.npy` and `zone_map.npy`:
-
-  ```bash
-  python code/geometry_cli.py <scenario_dir>
-  ```
-
-  Use `--all-shipped` for the six shipped buildings.
 - **Dataset summary** (after step 4) by split, station, season, policy and building size, written to `docs/DATASET_REPORT.md`:
 
   ```bash

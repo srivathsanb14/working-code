@@ -3,7 +3,7 @@
 
 *Based on the starter kit `smart-buildings-2026/starter-kit` · Competition pages: <https://www.kaggle.com/competitions/neurips-2026-smart-buildings/> and <https://smart-buildings-2026.github.io/competition/>*
 
-> **Status note (25 Nov 2026).** This is the full analysis as it was developed. The approach it ends on (constants fitted offline or on day 1, a Kalman-filtered state, `--deployment`, `test_model.py`) was tried and then replaced: nothing is fitted now, the LLM writes a closed-form formula for every coefficient of a fixed state-space function, and the split is computed from the data. The fitted code has been removed; its measured results remain in `outputs/`. The current method is in `docs/DISCOVERY_WALKTHROUGH.md`, the run steps in `docs/RUNBOOK.md`, and the remaining work in `Planning/index.md`. Parts I–III and §14 (the interface and the simulator audit) are current.
+> **Status note (25 Nov 2026).** This is the full analysis as it was developed. The approach it ends on (constants fitted offline or on day 1, a Kalman-filtered state, `--deployment`, `test_model.py`) was tried and then replaced: nothing is fitted now, the LLM writes a closed-form formula for every coefficient of a fixed state-space function, and the split is computed from the data. The fitted code and the one-off analysis scripts this document names (`code/room_*.py`, `rollout_checks.py`, `dump_vectors.py`, `explore_zone_map.py` and the like) have been removed; their results remain in `outputs/`. The current method is in `docs/DISCOVERY_WALKTHROUGH.md`, the run steps in `docs/RUNBOOK.md`, and the remaining work in `Planning/index.md`. Parts I–III and §14 (the interface and the simulator audit) are current.
 
 ---
 

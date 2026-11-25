@@ -18,7 +18,7 @@ s(id="m_cover", kind="statement", eyebrow="NeurIPS 2026 · Smart Buildings Chall
 s(id="m_problem", kind="figure", eyebrow="The problem: every building is different",
   title="One policy, dropped into buildings it has never seen",
   img="buildings.png", h=700,
-  src="[kit] training_scenarios/*/zone_map.npy; run_floor_generator.py and README (generate any number; test from the same generator and ranges); room types: code/explore_zone_map.py; make_figs11.py")
+  src="[kit] training_scenarios/*/zone_map.npy; run_floor_generator.py and README (generate any number; test from the same generator and ranges); room types: outputs/building_*_rooms.csv; make_figs11.py")
 
 s(id="m_weather", kind="figure", eyebrow="The problem: every climate is different",
   title="…and weather from −42 °C to +46 °C: only 30 episodes",

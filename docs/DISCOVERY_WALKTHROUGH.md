@@ -33,7 +33,7 @@ measured history up to now (`hist`, re-evaluated every `REFRESH` steps). The bui
 available at test time. Mutation, crossover, exploration and islands evolve these formulas; generated data on unseen
 buildings decides which survive. Nothing is fitted. `tests/test_coefform.py` checks that the formulas only see test-time
 keys and nothing after the refresh step. A network form (`nodes()` + capacities and conductances) and the older
-`step()` / stateful forms still load; their starting models are in `seeds_cf_legacy/`.
+`step()` / stateful forms still load.
 
 Starting models in this form are in `seeds_cf/` (`seed_cf_network`, `seed_cf_history`, `seed_cf_one_node`); their scores
 on the 12 thirty-day runs are in docs/SOURCES_AND_FACTS.md.
@@ -103,7 +103,7 @@ A candidate may instead keep hidden stores (slab, walls) as a **state corrected 
 
 The scorer filters the measured history this way, then free-runs from the corrected state (`closedform.filter_states`). The runtime tracker does the same live, and its forecasts equal the offline scores exactly.
 
-`seeds_cf_legacy/seed_cf_network_observer.py` (now `seeds_cf/seed_cf_network.py`, identical forecasts), the audited network with mid-range universal materials, was scored on 12 thirty-day simulator episodes:
+`seeds_cf/seed_cf_network.py`, the audited network with mid-range universal materials, was scored on 12 thirty-day simulator episodes:
 
 | model | 1 h | 3 h | 6 h |
 |---|---|---|---|

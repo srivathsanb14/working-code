@@ -5,7 +5,7 @@
   term_heatmap.png    the network model's per-term residual slopes by room type and condition (closedform.analysis
                       on the 6 validation runs, saved as outputs/term_slopes_network.json)
   buildings.png       the six shipped buildings' real floor plans at one scale, rooms coloured by type (kit zone_map.npy;
-                      room types from outputs/building_train_*_rooms.csv, written by code/explore_zone_map.py)
+                      room types from outputs/building_train_*_rooms.csv)
   weather.png         the 30 simulated 30-day episodes at the 5 stations, against the rest of 2023 that is in the weather
                       file but in no simulated run (kit weather/csv/*.csv and weather/<scenario>.yaml)
   tiers_bars.png      3 h forecast error of persistence and the hand-written models on validation and held-out runs

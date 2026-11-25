@@ -8,7 +8,7 @@ utils/constants.py, Apache-2.0) applied to POWER ESTIMATED FROM COMMANDS:
   cooling   rho c x flow x (mixed - supply)+ / COP 3.5
   pump      water flow x 9810 x head / 0.9 (head = the pump differential-pressure command)
   gas       reheat heat delivered to the rooms (+ boiler tank heating when the water setpoint rises)
-The estimate is checked against the kit's logged costs by control/validate_costs.py.
+The estimate was checked against the kit's logged costs (docs/SOURCES_AND_FACTS.md §3b).
 Normalisation: costs divided by the cost of 80,000 W (electricity) and 205,000 W (gas) per AHU at the same time.
 """
 from __future__ import annotations
@@ -19,7 +19,7 @@ W_COMFORT, W_ENERGY, W_CARBON = 0.6, 0.2, 0.2
 DEV_REF = 5.0
 MAX_ELEC_PER_AHU, MAX_GAS_PER_AHU = 80000.0, 205000.0
 FAN_EFF, COP, PUMP_EFF, RHO_C_AIR = 0.9, 3.5, 0.9, 1.2 * 1006.0
-TANK_J_PER_K = 0.0           # boiler tank heat capacity is not in the metadata; left out until validate_costs says otherwise
+TANK_J_PER_K = 0.0           # boiler tank heat capacity is not in the metadata; left out (the check against the kit's costs did not need it)
 
 ELEC_WEEKDAY_C_PER_KWH = (16, 16, 16, 16, 16, 16, 18, 18, 18, 18, 18, 18, 20, 20, 20, 20, 20, 20, 20, 16, 16, 16, 16, 16)
 ELEC_WEEKEND_C_PER_KWH = (16,) * 24

@@ -46,10 +46,8 @@ code/
                          report.py (REPORT.md, plots), selftest.py (planted truth), seeds_cf/, universal_constants.json,
                          starterkit_data.py (replay and room inputs), episodes.py (geometry, episode cache),
                          splits.py, pareto.py, coefform.py, contract.py, prompts.py, proposers.py, dlib.py,
-                         seeds_cf_legacy/ (earlier node-network forms of the hand-written models, used by tests and the deck)
-  room_model*.py, room_inputs.py, room_coeff_targets.py
-                         the simulator audit behind STATE_SPACE.md §14 (exact grid reconstruction, structure checks)
-  *.py (others)          the interface analyses behind STATE_SPACE.md §5-§7
+  room_model.py, room_coeff_targets.py
+                         room geometry from the floor plan (used by the split and the episodes)
 docs/                    RUNBOOK.md, DISCOVERY_WALKTHROUGH.md, SOURCES_AND_FACTS.md; the decks and deck_src/
 Planning/                index.md and one file per pending task
 data/                    generated data (git-ignored)

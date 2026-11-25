@@ -614,7 +614,7 @@ S = [
   "img": "buildings.png",
   "h": 520,
   "callout": "Floor 1 of each, from the kit's own floor-plan files. Any new seed gives the generator another building from the same family.",
-  "src": "[kit] training_scenarios/*/zone_map.npy; room types: code/explore_zone_map.py (outputs/building_*_rooms.csv); make_figs11.py"
+  "src": "[kit] training_scenarios/*/zone_map.npy; room types: outputs/building_*_rooms.csv; make_figs11.py"
  },
  {
   "kind": "table",
@@ -1346,7 +1346,7 @@ S = [
    "From the metadata alone we rebuild every cell exactly: 323 of 323 rooms and 0 mismatched cells over the six buildings"
   ],
   "caption": "[kit] building_train_8 floor_plan.npy and zone_map.npy; cell classes computed by our room_model.grid_geometry",
-  "src": "[audit] STATE_SPACE.md §8.1, §14.1-14.2; [our code] room_model.py, metadata_only_check.py"
+  "src": "[audit] STATE_SPACE.md §8.1, §14.1-14.2; [our code] room_model.py; [measured] outputs/metadata_only_check.json, room_model_validate.json"
  },
  {
   "id": "balance",
@@ -1489,7 +1489,7 @@ S = [
    "Doors are open air, so they link two rooms' air directly (κD)",
    "This is the cell equation summed over a room's cells: same physics, fewer temperatures"
   ],
-  "src": "[audit] STATE_SPACE.md §14.3 (room equation); [our code] seeds_cf_legacy/seed_cf_network_nodes.py (the node network)"
+  "src": "[audit] STATE_SPACE.md §14.3 (room equation); [our code] seeds_cf/seed_cf_network.py (the same network, as coefficient formulas)"
  },
  {
   "id": "coefftable",
@@ -1554,7 +1554,7 @@ S = [
   ],
   "size": 22,
   "callout": "Spreading resistance: heat entering through a short opening must spread through the room's air. It is a universal formula in area and opening length, the same in every building.",
-  "src": "[audit] STATE_SPACE.md §14.3 (coefficient table, spreading resistance R_s(A, L)); [our code] seeds_cf_legacy/seed_cf_network_nodes.py"
+  "src": "[audit] STATE_SPACE.md §14.3 (coefficient table, spreading resistance R_s(A, L)); [our code] seeds_cf/seed_cf_network.py"
  },
  {
   "id": "worked",
@@ -1570,7 +1570,7 @@ S = [
    "To room 12: 5.2 m of wall (74 W/K to the wall node)"
   ],
   "caption": "[our code] network seed formulas at mid-range materials, applied to the real floor plan",
-  "src": "[kit] building_train_8 floor_plan.npy, zone_map.npy; [our code] episodes.geometry, seeds_cf_legacy/seed_cf_network_nodes.py (same formulas as seeds_cf/seed_cf_network.py)"
+  "src": "[kit] building_train_8 floor_plan.npy, zone_map.npy; [our code] episodes.geometry, seeds_cf/seed_cf_network.py"
  },
  {
   "id": "timescales",
@@ -1735,7 +1735,7 @@ S = [
   "size": 20,
   "font": 10,
   "callout": "State x = (T, M, W, P): 143 numbers for building_train_8. We measure the 30 room-air temperatures, and our commands act directly only on those.",
-  "src": "[audit] STATE_SPACE.md §5, §13.2, §14.3; [our code] seeds_cf_legacy/seed_cf_network_nodes.py nodes(); [kit] building_train_8 action spec (4 discrete + 71 continuous = 75)"
+  "src": "[audit] STATE_SPACE.md §5, §13.2, §14.3; [our code] seeds_cf/seed_cf_network.py; [kit] building_train_8 action spec (4 discrete + 71 continuous = 75)"
  },
  {
   "id": "ssobs",
@@ -1777,7 +1777,7 @@ S = [
    "Air-to-air dots are doors; air-to-wall dots are shared walls; every room has a slab node, and the 25 rooms with an outside wall have an outside-wall node",
    "A bigger building gives a bigger matrix from the same formulas: nothing about the size is hard-coded"
   ],
-  "caption": "[our code] the node network of this part (seeds_cf_legacy/seed_cf_network_nodes.py) on building_train_8's metadata",
+  "caption": "[our code] the node network of this part (the formulas of seeds_cf/seed_cf_network.py) on building_train_8's metadata",
   "src": "[kit] building_train_8 floor plan; [our code] dlib.LinearNetwork"
  },
  {
@@ -3900,7 +3900,7 @@ S = [
    "Comfort term exact: the kit's shortfall (linear to 5 K, then quadratic), occupancy-weighted"
   ],
   "caption": "[sim data] two 30-day pid_water runs; estimate from commands vs power implied by reward_components.csv",
-  "src": "[our code] control/costs.py, control/validate_costs.py; price and carbon tables from the kit",
+  "src": "[our code] control/costs.py; [measured] docs/SOURCES_AND_FACTS.md §3b; price and carbon tables from the kit",
   "notes": "Mild weather: boiler losses (not modelled) explain the small gas gap."
  },
  {
@@ -4177,7 +4177,7 @@ S = [
    [
     "Cell grid, one room, the network matrix",
     "real (geometry)",
-    "building_train_8 floor plan; make_figs8.py"
+    "building_train_8 floor plan (figure script since removed)"
    ]
   ],
   "colw": [
