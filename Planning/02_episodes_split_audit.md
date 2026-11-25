@@ -17,7 +17,7 @@
   ```bash
   $PY code/make_splits.py --dataset $D/dataset --out $D/dataset/split.json
   ```
-  Expected for stage 1 (six buildings, 48 windows):
+  Expected (six buildings, 48 windows):
 
   | Tier | Expected (approximately) |
   |---|---|

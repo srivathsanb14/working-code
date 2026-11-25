@@ -1,4 +1,4 @@
-# 07 · Search improvements, only where 04 shows a need
+# 06 · Search improvements, only where 04 shows a need
 
 **Needs:** 04 notes · **Time:** M each
 

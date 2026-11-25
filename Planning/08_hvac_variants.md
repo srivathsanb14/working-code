@@ -1,4 +1,4 @@
-# 09 · Detect HVAC variants we do not model, and fall back
+# 08 · Detect HVAC variants we do not model, and fall back
 
 **Needs:** nothing (can start any time) · **Time:** 1–2 days
 
@@ -11,7 +11,7 @@ boiler with hot-water reheat; a wrong heat estimate would drive wrong decisions.
 - [ ] In the submission policy, detect the variant from the metadata / observation layout and fall back to pid_water (or
   add the heat-pump laws to `runtime/inputs.py` and `control/costs.py` if time allows).
 
-## Handoff to 12
+## Handoff to 10
 
 `rehearse_submission.py --scenarios-dir $D/probe/scenarios` runs the heat-pump scenario end to end with the fallback
 engaged; documented in the RUNBOOK.

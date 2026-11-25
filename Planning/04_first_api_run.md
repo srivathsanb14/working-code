@@ -9,7 +9,7 @@ money, whether LLM-written formulas beat them and what goes wrong.
 cd $WC
 caffeinate -i $PY code/run_discovery.py --dataset $D/dataset --run g1 --generations 3 --islands 3 --max-usd 10 --workers $J --baselines
 ```
-No `--test`: the test tiers stay unseen until 06. Interrupted: run the same command again (it finishes the open
+No `--test`: the test tiers stay unseen until 05. Interrupted: run the same command again (it finishes the open
 generation and reuses saved answers, so no request is paid twice).
 
 ## Write down (in `outputs/discovery/g1/NOTES.md`)
@@ -20,9 +20,9 @@ generation and reuses saved answers, so no request is paid twice).
 - [ ] Duplicates (same code as an earlier program) per generation.
 - [ ] That later requests contain the "scored WORSE than their parent" section and the answers react to it.
 - [ ] Best main score per island per generation, against persistence and the hand-written network model.
-- [ ] Which items of 07 the run calls for.
+- [ ] Which items of 06 the run calls for.
 
-## Handoff to 06
+## Handoff to 05
 
-Go: LLM candidates beat the hand-written network model on validation → set generations and budget for 06.
-No-go: do the improvements in 07 that the notes call for, then repeat this step.
+Go: LLM candidates beat the hand-written network model on validation → set generations and budget for 05.
+No-go: do the improvements in 06 that the notes call for, then repeat this step.

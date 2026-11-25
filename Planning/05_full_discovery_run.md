@@ -1,6 +1,6 @@
-# 06 · Full discovery run, then the test tiers once
+# 05 · Full discovery run, then the test tiers once
 
-**Needs:** 04 (go), 05 · **Produces:** `outputs/discovery/main/` with `best.py`, `REPORT.md`, `summary.json` with
+**Needs:** 04 (go) · **Produces:** `outputs/discovery/main/` with `best.py`, `REPORT.md`, `summary.json` with
 test-tier rows · **Time:** many hours
 
 ```bash
@@ -24,7 +24,7 @@ spent. Interrupted: run the same command again.
 
 The test numbers are read once and never used to choose a model.
 
-## Handoff to 08 and 10
+## Handoff to 07 and 09
 
 `best.py` committed, and checked inside a policy built from the metadata alone:
 ```bash

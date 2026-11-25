@@ -933,8 +933,8 @@ S = [
   "left": [
    "We vary",
    [
-    "Which building: run the generator with a new number",
-    "Which weather: all 48 windows for the shipped buildings, one per station for new ones",
+    "Which building: the six shipped buildings",
+    "Which weather: all 48 windows",
     "Which controller drives it: the 5 shipped ones",
     "How long: full 30-day runs, as scored"
    ]
@@ -948,18 +948,17 @@ S = [
     "The kit's code: we only call its commands"
    ]
   ],
-  "callout": "So every generated building would be one the hidden test could have drawn. Not generated yet: every result in this deck uses only the six shipped buildings."
+  "callout": "The generator's ranges and the kit's code stay untouched, so the data matches what the hidden test is drawn from. Not generated yet: every result in this deck uses the 30 shipped scenarios."
  },
  {
   "id": "datarecipe",
-  "src": "[kit] run_floor_generator.py, run_scenario_generator.py (naming --buildings takes the cross product), evaluate.py; GUIDE.md A.4; [measured] 0.025–0.057 s per step",
-  "notes": "Run with the kit's own commands on the data machine; this repository generates and simulates nothing.",
+  "src": "[kit] run_scenario_generator.py (naming --buildings takes the cross product), evaluate.py; GUIDE.md A.4; [measured] 0.025–0.057 s per step",
   "kind": "flow",
   "eyebrow": "How the data is made (on the data machine, before this pipeline)",
-  "title": "The plan: every shipped building in every window, then new buildings",
+  "title": "The data: every shipped building in every weather window",
   "steps": [
    [
-    "Stage 1: 6 shipped buildings",
+    "6 shipped buildings",
     "× all 48 windows (6 stations × 8) = 288 scenarios"
    ],
    [
@@ -969,26 +968,22 @@ S = [
    [
     "= 1,440 runs",
     "30 days each (8,640 steps); about 100–200 CPU-hours"
-   ],
-   [
-    "Stage 2: new buildings",
-    "kit generator from seed 500; 20 to start, one window per station each: 600 runs"
    ]
   ],
   "points": [
    "Made beforehand with the starter kit's own commands; this pipeline only reads the finished runs",
    "Every run becomes one episode: one building, one 30-day weather window, one controller",
-   "Stage 1 gives every building every season at every station; stage 2 adds new floor plans, which is what the hidden test varies",
-   "The split (next slides) is computed from whatever episodes exist. Not generated yet: every result in this deck uses the 30 shipped scenarios"
+   "Every building in every season at every station; the split (next slides) holds out the most unusual buildings and the most different climate",
+   "Not generated yet: every result in this deck uses the 30 shipped scenarios"
   ]
  },
  {
   "id": "decdatagen",
-  "src": "[kit] run_floor_generator.py, run_scenario_generator.py, evaluate.py, README; [our code] run_pipeline.sh (reads the runs)",
+  "src": "[kit] run_scenario_generator.py, evaluate.py, README; [our code] run_pipeline.sh (reads the runs)",
   "notes": "",
   "kind": "table",
   "eyebrow": "Decisions · data generation",
-  "title": "How more data will be made with the kit, and why",
+  "title": "How the data is made with the kit, and why",
   "rows": [
    [
     "Question",
@@ -999,11 +994,6 @@ S = [
     "Which tools?",
     "only the kit's own commands",
     "the data must come from the simulator the hidden test uses"
-   ],
-   [
-    "How to get new buildings?",
-    "run the kit's generator with new numbers",
-    "it builds whole buildings from the same ranges as the hidden test"
    ],
    [
     "How to split?",
@@ -1017,7 +1007,7 @@ S = [
    ],
    [
     "Which weather?",
-    "shipped buildings: all 48 windows; new buildings: one window per station, rotated",
+    "all 48 windows for every building",
     "every season at every station; the split then holds out the farthest station (Wasserstein)"
    ],
    [
@@ -1029,11 +1019,6 @@ S = [
     "How long?",
     "30 days per run (8,640 steps)",
     "the scored length; every phase of the month"
-   ],
-   [
-    "Rejected seeds?",
-    "ask the kit's generator for ~30% extra seeds",
-    "the kit rejects about 1 seed in 5 (a room under 20 m²)"
    ]
   ],
   "colw": [
@@ -4074,24 +4059,20 @@ S = [
     "Status (task)"
    ],
    [
-    "pid_water-only notebook scored on Kaggle (proves the interface)",
-    "to do (Planning 11)"
-   ],
-   [
     "Per-step time guard for large buildings",
-    "to do (Planning 08)"
+    "to do (Planning 07)"
    ],
    [
     "Unsupported HVAC variants detected, fall back to pid_water",
+    "to do (Planning 08)"
+   ],
+   [
+    "Benchmark: 30 shipped scenarios at 8,640 steps + held-out buildings in the hard climate",
     "to do (Planning 09)"
    ],
    [
-    "Benchmark: 30 shipped scenarios at 8,640 steps + hold-out buildings and station",
+    "Package built and uploaded; rehearsed locally; fallback verified by fault injection",
     "to do (Planning 10)"
-   ],
-   [
-    "Packaged dataset rehearsed locally; fallback verified by fault injection",
-    "to do (Planning 12)"
    ],
    [
     "Deployment parity: test-time information only",
@@ -4102,7 +4083,7 @@ S = [
    0.72,
    0.28
   ],
-  "callout": "Ready to submit today: the pid_water-only notebook. The MPC notebook waits for this gate.",
+  "callout": "The model-based notebook is submitted only when every item holds.",
   "src": "docs/RUNBOOK.md §11; Planning/index.md"
  },
  {
@@ -4270,10 +4251,6 @@ S = [
     "best Kaggle score, or a generic discovered model"
    ],
    [
-    "Footprint range for generated buildings",
-    "the generator's 400–700 × 300–500 ft, the shipped six's smaller sizes, or both"
-   ],
-   [
     "Simulator structure in the prompt",
     "graph only, or the full physics chain"
    ],
@@ -4313,31 +4290,31 @@ S = [
   "title": "From here to a submission, with a fallback at every stage",
   "steps": [
    [
-    "Kaggle check",
-    "pid_water notebook"
-   ],
-   [
-    "Time guard",
-    "large buildings"
+    "Data",
+    "288 scenarios, 1,440 runs"
    ],
    [
     "Real LLM runs",
     "Claude API, test tiers"
    ],
    [
-    "Benchmark",
-    "30 scenarios"
+    "Time guard",
+    "large buildings"
    ],
    [
-    "Control",
-    "MPC notebook, after the gate"
+    "Benchmark",
+    "30 scenarios + held-out"
+   ],
+   [
+    "Submission",
+    "after the gate"
    ]
   ],
   "points": [
-   "Every stage is a complete submission with a working fallback",
+   "The policy falls back to pid_water whenever the model fails or runs late",
    "5 submissions a day; 2 final picks; deadline January 15, 2027"
   ],
-  "src": "[plan] Planning/index.md (14 steps); [Kaggle] timeline, limits",
+  "src": "[plan] Planning/index.md (12 steps); [Kaggle] timeline, limits",
   "notes": "Each stage is a complete submission."
  },
  {

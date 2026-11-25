@@ -117,7 +117,7 @@ This repository generates no data: the runs are made with the kit's own commands
   - The outdoor convection coefficient is set per station (8.8–26.7 W/m²K).
   - Minneapolis is in no shipped scenario. The hidden test uses five other stations.
 - **Policies.** 5 shipped: `all_off`, `bang_bang`, `fixed_setpoint`, `pid`, `pid_water`.
-- **The data plan** (made with the kit's commands; GUIDE.md A.4). Stage 1: the six shipped buildings × all 48 windows × 5 policies, 30-day runs (1,440 runs). Stage 2: new seeds from 500, one window per station each. `run_pipeline.sh` then reads the runs; the split is computed from them.
+- **The data plan** (made with the kit's commands; GUIDE.md A.4). The six shipped buildings × all 48 windows × 5 policies, 30-day runs: 288 scenarios, 1,440 runs. `run_pipeline.sh` then reads the runs; the split is computed from them.
 
 ## 3. Variables
 

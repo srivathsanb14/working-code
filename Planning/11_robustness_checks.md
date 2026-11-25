@@ -1,6 +1,6 @@
-# 13 · Robustness checks on assumptions
+# 11 · Robustness checks on assumptions
 
-**Needs:** 06, 10 · **Time:** M
+**Needs:** 05, 09 · **Time:** M
 
 | Check | Why | What to do | Done when |
 |---|---|---|---|

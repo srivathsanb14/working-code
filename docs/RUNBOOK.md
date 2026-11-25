@@ -110,10 +110,8 @@ Every line must say `[ok]`. It checks:
 This repository generates and simulates nothing. The data is made beforehand, on the machine that will run the
 pipeline, with the starter kit's own commands. The plan (exact commands in GUIDE.md A.4):
 
-- **Stage 1:** the six shipped buildings × all 48 weather windows (6 stations × 8) × the 5 shipped controllers, full
-  30-day runs: 288 scenarios, 1,440 runs, roughly 100–200 CPU-hours.
-- **Stage 2:** new buildings from the kit's generator (seeds from 500; 20 to start), each on one window per station
-  with the window index rotated, × 5 controllers: 600 runs for 20 buildings.
+the six shipped buildings × all 48 weather windows (6 stations × 8) × the 5 shipped controllers, full 30-day runs:
+288 scenarios, 1,440 runs, roughly 100–200 CPU-hours.
 
 ```bash
 cd smart-buildings-starter-kit
@@ -273,23 +271,20 @@ python code/rehearse_submission.py --controller ff --model outputs/discovery/mai
 python code/rehearse_submission.py --controller pid_water
 ```
 
-## 11. Is it ready to deploy? (Planning 12)
+## 11. Is it ready to deploy? (Planning 10)
 
 The design is building- and weather-agnostic: positions come from the metadata, geometry from the floor plan, nothing is fitted, and occupancy is learned online. It has **not yet been shown** to work at the scale of the hidden test.
 
-**Deployable today:** the pid_water-only notebook (no `best.py` attached; Planning 11). Submit it first to prove the Kaggle interface.
-
-**Before the model-based (MPC) version:**
-- [ ] Planning 11: the pid_water notebook has been scored on Kaggle.
-- [ ] Planning 08: a per-step time guard. Large generated buildings leave the policy only milliseconds per step.
-- [ ] Planning 09: unsupported HVAC variants, such as the kit's heat pump, are detected and fall back to pid_water.
-- [ ] Planning 10: a benchmark on the 30 shipped scenarios at 8,640 steps and on generated hold-out buildings (including the largest) on the hard station. The MPC must beat pid_water on average and in the worst case, within the time budget.
+**Before the submission:**
+- [ ] Planning 07: a per-step time guard. Large buildings leave the policy only milliseconds per step.
+- [ ] Planning 08: unsupported HVAC variants, such as the kit's heat pump, are detected and fall back to pid_water.
+- [ ] Planning 09: a benchmark on the 30 shipped scenarios at 8,640 steps and on the held-out buildings in the hard climate (test_hard). The MPC must beat pid_water on average and in the worst case, within the time budget.
 - [ ] The packaged dataset has been rehearsed locally (`rehearse_submission.py`), and the fallback to pid_water verified by injecting faults.
 
 Known gaps that do not block deployment:
-- the model is about persistence level at 3 h (Planning 06);
-- some simulator constants are assumed equal in the hidden set (Planning 13);
-- holidays and the gas price by month are not handled (Planning 13).
+- the model is about persistence level at 3 h (Planning 05);
+- some simulator constants are assumed equal in the hidden set (Planning 11);
+- holidays and the gas price by month are not handled (Planning 11).
 
 ## Other tools
 

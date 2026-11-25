@@ -34,7 +34,7 @@
 - [ ] **5. Prices and budget.** Compare the tokens in `log.md` with the dollars it reports; check
   `proposers.ClaudeProposer.PRICE_PER_MTOK` against the current price list and fix it if needed (otherwise `--max-usd`
   caps the wrong amount). One generation = 3 islands × 3 requests (generation 0: 3 init requests). Write the caps for 04
-  and 06 in `docs/RUNBOOK.md`.
+  and 05 in `docs/RUNBOOK.md`.
 
 ## Handoff to 04
 

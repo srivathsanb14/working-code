@@ -18,10 +18,10 @@ A working reference for building the room dynamics model. Part A is what may and
 
 | Option | Command / flag | Why it matters for the evaluation | Guideline |
 |---|---|---|---|
-| Which buildings, and how many | `run_floor_generator --start-seed --count` (or `--seeds`) | The hidden buildings are new draws from this generator; the building is the unit of generalization | The six shipped buildings, then as many new seeds as compute allows (stage 2, A.4) |
-| Batch composition | `--count` per call | Materials are spread evenly across each batch, and a different `--count` redraws them | One batch per stage, so it covers the material ranges |
-| Which weather strips | `run_scenario_generator --weathers` (48 shipped strips: 6 stations × 8 dates, about 6 weeks apart) | Hidden stations are unseen; windows can fall in any season | Shipped buildings: all 48 (every season at every station, Minneapolis included). New buildings: one per station. Which station is held out is decided by the split (`make_splits.py`), not here |
-| Building–weather pairing | naming `--buildings` and/or `--weathers` takes the cross product | Every building seen in every season | Shipped buildings: the full cross product. New buildings: rotate the strip index across buildings |
+| Which buildings, and how many | `run_floor_generator --start-seed --count` (or `--seeds`) | The hidden buildings are new draws from this generator; the building is the unit of generalization | The six shipped buildings (A.4); the generator can make more, which the plan does not use |
+| Batch composition | `--count` per call | Materials are spread evenly across each batch, and a different `--count` redraws them | One batch per call, so it covers the material ranges |
+| Which weather strips | `run_scenario_generator --weathers` (48 shipped strips: 6 stations × 8 dates, about 6 weeks apart) | Hidden stations are unseen; windows can fall in any season | All 48 for every building (every season at every station, Minneapolis included). Which station is held out is decided by the split (`make_splits.py`), not here |
+| Building–weather pairing | naming `--buildings` and/or `--weathers` takes the cross product | Every building seen in every season | The full cross product |
 | Behaviour policies | `evaluate --policies` | Excitation decides what can be identified | All five shipped policies: `all_off` (free-float), `bang_bang` (strong steps), `fixed_setpoint`, `pid`, `pid_water` (realistic) |
 | Episode length | `evaluate --steps` | Longer runs give more forecast windows and every phase of the month | 8640 (the full, scored 30 days, the default). Shorter only to save compute |
 | Where outputs go | `--output-dir`, `--scenarios-dir`, `--results-dir` | — | Outside the kit, on the data machine (for example `working-code/data/`) |
@@ -83,27 +83,19 @@ export NUMBA_CACHE_DIR=../working-code/.numba_cache PYTHONDONTWRITEBYTECODE=1 MP
 D=../working-code/data
 ```
 
-**Stage 1: every shipped building in every window.** Naming only `--buildings` gives all 48 windows: 6 × 48 = 288
-scenarios, × 5 controllers = 1,440 runs of 30 days.
+**Every shipped building in every window.** Naming only `--buildings` gives all 48 windows: 6 × 48 = 288 scenarios,
+× 5 controllers = 1,440 runs of 30 days.
 
 ```bash
 python -m smart_buildings.run_scenario_generator --buildings building_train_1 building_train_2 building_train_4 building_train_5 building_train_7 building_train_8 --output-dir $D/scenarios
 python -m smart_buildings.evaluate --scenarios-dir $D/scenarios --policies all_off bang_bang fixed_setpoint pid pid_water --results-dir $D/results
 ```
 
-**Stage 2: new buildings.** Start with 20 (ask for about 26: the kit rejects about one seed in five), each on one window
-per station with the window index rotated across buildings, × 5 controllers = 600 runs; add more as compute allows.
+`Planning/01_data_288_scenarios.md` runs the second command in parallel, one process per scenario, resuming where it
+stopped. Then, in `working-code`: `SCENARIOS=$D/scenarios RESULTS=$D/results ./run_pipeline.sh` (episodes, split,
+discovery).
 
-```bash
-python -m smart_buildings.run_floor_generator --start-seed 500 --count 26 --output-dir $D/buildings --no-pdf
-k=1; for b in $D/buildings/*.yaml; do python -m smart_buildings.run_scenario_generator --buildings $b --weathers atlanta_$k denver_$k fairbanks_$k minneapolis_$k phoenix_$k singapore_$k --output-dir $D/scenarios || true; k=$((k % 8 + 1)); done
-python -m smart_buildings.evaluate --scenarios-dir $D/scenarios --policies all_off bang_bang fixed_setpoint pid pid_water --results-dir $D/results
-```
-
-Then, in `working-code`: `SCENARIOS=$D/scenarios RESULTS=$D/results ./run_pipeline.sh` (episodes, split, discovery).
-Delete the partial scenario folders of rejected seeds.
-
-**Cost.** The simulator took 0.025–0.057 s per step on the shipped buildings, so a 30-day run is about 4–8 minutes: stage 1 is roughly 100–200 CPU-hours, and generated buildings (up to 120+ rooms) are slower. Runs are independent, so run them in parallel.
+**Cost.** The simulator took 0.025–0.057 s per step on the shipped buildings, so a 30-day run is about 4–8 minutes and the 1,440 runs are roughly 100–200 CPU-hours. Runs are independent, so run them in parallel.
 
 **Resulting layout** (what the working code reads):
 

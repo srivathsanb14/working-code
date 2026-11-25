@@ -1,4 +1,4 @@
-# 01 · Stage 1 data: 288 scenarios, 1,440 runs, checked against the kit's baseline scores
+# 01 · The data: 288 scenarios, 1,440 runs, checked against the kit's baseline scores
 
 **Needs:** a laptop with this repository and the kit side by side, `.venv` installed (docs/RUNBOOK.md §0–1), ≥ 100 GB
 free on the data disk · **Produces:** `$D/scenarios/` (288), `$D/results/` (1,440 runs) · **Time:** about 10–20 hours of
