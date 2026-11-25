@@ -36,6 +36,7 @@ One request per generation. The exact text of every request is saved in `outputs
 |---|---|
 | Elites | The best `--elites` programs so far, each with: full source, score, held-out and train RMSE, and **diagnostics**. The diagnostics give error by facade exposure, door count and room size (tertiles), the worst rooms with their features, HVAC on vs off, time of day, error growth day 1 → 3, and the spread of fitted θ across buildings (identifiability) |
 | Failures | Recent rejected or crashed programs with the reason (failed physics check, exception and traceback, timeout) |
+| Worse children | Closed-form mode (`evolve.py`): the island's last 4 children that ran but scored worse than their best parent, with the hypothesis each tried and how much each of the five errors moved |
 | Request | Write `--n` new candidates, at least `--explore` of them structurally new (new state, coupling law or coefficient formula); the rest may refine the elites |
 
 ## 2. What comes out of the LLM

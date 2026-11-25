@@ -120,6 +120,27 @@ class DB:
     def failures(self, island, k):
         return [r for r in self.recs if r["island"] == island and r["status"] not in ("ok",) and r["operator"] != "migration"][-k:]
 
+    def setbacks(self, island, k):
+        """The island's last k children that ran and were scored but did WORSE than their best parent: what was tried,
+        and how much each objective moved.  Shown to the LLM so it does not repeat an edit that already hurt."""
+        out = []
+        for r in self.recs:
+            if r["island"] != island or r["status"] != "ok" or r["operator"] not in ("mutation", "crossover") or not r.get("parents"):
+                continue
+            ps = [p for p in (self._by_id(i) for i in r["parents"]) if p is not None and p.get("status") == "ok"]
+            if not ps:
+                continue
+            best = min(ps, key=lambda p: p["score"])
+            if r["score"] > best["score"]:
+                po, ro = best.get("objectives") or {}, r.get("objectives") or {}
+                out.append(dict(id=r["id"], name=r["name"], operator=r["operator"], parent=best["id"], hypothesis=r.get("hypothesis", ""),
+                                score=r["score"], parent_score=best["score"],
+                                deltas={k: ro[k] - po[k] for k in ro if k in po and k != "complexity"}))
+        return out[-k:]
+
+    def _by_id(self, i):
+        return next((r for r in self.recs if r["id"] == i), None)
+
     def generation(self):
         return max((r["generation"] for r in self.recs), default=-1)
 
@@ -338,6 +359,7 @@ def run(a):
         for k in range(a.islands):
             pop = [dict(r, code=code_of(db, r)) for r in db.elites(k, a.elites, keys)]
             fails = db.failures(k, 4)
+            worse = db.setbacks(k, 4)
             reqs = []
             if not pop:                                   # generation 0 (or an island with nothing that passed yet)
                 reqs.append(("init", [], a.n_init))
@@ -368,18 +390,18 @@ def run(a):
                     an = p["analysis"]
                     pt = profile_text(p["code"], val, U, a.main_horizon) if val else ""
                     (rq / "analysis.md").write_text(f"# Pre-mutation analysis of {p['id']} {p['name']}\n\n```\n{an}\n```\n\n## Measured vs predicted\n\n```\n{pt}\n```\n")
-                    user = prompts.cf_user_mutation(gen, k, p, an, pt, fails, n, keys)
+                    user = prompts.cf_user_mutation(gen, k, p, an, pt, fails, n, keys, worse)
                 elif op == "crossover":
                     cx = cf.crossover_analysis(*({"analysis": {"groups": p.get("groups", {}), "terms": p.get("terms", {}),
                                                                "rooms": p.get("rooms", {})}, "code": p["code"]} for p in parents),
                                                ep=val[0] if val else None, U=U)
                     (rq / "analysis.md").write_text(f"# Pre-crossover analysis: A = {parents[0]['id']} {parents[0]['name']}, "
                                                     f"B = {parents[1]['id']} {parents[1]['name']}\n\n```\n{cx['text']}\n```\n")
-                    user = prompts.cf_user_crossover(gen, k, parents[0], parents[1], cx["text"], fails, n, keys)
+                    user = prompts.cf_user_crossover(gen, k, parents[0], parents[1], cx["text"], fails, n, keys, worse)
                 elif op == "init":
                     user = prompts.cf_user_init(gen, k, fails, n)
                 else:
-                    user = prompts.cf_user_explore(gen, k, pop, fails, n, keys)
+                    user = prompts.cf_user_explore(gen, k, pop, fails, n, keys, worse)
                 (rq / "prompt.md").write_text(f"# SYSTEM\n\nsee ../../../../system_prompt.md\n\n# USER\n\n{user}\n")
                 ctx = {"operator": op, "parents": parents, "dir": rq}
                 usage = None

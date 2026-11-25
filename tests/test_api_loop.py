@@ -98,3 +98,24 @@ def test_split_never_shares_an_episode(toy_episodes):
     S["test_medium"] = S["test_medium"] + S["val"]
     with pytest.raises(ValueError):
         splits.check_whole_episodes(S)
+
+
+def test_worse_children_are_shown_to_the_llm(tmp_path):
+    """A child that ran but scored worse than its parent is listed in the next request, with what it tried and the
+    change in each error; a child that improved, and one that crashed, are not in that list."""
+    from discovery import prompts
+    db = evolve.DB(tmp_path)
+    obj = lambda m: {"main": m, "fast": m / 2, "slow": m * 2}                       # noqa: E731
+    db.add(dict(id="p", island=0, operator="init", parents=[], name="parent", hypothesis="h", status="ok", score=0.70, objectives=obj(0.70)))
+    db.add(dict(id="w", island=0, operator="mutation", parents=["p"], name="stronger_slab", hypothesis="double the slab term in corner rooms",
+                status="ok", score=0.80, objectives=obj(0.80)))
+    db.add(dict(id="b", island=0, operator="mutation", parents=["p"], name="better", hypothesis="x", status="ok", score=0.60, objectives=obj(0.60)))
+    db.add(dict(id="c", island=0, operator="mutation", parents=["p"], name="crashed", hypothesis="y", status="error", score=None))
+    db.add(dict(id="o", island=1, operator="mutation", parents=["p"], name="other_island", hypothesis="z", status="ok", score=0.9, objectives=obj(0.9)))
+    s = db.setbacks(0, 4)
+    assert [w["id"] for w in s] == ["w"]
+    assert abs(s[0]["deltas"]["slow"] - 0.2) < 1e-9
+    parent = dict(db.get("p"), code=NET)
+    text = prompts.cf_user_mutation(1, 0, parent, "analysis", "", [], 2, None, s)
+    assert "scored WORSE" in text and "stronger_slab" in text and "double the slab term" in text and "+0.1000" in text
+    assert "better" not in text.split("scored WORSE")[1]

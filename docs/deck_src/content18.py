@@ -46,3 +46,6 @@ B["decdatagen"]["src"] = "[kit] run_floor_generator.py, run_scenario_generator.p
 B["decdatagen"]["rows"] = [r if r[0] != "Rejected seeds?" else ["Rejected seeds?", "ask the kit's generator for ~30% extra seeds",
                            "the kit rejects about 1 seed in 5 (a room under 20 m²)"] for r in B["decdatagen"]["rows"]]
 B["episode"]["src"] = B["episode"]["src"].replace("; generate_data.py defaults", "")
+
+# ---- each request now also lists the island's recent children that ran but scored worse than their parent
+B["proposers"]["left"][1][1] = "Parent's code ≈ 4 KB, its five scores; recent rejected children and children that scored worse"

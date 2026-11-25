@@ -11,7 +11,10 @@
   tiers_bars.png      3 h forecast error of persistence and the hand-written models on validation and held-out runs
                       (closedform.evaluate on the 12 thirty-day runs, as on the 'tiers' slide)
 
-    python make_figs11.py <working-code> <working-code>/outputs/term_slopes_network.json <out img dir>
+  episode.png         one real episode (building 4 x denver_2 x pid_water, a validation run) and every column it holds,
+                      from the episode file build_dataset.py writes from the kit's run (optional 4th argument)
+
+    python make_figs11.py <working-code> <working-code>/outputs/term_slopes_network.json <out img dir> [episode.npz]
 """
 import json
 import re
@@ -171,4 +174,48 @@ axs[-1].set_xticks(mo, ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", 
 fig.text(0.01, 0.5, "outside °C (dotted: 21 °C)", rotation=90, va="center", fontsize=16, color=INK2)
 fig.subplots_adjust(left=0.08, right=0.82, top=0.92, bottom=0.06, hspace=0.15)
 fig.savefig(OUT / "weather.png", dpi=100); plt.close(fig)
-print("wrote split_grid.png, term_heatmap.png, tiers_bars.png, buildings.png, weather.png")
+
+# ---------------------------------------------------------------- F. one episode = one kit run, and its columns
+if len(sys.argv) > 4:
+    EP = np.load(sys.argv[4]); meta = json.loads(str(EP["meta"]))
+    b, st = meta["building"], meta["weather"]
+    n, V = EP["T_meas"].shape; days = np.arange(n) / 288
+    fig = plt.figure(figsize=(13, 7.0))
+    # left: the three ingredients
+    zm = np.load(KIT / "training_scenarios" / b / st / "zone_map.npy"); lab, _ = ndimage.label(zm == 0)
+    img = np.ones(zm.shape + (3,)); img[zm == 1] = matplotlib.colors.to_rgb(INK2); img[zm == 2] = matplotlib.colors.to_rgb(SURF)
+    for r in csv.DictReader(open(WC / "outputs" / f"{b}_rooms.csv")):
+        l = lab[int(round(float(r["cy"]))), int(round(float(r["cx"])))]
+        if l > 0:
+            img[lab == l] = matplotlib.colors.to_rgb(TYPE[r["type"]][0])
+    fl, _ = ndimage.label(ndimage.binary_dilation(zm != 2, iterations=3)); rr, cc = np.nonzero(zm != 2)
+    r0, r1 = np.nonzero((fl == fl[rr[0], cc[0]]).any(1))[0][[0, -1]]; c0, c1 = cc.min(), cc.max()
+    a1 = fig.add_axes([0.01, 0.5, 0.22, 0.34]); a1.imshow(img[r0:r1 + 1, c0:c1 + 1], interpolation="nearest"); a1.axis("off")
+    a1.set_title(f"1 building\n{b.replace('building_train_', 'building ')}: {V} rooms", loc="left", fontsize=16, color=INK)
+    a2 = fig.add_axes([0.04, 0.2, 0.19, 0.18]); a2.plot(days, EP["in__T_out"] - 273.15, color="#eb6834", lw=0.8)
+    a2.set_title(f"× 1 weather window\n{st}: 30 days", loc="left", fontsize=16, color=INK); a2.set_xticks([0, 10, 20, 30])
+    a2.set_ylabel("°C", fontsize=13); a2.tick_params(labelsize=12, length=0); a2.spines[["top", "right"]].set_visible(False)
+    fig.text(0.03, 0.06, f"× 1 controller\n{meta['policy']}", fontsize=16, color=INK, va="bottom")
+    # right: every column, over the 30 days
+    per_room = [("T_meas", "room temperature (target)", "°C", -273.15), ("in__g", "supply air", "W/K", 0),
+                ("in__T_supply", "supply-air temperature", "°C", -273.15), ("in__Q_reheat", "reheat heat", "W", 0),
+                ("in__Q_gain", "lights & equipment", "W", 0)]
+    bw = [("in__T_out", "outside temperature", "°C", -273.15), ("in__occupants", "people in building", "", 0),
+          ("in__comfort", "occupied hours (1/0)", "", 0), ("in__T_water", "boiler water temp.", "°C", -273.15)]
+    H = len(per_room) + len(bw); top, bot, gap = 0.9, 0.08, 0.012; h = (top - bot - gap * (H - 1)) / H
+    fig.text(0.29, 0.95, f"= 1 episode: these columns at every 5-minute step for 30 days ({n:,} rows)", fontsize=17, color=INK)
+    for k, (key, name, unit, off) in enumerate(per_room + bw):
+        ax = fig.add_axes([0.29, top - (k + 1) * h - k * gap, 0.46, h])
+        A = EP[key] + off
+        if A.ndim == 2:
+            ax.imshow(A.T, aspect="auto", cmap="Blues", interpolation="nearest", extent=[0, n / 288, V, 0])
+            ax.set_yticks([])
+        else:
+            ax.plot(days, A, color=INK2, lw=0.7); ax.set_xlim(0, n / 288); ax.set_yticks([])
+        ax.set_xticks([0, 7, 14, 21, 28] if k == H - 1 else []); ax.tick_params(labelsize=12, length=0)
+        [sp.set_visible(False) for sp in ax.spines.values()]
+        shape = f"per room ({V})" if A.ndim == 2 else "building-wide"
+        ax.text(1.01, 0.5, f"{name}\n{shape}" + (f", {unit}" if unit else ""), transform=ax.transAxes, va="center", fontsize=14.5, color=INK)
+    fig.text(0.52, 0.015, "day   (per-room columns: one row per room, darker = higher)", ha="center", fontsize=14, color=INK2)
+    fig.savefig(OUT / "episode.png", dpi=100); plt.close(fig)
+print("wrote split_grid.png, term_heatmap.png, tiers_bars.png, buildings.png, weather.png" + (", episode.png" if len(sys.argv) > 4 else ""))

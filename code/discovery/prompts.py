@@ -1,16 +1,18 @@
 """What the LLM sees, and what it must send back.
 
-INPUT to the LLM (one request per generation):
-  system prompt (stable across generations, so it caches):
-    - the task and the rules of the game (blind: no simulator source, no config values)
-    - the data dictionary: every geometry and input array a candidate receives, with units
-    - the candidate contract and the dlib helper API
-    - how candidates are fitted and scored
-    - (informed mode only) physics notes from the code audit
-  user message (changes every generation):
-    - the best programs so far, each with its source, score and residual diagnostics
-    - recent failures (rejected or crashed programs) with the reason
-    - what to produce now (how many, how many must explore)
+INPUT to the LLM (closed-form discovery, evolve.py; one stateless request per operator):
+  system prompt (the same in every request, so it caches): the fixed state-space function and the 11 coefficients to
+    write, the data dictionary (names, shapes, units; no values), the universal constants, the contract and rules,
+    and how a candidate is scored on validation
+  user message, by operator:
+    - init:      how many first candidates to write
+    - mutation:  the parent (code, hypothesis, five errors), its analysis on all validation episodes (when, where,
+                 which term), one real validation day hourly for one room of each type
+    - crossover: both parents and the analysis of who is better where and for which term
+    - explore:   the island's best programs with their errors and hypotheses
+    - every operator: the island's recent rejected or crashed programs with the reason, and its recent children
+      that ran but scored WORSE than their parent (what they tried and how much each error moved)
+  (the legacy fitted mode, loop.py, uses the CONTRACT / SYSTEM texts further down)
 
 OUTPUT from the LLM (structured JSON, schema RESPONSE_SCHEMA):
     {"candidates": [{"name": str, "hypothesis": str, "code": str}, ...]}
@@ -411,13 +413,25 @@ def _fails(failures):
         f"- {f['name']} [{f['status']}]: {f.get('reason', '')}" + ("".join(f"\n    {x}" for x in f.get("failures", [])[:3])) for f in failures)
 
 
-def cf_user_mutation(gen, island, parent, analysis_text, profile_text, failures, n, keys=None):
+def _worse(setbacks):
+    """Children that ran but scored worse than their best parent: the edit tried and how much each error moved (K; + = worse)."""
+    if not setbacks:
+        return ""
+    return ("Recent children on this island that RAN but scored WORSE than their parent (do not repeat these edits; if the idea "
+            "still seems right, change it in a different way):\n" + "\n".join(
+                f"- {w['name']} [{w['id']}, {w['operator']} of {w['parent']}]: score {w['score']:.4f} vs parent {w['parent_score']:.4f} "
+                f"({w['score'] - w['parent_score']:+.4f})" + ("; " + ", ".join(f"{k} {v:+.3f}" for k, v in w["deltas"].items()) if w["deltas"] else "")
+                + f"\n    tried: {w['hypothesis'][:250]}" for w in setbacks))
+
+
+def cf_user_mutation(gen, island, parent, analysis_text, profile_text, failures, n, keys=None, worse=None):
     return "\n\n".join(x for x in [
         f"Generation {gen}, island {island}.  Operator: MUTATION.",
         _prog(parent, "Parent"),
         "Pre-mutation analysis of the parent (validation buildings): where, when and through which term it errs\n" + analysis_text,
         ("A real trajectory excerpt (one validation day, one room of each type, the parent's 3 h-ahead forecast):\n" + profile_text) if profile_text else "",
         _fails(failures),
+        _worse(worse),
         f"Write {n} children of this parent.  Each must change ONE thing that the analysis points to (one "
         "coefficient formula, a different history summary, a history-inferred material value) and keep the rest. "
         "Use the TERMS slopes, the SPATIAL correlations and the TEMPORAL breakdown to decide which coefficient to change "
@@ -425,12 +439,13 @@ def cf_user_mutation(gen, island, parent, analysis_text, profile_text, failures,
         "objective it should improve."] if x)
 
 
-def cf_user_crossover(gen, island, a, b, cx_text, failures, n, keys=None):
+def cf_user_crossover(gen, island, a, b, cx_text, failures, n, keys=None, worse=None):
     return "\n\n".join(x for x in [
         f"Generation {gen}, island {island}.  Operator: CROSSOVER.",
         _prog(a, "Parent A"), _prog(b, "Parent B"),
         "Pre-crossover analysis:\n" + cx_text,
         _fails(failures),
+        _worse(worse),
         f"Write {n} children that COMBINE the parents: take each coefficient formula from the parent that is better "
         "where that coefficient matters (the TERMS lines say which parent's formula is closer to right for each term; the "
         "SPATIAL and TEMPORAL lines say where and when each parent wins), make "
@@ -446,12 +461,13 @@ def cf_user_init(gen, island, failures, n):
         "neighbour exchange is written), and state in each hypothesis which physical assumption it tests."] if x)
 
 
-def cf_user_explore(gen, island, elites, failures, n, keys=None):
+def cf_user_explore(gen, island, elites, failures, n, keys=None, worse=None):
     lb = "\n".join(f"- {e['name']} [{e['id']}]: score {e['score']:.4f}{_objs(e)}; {e.get('hypothesis', '')[:300]}" for e in elites) or "- none yet"
     return "\n\n".join(x for x in [
         f"Generation {gen}, island {island}.  Operator: EXPLORE.",
         "Programs on this island so far (best first):\n" + lb,
         _fails(failures),
+        _worse(worse),
         f"Write {n} candidates with a STRUCTURALLY different hypothesis from all of the above (a different "
         "use of the stores, a different way to infer per-building materials from history, different coupling laws), not a "
         "re-tuning."] if x)
