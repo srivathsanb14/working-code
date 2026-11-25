@@ -2,7 +2,7 @@
 slide of the full deck (named in each source line), which carries its own sources."""
 import copy
 
-import content17 as FULL
+import content18 as FULL
 
 M = []
 
@@ -24,8 +24,8 @@ s(id="m_problem", kind="figure", eyebrow="The problem: every building is differe
 s(id="m_weather", kind="figure", eyebrow="The problem: every climate is different",
   title="…and weather from −42 °C to +46 °C: only 30 episodes",
   img="weather.png", h=530,
-  callout="Orange: the only 30-day episodes ever simulated. Grey: the rest of 2023, in the weather file but in no run. The test uses other 30-day windows, never released.",
-  src="[kit] weather/csv/*.csv (2023, hourly) and weather/<scenario>.yaml start dates of the 30 shipped scenarios; training_set.yaml; README (test strips are not shipped strips); make_figs11.py")
+  callout="Orange: the only 30-day episodes ever simulated. Grey: the rest of 2023, in the weather file but in no run. The test uses 5 other stations, never released.",
+  src="[kit] weather/csv/*.csv (2023, hourly) and weather/<scenario>.yaml start dates of the 30 shipped scenarios; training_set.yaml; [website] scoring.html (5 unseen stations); make_figs11.py")
 
 s(id="m_idea", kind="image", side="right", eyebrow="Our approach", title="Forecast every room with physics whose numbers are formulas, not fits",
   img="ep30_profile_pred.png",

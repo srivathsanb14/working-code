@@ -13,7 +13,7 @@ HERE = Path(__file__).resolve().parent
 P = Path(os.environ.get("STORY_OUT", HERE / "project")); SL = P / "slides"     # STORY_OUT: another deck's project folder
 import sys
 sys.path.insert(0, str(HERE))
-_M = importlib.import_module(os.environ.get("STORY", "content17"))               # STORY: content module (S, SECTIONS)
+_M = importlib.import_module(os.environ.get("STORY", "content18"))               # STORY: content module (S, SECTIONS)
 S, SECTIONS = _M.S, _M.SECTIONS
 
 # =========================================================================== render: online HTML
