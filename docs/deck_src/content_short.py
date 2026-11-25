@@ -18,14 +18,14 @@ s(id="m_cover", kind="statement", eyebrow="NeurIPS 2026 · Smart Buildings Chall
 s(id="m_problem", kind="figure", eyebrow="The problem: every building is different",
   title="One policy, dropped into buildings it has never seen",
   img="buildings.png", h=530,
-  callout="The six shipped buildings, floor 1 of each, at one scale. The test uses 6 others, never released; every room is scored on comfort, energy and carbon.",
-  src="[kit] training_scenarios/*/zone_map.npy; room types: code/explore_zone_map.py (outputs/building_*_rooms.csv); [website] scoring.html; make_figs11.py")
+  callout="Six buildings ship pre-built (floor 1 shown, one scale). The kit's generator makes as many more as we like, one per seed; the 6 test buildings come from the same generator.",
+  src="[kit] training_scenarios/*/zone_map.npy; run_floor_generator.py and README (generate any number; test from the same generator and ranges); room types: code/explore_zone_map.py; make_figs11.py")
 
 s(id="m_weather", kind="figure", eyebrow="The problem: every climate is different",
-  title="…and into weather from −42 °C to +46 °C",
+  title="…and weather from −42 °C to +46 °C: only 30 episodes",
   img="weather.png", h=530,
-  callout="The test runs 30 days at 5 unseen stations. Fairbanks in January and Singapore all year need opposite things from one controller.",
-  src="[kit] weather/csv/*.csv (2023, hourly) and weather/<scenario>.yaml start dates of the 30 shipped scenarios; make_figs11.py")
+  callout="Orange: the only 30-day episodes ever simulated. Grey: the rest of 2023, in the weather file but in no run. The test uses other 30-day windows, never released.",
+  src="[kit] weather/csv/*.csv (2023, hourly) and weather/<scenario>.yaml start dates of the 30 shipped scenarios; training_set.yaml; README (test strips are not shipped strips); make_figs11.py")
 
 s(id="m_idea", kind="image", side="right", eyebrow="Our approach", title="Forecast every room with physics whose numbers are formulas, not fits",
   img="ep30_profile_pred.png",

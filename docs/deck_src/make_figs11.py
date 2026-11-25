@@ -6,8 +6,8 @@
                       on the 6 validation runs, saved as outputs/term_slopes_network.json)
   buildings.png       the six shipped buildings' real floor plans at one scale, rooms coloured by type (kit zone_map.npy;
                       room types from outputs/building_train_*_rooms.csv, written by code/explore_zone_map.py)
-  weather.png         a year of outside temperature at each of the 5 stations, with the 30-day windows of the shipped
-                      scenarios marked (kit weather/csv/*.csv and weather/<scenario>.yaml)
+  weather.png         the 30 simulated 30-day episodes at the 5 stations, against the rest of 2023 that is in the weather
+                      file but in no simulated run (kit weather/csv/*.csv and weather/<scenario>.yaml)
   tiers_bars.png      3 h forecast error of persistence and the hand-written models on validation and held-out runs
                       (closedform.evaluate on the 12 thirty-day runs, as on the 'tiers' slide)
 
@@ -154,17 +154,17 @@ for ax, st in zip(axs, STN):
     day = np.array([x.timetuple().tm_yday for x in t])
     d = np.arange(1, day.max() + 1)
     lo = np.array([T[day == k].min() for k in d]); hi = np.array([T[day == k].max() for k in d])
-    ax.fill_between(d, lo, hi, color="#C9C6BE", lw=0, label="daily range, whole year")
+    ax.fill_between(d, lo, hi, color="#E2DFD8", lw=0, label="rest of 2023: in the weather file, never simulated")
     inw = []
     for s0 in win[st]:
         m = (t >= s0) & (t < s0 + dt.timedelta(days=30)); inw.append(T[m])
         ax.plot([x.timetuple().tm_yday + x.hour / 24 for x in t[m]], T[m], color="#eb6834", lw=1.0)
     a = np.concatenate(inw)
-    ax.text(1.01, 0.5, f"{st.capitalize()}\n{a.min():.0f} to {a.max():.0f} °C", transform=ax.transAxes, va="center", fontsize=17, color=INK)
+    ax.text(1.01, 0.5, f"{st.capitalize()}\nepisodes: {a.min():.0f} to {a.max():.0f} °C", transform=ax.transAxes, va="center", fontsize=17, color=INK)
     ax.axhline(21, color=INK2, lw=0.8, ls=":")
     ax.spines[["top", "right"]].set_visible(False); ax.tick_params(length=0); ax.yaxis.grid(True, color=GRID, lw=0.6)
     ax.set_yticks([-40, 0, 40])
-axs[0].plot([], [], color="#eb6834", lw=2, label="the shipped 30-day windows (6 per station)")
+axs[0].plot([], [], color="#eb6834", lw=2, label="the 30 simulated episodes (6 per station): all we have")
 axs[0].legend(loc="lower left", ncol=2, frameon=False, fontsize=15, bbox_to_anchor=(0, 1.0))
 mo = [dt.date(2023, m, 1).timetuple().tm_yday for m in range(1, 13)]
 axs[-1].set_xticks(mo, ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]); axs[-1].set_xlim(1, 365)
