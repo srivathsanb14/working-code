@@ -37,4 +37,6 @@ step 1 "$PY" code/build_dataset.py --results "$RESULTS" --scenarios "$SCENARIOS"
 step 2 "$PY" code/make_splits.py --dataset "$DATASET" --out "$DATASET/split.json"
 step 3 "$PY" code/run_discovery.py --dataset "$DATASET" --run "$RUN" --generations "$GENS" --islands "$ISLANDS" \
         --model "$MODEL" --max-usd "$MAX_USD" --workers "$WORKERS" --test
-echo; echo "done: outputs/discovery/$RUN/REPORT.md (split: $DATASET/split.json)"
+echo
+if (( TO >= 3 )); then echo "done: outputs/discovery/$RUN/REPORT.md (split: $DATASET/split.json)"
+else echo "done: steps $FROM-$TO (split: $DATASET/split.json); discovery not run"; fi

@@ -233,3 +233,44 @@ def split_episodes(eps, split):
         if not v and not k.startswith("test"):
             raise SystemExit(f"split '{k}' matched no episodes; adjust --split")
     return out
+
+
+def stratified_sample(eps, k, seed=0):
+    """Pick k episodes so that every (building, station, controller) group is represented before any group gets a
+    second one; within that, deterministic random order.  k <= 0 or k >= len(eps) returns everything."""
+    if not k or k <= 0 or len(eps) <= k:
+        return list(eps)
+    rng = np.random.default_rng(seed)
+    groups = {}
+    for e in eps:
+        groups.setdefault((e.building, e.weather.rsplit("_", 1)[0], e.policy), []).append(e)
+    order = [groups[g] for g in sorted(groups)]
+    for g in order:
+        rng.shuffle(g)
+    rng.shuffle(order)
+    out, i = [], 0
+    while len(out) < k:
+        for g in order:
+            if i < len(g):
+                out.append(g[i])
+                if len(out) == k:
+                    break
+        i += 1
+    return sorted(out, key=lambda e: e.name)
+
+
+def coverage(eps):
+    """How many buildings, stations and controllers a list of episodes covers."""
+    return dict(episodes=len(eps), buildings=len({e.building for e in eps}),
+                stations=len({e.weather.rsplit("_", 1)[0] for e in eps}), controllers=len({e.policy for e in eps}))
+
+
+def light_per_scenario(paths):
+    """One light episode (geometry + outside temperature) per scenario, from episode files: what the split needs."""
+    from .episodes import load_light
+    seen, out = set(), []
+    for p in paths:
+        e = load_light(p)
+        if e.scenario not in seen:
+            seen.add(e.scenario); out.append(e)
+    return out

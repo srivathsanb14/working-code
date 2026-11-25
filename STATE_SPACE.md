@@ -3,7 +3,7 @@
 
 *Based on the starter kit `smart-buildings-2026/starter-kit` · Competition pages: <https://www.kaggle.com/competitions/neurips-2026-smart-buildings/> and <https://smart-buildings-2026.github.io/competition/>*
 
-> **Status note (25 Nov 2026).** This is the full analysis as it was developed. The approach it ends on (constants fitted offline or on day 1, a Kalman-filtered state, `--deployment`, `test_model.py`) was tried and then replaced: nothing is fitted now, the LLM writes a closed-form formula for every coefficient of a fixed state-space function, and the split is computed from the data. The fitted code and the one-off analysis scripts this document names (`code/room_*.py`, `rollout_checks.py`, `dump_vectors.py`, `explore_zone_map.py` and the like) have been removed; their results remain in `outputs/`. The current method is in `docs/DISCOVERY_WALKTHROUGH.md`, the run steps in `docs/RUNBOOK.md`, and the remaining work in `Planning/index.md`. Parts I–III and §14 (the interface and the simulator audit) are current.
+> **How to read this document.** It is the full analysis behind the method: the problem, the interface, the simulator audit and the evidence. The method the code implements is the closed-form one: nothing is fitted, the LLM writes a formula for every coefficient of a fixed state-space function, and the split is computed from the data (`docs/DISCOVERY_WALKTHROUGH.md`). Sections that discuss fitting constants offline or on day 1 describe an alternative that was evaluated and not adopted; the analysis scripts named here are not part of the repository, and their results are in `outputs/`. Run steps: `docs/RUNBOOK.md`; remaining work: `Planning/index.md`. Parts I–III and §14 describe the current interface and simulator.
 
 ---
 
@@ -1116,7 +1116,7 @@ Two traps showed up in testing:
 
 As a cross-check, the full §14 network with the true materials, driven by these inputs, matches the accuracy it reached with the solver's own inputs: 0.26–0.72 K over 3 days for all-off and `pid_water`.
 
-**Status.** No full-scale data has been generated and no LLM generation has run; earlier small trial runs were removed so that every result comes from the full data set. The pipeline below produces them.
+**Status.** No full-scale data has been generated and no LLM generation has run; every result will come from the full data set. The pipeline below produces them.
 
 **The full workflow** is `run_pipeline.sh` (all steps in order, for a big machine), detailed in `docs/RUNBOOK.md`:
 1. `setup_check.py`;

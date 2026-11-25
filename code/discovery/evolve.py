@@ -56,8 +56,14 @@ TEST_TIERS = ("test_easy", "test_medium", "test_hard", "test_station")
 def load_split(args):
     """Validation episodes (all the search ever sees) and the held-out test tiers (scored once, at the end).
     There is no training split: nothing is fitted.  A split file that still has "train" is accepted, and its
-    train episodes are ignored."""
-    from .splits import split_episodes
+    train episodes are ignored.
+
+    Memory: episodes are chosen by name from index.json first; only the validation sample is loaded here (one
+    light episode per scenario if the split must be computed).  Test tiers stay as file references and are loaded in
+    chunks by score_tests."""
+    from types import SimpleNamespace
+
+    from . import splits
     ds = Path(args.dataset)
     if not (ds / "index.json").exists():
         raise SystemExit(f"no dataset at {ds} (index.json missing): run code/build_dataset.py first (docs/RUNBOOK.md), "
@@ -65,28 +71,40 @@ def load_split(args):
     idx = json.loads((ds / "index.json").read_text())
     sp_path = Path(args.split) if args.split else ds / "split.json"
     split = json.loads(sp_path.read_text()) if sp_path.exists() else {}
-    paths = [ds / v["file"] for v in idx.values() if v.get("status") == "ok" and (not args.policies or v["policy"] in args.policies)]
-    eps = [_load_cached(p) for p in paths]
+    refs = []
+    for name, v in idx.items():
+        if v.get("status") != "ok":
+            continue
+        path = ds / v["file"]
+        m = v if all(k in v for k in ("building", "weather", "policy")) else json.loads(str(np.load(path)["meta"]))
+        refs.append(SimpleNamespace(name=name, building=m["building"], weather=m["weather"], policy=m["policy"],
+                                    scenario=m.get("scenario") or f"{m['building']}/{m['weather']}", path=path))
+        if args.policies and refs[-1].policy not in args.policies:
+            refs.pop()
     if args.auto_split or not any(k in split for k in TEST_TIERS):
-        from . import splits
-        split = splits.split_from_episodes(eps)
+        first = {}
+        for r in refs:
+            first.setdefault(r.scenario, r.path)
+        split = splits.split_from_episodes(splits.light_per_scenario(list(first.values())))
         w = split["_why"]
-        print(f"split computed from the {len(eps)} available episodes: hard station {w['hard_station']} "
+        print(f"split computed from the {len(refs)} available episodes: hard station {w['hard_station']} "
               f"(Wasserstein to the rest {w['station_wasserstein_to_rest_K']}), held-out buildings {w['held_out_buildings']}, "
               f"counts {w['counts']}")
-    S = split_episodes(eps, {k: v for k, v in split.items() if k != "train" and not k.startswith("_")})
+    S = splits.split_episodes(refs, {k: v for k, v in split.items() if k != "train" and not k.startswith("_")})
     if split.get("train"):
         print(f"note: the split has a 'train' list ({len(split['train'])} patterns); it is ignored, discovery uses no training data")
-    rng = np.random.default_rng(0)
-
-    def cap(L, k):
-        return [L[i] for i in sorted(rng.choice(len(L), size=k, replace=False))] if k and len(L) > k else L
-    from . import splits as _splits
-    split["_episodes"] = _splits.check_whole_episodes(S)         # whole episodes only; raises if any is shared
+    split["_episodes"] = splits.check_whole_episodes(S)         # whole episodes only; raises if any is shared
+    pick = splits.stratified_sample(S["val"], args.max_val)
+    cv, ca = splits.coverage(pick), splits.coverage(S["val"])
+    print(f"validation sample: {cv['episodes']} of {ca['episodes']} episodes, covering {cv['buildings']}/{ca['buildings']} buildings, "
+          f"{cv['stations']}/{ca['stations']} stations, {cv['controllers']}/{ca['controllers']} controllers")
+    val = [_load_cached(r.path) for r in pick]
     tests = {k: S[k] for k in TEST_TIERS if S.get(k)}
     if not tests and S.get("test"):
         tests = {"test": S["test"]}
-    return cap(S["val"], args.max_val), tests, split, len(paths)
+    if getattr(args, "max_test", 0):
+        tests = {k: splits.stratified_sample(v, args.max_test) for k, v in tests.items()}
+    return val, tests, split, len(refs)
 
 
 # ----------------------------------------------------------------------------- database
@@ -308,6 +326,56 @@ def make_proposer(a):
     return proposers.ClaudeProposer(model=a.model, effort=a.effort, max_usd=a.max_usd)
 
 
+def api_proposer(a):
+    """The API client, created before any data is loaded so a missing library or key stops the run at once.  None when
+    no request will be made (--generations 0, --dry-run)."""
+    if a.generations <= 0 or a.dry_run:
+        return None
+    try:
+        return make_proposer(a)
+    except ImportError:
+        raise SystemExit("the Claude API library is not installed: .venv/bin/pip install -r requirements-llm.txt "
+                         "(or run with --generations 0 / --dry-run, which make no API request)") from None
+    except Exception as e:  # noqa: BLE001
+        raise SystemExit(f"the Claude API client could not be created ({type(e).__name__}: {e}); set ANTHROPIC_API_KEY "
+                         "(or run with --generations 0 / --dry-run, which make no API request)") from None
+
+
+def dry_run(a, val, U, Uraw, keys, run_dir, log):
+    """--dry-run: write every kind of request exactly as a real run would build it, and stop before any API call.
+    Generation 0: one init request per island.  Then, with the hand-written models in seeds_cf/ as stand-in parents
+    (scored on the validation sample, recorded only in this run's folder): one mutation, one crossover and one explore
+    request.  Read system_prompt.md and generations/*/*/*/prompt.md."""
+    for k in range(a.islands):
+        rq = run_dir / "generations" / "g000" / f"island_{k}" / "init"; rq.mkdir(parents=True, exist_ok=True)
+        (rq / "prompt.md").write_text(f"# SYSTEM\n\nsee ../../../../system_prompt.md\n\n# USER\n\n{prompts.cf_user_init(0, k, [], a.n_init)}\n")
+    db = DB(run_dir)
+    seeds = sorted(SEEDS_CF.glob("*.py"))
+    res = evaluate_many([s.read_text() for s in seeds], val, U, a)
+    for s, r in zip(seeds, res):
+        record(db, s.read_text(), s.stem, "hand-written model (stand-in parent for the dry run)", 0, 0, "reference", [], None, r, val, 0.0)
+    pop = [dict(r, code=code_of(db, r)) for r in db.elites(0, a.elites, keys)]
+    if not pop:
+        log("dry run: no hand-written model passed the checks on this data; only the init prompts were written")
+        return
+    rq = run_dir / "generations" / "g001" / "island_0"
+    p = pop[0]
+    pt = profile_text(p["code"], val, U, a.main_horizon) if val else ""
+    reqs = {"mutation": prompts.cf_user_mutation(1, 0, p, p["analysis"], pt, [], a.n_mut, keys, [])}
+    if len(pop) >= 2:
+        cx = cf.crossover_analysis(*({"analysis": {"groups": q.get("groups", {}), "terms": q.get("terms", {}), "rooms": q.get("rooms", {})},
+                                      "code": q["code"]} for q in pop[:2]), ep=val[0] if val else None, U=U)
+        reqs["crossover"] = prompts.cf_user_crossover(1, 0, pop[0], pop[1], cx["text"], [], a.n_cx, keys, [])
+    reqs["explore"] = prompts.cf_user_explore(1, 0, pop, [], a.n_exp, keys, [])
+    for op, user in reqs.items():
+        (rq / op).mkdir(parents=True, exist_ok=True)
+        (rq / op / "prompt.md").write_text(f"# SYSTEM\n\nsee ../../../../system_prompt.md\n\n# USER\n\n{user}\n")
+    sizes = {op: len(u) for op, u in reqs.items()}
+    log(f"dry run: wrote {a.islands} init prompts and {', '.join(reqs)} prompts (characters: {sizes}, system prompt "
+        f"{len(prompts.cf_system_prompt(Uraw, a.screen, tuple(a.horizons), a.main_horizon, a.complexity_weight, keys))}); "
+        "no API request was made")
+
+
 def score_baselines(val, U, a, log, run_dir):
     """--baselines: the hand-written models, scored once on validation as REFERENCE rows; never parents."""
     out = {}
@@ -321,6 +389,7 @@ def score_baselines(val, U, a, log, run_dir):
 
 def run(a):
     run_dir = OUTD / a.run
+    proposer = api_proposer(a)                            # before any data is loaded: fails at once without library or key
     db = DB(run_dir); log = Log(run_dir / "log.md")
     U, Uraw = cf.universal_constants()
     if not Uraw.get("_reviewed"):
@@ -335,7 +404,9 @@ def run(a):
     system = prompts.cf_system_prompt(Uraw, a.screen, tuple(a.horizons), a.main_horizon, a.complexity_weight, keys)
     (run_dir / "system_prompt.md").write_text(system)
     rng = np.random.default_rng(a.seed)
-    proposer = make_proposer(a)
+    if a.dry_run:
+        dry_run(a, val, U, Uraw, keys, run_dir, log)
+        return None
     if a.ceiling and not (run_dir / "ceiling.json").exists():
         log("ceiling (diagnostic): per-room linear model fitted on the first half of each held-out episode")
         C = {e.name: cf.ceiling(e, U, tuple(a.horizons), a.every, a.warmup) for e in val}
@@ -462,27 +533,81 @@ def run(a):
     print(f"\nreport: {run_dir / 'REPORT.md'}")
 
 
+TEST_CHUNK = 16
+
+
+def _test_chunk(job):
+    """One (model, tier, chunk) of the final test scoring: load these episodes, score, return (n, record)."""
+    code, paths, U, kw = job
+    eps = [_load_cached(p) for p in paths]
+    t = cf.evaluate(code, eps, U, **kw)
+    return len(eps), {k: v for k, v in t.items() if (k.startswith("val_") and k != "val_by_episode") or k in ("status", "objectives")}
+
+
+def _merge_chunks(parts):
+    """Episode-weighted means of the chunk records (every val_*_mean is a mean over episodes); objectives likewise."""
+    ok = [(n, t) for n, t in parts if t.get("status") == "ok"]
+    out = {"status": "ok" if len(ok) == len(parts) else next(t["status"] for _, t in parts if t.get("status") != "ok"),
+           "n_episodes": sum(n for n, _ in parts)}
+    if not ok:
+        return out
+    N = sum(n for n, _ in ok)
+    for k in {k for _, t in ok for k in t if k.startswith("val_") and isinstance(t[k], (int, float))}:
+        vals = [(n, t[k]) for n, t in ok if k in t and np.isfinite(t[k])]
+        if vals:
+            out[k] = float(sum(n * x for n, x in vals) / sum(n for n, _ in vals))
+    obj = {}
+    for k in ok[0][1].get("objectives", {}):
+        vals = [(n, t["objectives"][k]) for n, t in ok if np.isfinite(t["objectives"].get(k, np.nan))]
+        obj[k] = float(sum(n * x for n, x in vals) / sum(n for n, _ in vals)) if vals else float("inf")
+    out["objectives"] = obj
+    out["merged_chunks"] = len(ok); out["episodes_scored"] = N
+    return out
+
+
 def score_tests(db, best, tests, U, a, keys, log, run_dir):
-    """Once, at the end: the chosen model and the rest of the validation Pareto front on every held-out test tier."""
+    """Once, at the end: the chosen model and the rest of the validation Pareto front on every held-out test tier.
+    Each tier is scored in chunks of TEST_CHUNK episodes, in --workers forked processes, so memory stays at a few
+    chunks however large the tier is."""
     uniq = {}
     for r in db.ok():
         uniq.setdefault(r["hash"], r)
     front = pareto.front(list(uniq.values()), keys) if keys else []
     pick = [best] + [r for r in sorted(front, key=lambda r: r["score"]) if r["hash"] != best["hash"]][: max(a.test_front - 1, 0)]
+    kw = dict(complexity_weight=a.complexity_weight, horizons=tuple(a.horizons), main_h=a.main_horizon, every=a.every,
+              warmup=a.warmup, screen_factor=1e9, deploy_score=(a.score == "deploy"))
+    jobs, where = [], []
+    for r in pick:
+        code = code_of(db, r)
+        for tier, refs in tests.items():
+            paths = [getattr(e, "path", None) for e in refs]
+            if any(p is None for p in paths):             # already-loaded episodes (tests, self-test): one job per tier
+                jobs.append(("loaded", code, refs)); where.append((r["id"], tier)); continue
+            for i in range(0, len(paths), TEST_CHUNK):
+                jobs.append((code, paths[i:i + TEST_CHUNK], U, kw)); where.append((r["id"], tier))
+    loaded = [(i, j) for i, j in enumerate(jobs) if j[0] == "loaded"]
+    file_jobs = [(i, j) for i, j in enumerate(jobs) if j[0] != "loaded"]
+    results = [None] * len(jobs)
+    for i, (_, code, eps) in loaded:
+        t = cf.evaluate(code, eps, U, **kw)
+        results[i] = (len(eps), {k: v for k, v in t.items() if (k.startswith("val_") and k != "val_by_episode") or k in ("status", "objectives")})
+    if file_jobs:
+        if a.workers > 1 and len(file_jobs) > 1:
+            import multiprocessing as mp
+            with mp.get_context("fork").Pool(min(a.workers, len(file_jobs))) as pool:
+                for (i, _), res in zip(file_jobs, pool.map(_test_chunk, [j for _, j in file_jobs])):
+                    results[i] = res
+        else:
+            for i, j in file_jobs:
+                results[i] = _test_chunk(j)
     out = {}
     log("\n## Held-out test tiers (scored once; never seen by the search)\n")
     log("| model | " + " | ".join(f"{t} {_hname_main(a)} (persistence)" for t in tests) + " |")
     log("|---|" + "---|" * len(tests))
+    mh = _hname_main(a)
     for r in pick:
-        row = {}
-        for tier, eps in tests.items():
-            t = cf.evaluate(code_of(db, r), eps, U, complexity_weight=a.complexity_weight, horizons=tuple(a.horizons),
-                            main_h=a.main_horizon, every=a.every, warmup=a.warmup, screen_factor=1e9,
-                            deploy_score=(a.score == "deploy"))
-            row[tier] = {k: v for k, v in t.items() if k.startswith("val_") and k != "val_by_episode"}
-            row[tier].update(status=t["status"], objectives=t.get("objectives"), n_episodes=len(eps))
+        row = {tier: _merge_chunks([results[i] for i, w in enumerate(where) if w == (r["id"], tier)]) for tier in tests}
         out[r["id"]] = {"name": r["name"], "chosen": r is best, "tiers": row}
-        mh = _hname_main(a)
         log(f"| {'**' if r is best else ''}{r['name']} [{r['id']}]{'**' if r is best else ''} | " + " | ".join(
             f"{row[t].get(f'val_{mh}_deploy_mean', float('nan')):.3f} ({row[t].get(f'val_persistence_{mh}_mean', float('nan')):.3f})"
             for t in tests) + " |")
@@ -528,7 +653,10 @@ def build_parser():
     ap.add_argument("--score", choices=["deploy", "oracle"], default="deploy",
                     help="deploy (default): rollouts hold the future outside temperature and occupancy at their last observed "
                          "values, as a policy must at test time; oracle: the true future inputs (dynamics only, a diagnostic)")
-    ap.add_argument("--max-val", type=int, default=30, help="validation episodes used for scoring (0 = all; deterministic sample)")
+    ap.add_argument("--max-val", type=int, default=30, help="validation episodes used for scoring (0 = all; stratified sample: every building x station x controller group first)")
+    ap.add_argument("--dry-run", action="store_true", help="write every kind of request (init, mutation, crossover, explore) without "
+                    "calling the API, using the hand-written models as stand-in parents; then stop")
+    ap.add_argument("--max-test", type=int, default=0, help="episodes per test tier at the end (0 = all; stratified sample)")
     ap.add_argument("--ceiling", action="store_true", help="also compute the per-building fitted ceiling (diagnostic only)")
     ap.add_argument("--test", action="store_true", help="at the end, score the chosen model (and the Pareto front) on the test tiers")
     ap.add_argument("--timeout", type=float, default=1800)

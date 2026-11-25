@@ -30,9 +30,9 @@ for pkg in ("numpy", "scipy", "pandas", "gin", "numba", "cv2", "gymnasium", "yam
         check(f"import {pkg}", False, str(e))
 try:
     import anthropic  # noqa: F401
-    print("[ok] import anthropic (optional, for --proposer claude)")
+    print("[ok] import anthropic (for discovery with --generations > 0)")
 except Exception:  # noqa: BLE001
-    print("[--] anthropic not installed (only needed for --proposer claude: pip install -r requirements-llm.txt)")
+    print("[--] anthropic not installed (only needed for discovery with --generations > 0: pip install -r requirements-llm.txt)")
 check("starter kit found", (KIT / "smart_buildings" / "evaluate.py").exists(), str(KIT))
 st = kit_git_status()
 check("starter kit unmodified", st in ("", None), "not a git checkout (cannot verify)" if st is None else (st[:300] or "clean"))

@@ -1,2 +1,2 @@
-# Only for `run_discovery.py --proposer claude`.
+# The Claude API client, for run_discovery.py with --generations > 0 (not needed for --generations 0 or --dry-run).
 anthropic

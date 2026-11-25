@@ -1,6 +1,6 @@
 {
-  "_about": "Universal constants given to closed-form candidates as U[...] and listed in the prompt. A universal constant has the same value for every building and weather, so writing it into a formula does not make the model building-specific. Per-building values (facade and partition conductivity, density and specific heat, slab density, occupants per room, outdoor film coefficient) are NOT here: formulas must infer them from the history buffer. Every value cites its source in the kit (checked Nov 20, 2026). A person should still review this file once before a real run and set _reviewed to true (decision: review the constants once before they go into the prompt).",
-  "_reviewed": false,
+  "_about": "Universal constants given to closed-form candidates as U[...] and listed in the prompt. A universal constant has the same value for every building and weather, so writing it into a formula does not make the model building-specific. Per-building values (facade and partition conductivity, density and specific heat, slab density, occupants per room, outdoor film coefficient) are NOT here: formulas must infer them from the history buffer. Every value cites its source in the kit (checked Nov 20, 2026). Reviewed 25 Nov 2026: every value checked at its cited kit source, and the config.gin values are identical in all 30 shipped scenarios.",
+  "_reviewed": true,
   "DT": {
     "value": 300.0,
     "unit": "s",

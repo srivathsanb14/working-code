@@ -1975,7 +1975,7 @@ S = [
    "The way forward: keep the structure, and compute the material numbers from the measurements with a formula (part 6)"
   ],
   "caption": "[sim data] audit, 3-day episodes: a hand-built heat network with materials fitted on day 1, against persistence (the forecast 'temperature stays where it is')",
-  "src": "[sim data] outputs/room_model_forecast.json (day-1 fitting; that code has since been removed)",
+  "src": "[sim data] outputs/room_model_forecast.json (day-1 fitting: an alternative evaluated and not adopted)",
   "notes": "The question became: can formulas read the materials from history, so nothing is fitted?"
  },
  {
@@ -2331,7 +2331,7 @@ S = [
     "accent2"
    ]
   ],
-  "callout": "The fitted variants we tried first (part 5) have been removed from the code; their measured results are kept in outputs/. Closed-form discovery, with nothing fitted, is the only mode.",
+  "callout": "The fitted variants we tried first (part 5) are not part of the method; their measured results are in outputs/. Closed-form discovery, with nothing fitted, is the only mode.",
   "src": "[our code] seeds_cf/*.py, closedform.ceiling (scipy nnls, diagnostic)"
  },
  {
@@ -4075,23 +4075,23 @@ S = [
    ],
    [
     "pid_water-only notebook scored on Kaggle (proves the interface)",
-    "to do (Planning 14)"
-   ],
-   [
-    "Per-step time guard for large buildings",
-    "to do (Planning 12)"
-   ],
-   [
-    "Unsupported HVAC variants detected, fall back to pid_water",
-    "to do (Planning 13)"
-   ],
-   [
-    "Benchmark: 30 shipped scenarios at 8,640 steps + hold-out buildings and station",
     "to do (Planning 11)"
    ],
    [
+    "Per-step time guard for large buildings",
+    "to do (Planning 08)"
+   ],
+   [
+    "Unsupported HVAC variants detected, fall back to pid_water",
+    "to do (Planning 09)"
+   ],
+   [
+    "Benchmark: 30 shipped scenarios at 8,640 steps + hold-out buildings and station",
+    "to do (Planning 10)"
+   ],
+   [
     "Packaged dataset rehearsed locally; fallback verified by fault injection",
-    "to do (Planning 15)"
+    "to do (Planning 12)"
    ],
    [
     "Deployment parity: test-time information only",
@@ -4177,7 +4177,7 @@ S = [
    [
     "Cell grid, one room, the network matrix",
     "real (geometry)",
-    "building_train_8 floor plan (figure script since removed)"
+    "building_train_8 floor plan"
    ]
   ],
   "colw": [
@@ -4337,7 +4337,7 @@ S = [
    "Every stage is a complete submission with a working fallback",
    "5 submissions a day; 2 final picks; deadline January 15, 2027"
   ],
-  "src": "[plan] Planning/index.md (17 pending tasks); [Kaggle] timeline, limits",
+  "src": "[plan] Planning/index.md (14 steps); [Kaggle] timeline, limits",
   "notes": "Each stage is a complete submission."
  },
  {

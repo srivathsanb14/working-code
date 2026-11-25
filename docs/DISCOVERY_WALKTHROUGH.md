@@ -1,7 +1,7 @@
 # LLM discovery: where everything happens, and how to tell whether it works
 
 This is the guide to the default discovery mode: **closed-form formulas with no fitting anywhere**, searched by an
-LLM with islands, mutation and crossover. It is the only mode: the earlier fitted modes have been removed.
+LLM with islands, mutation and crossover. It is the only mode.
 
 ## 0. What the LLM writes: the coefficient formulas of a fixed state-space function
 

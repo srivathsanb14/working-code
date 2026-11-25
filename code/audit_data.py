@@ -1,20 +1,18 @@
-"""Step 2 (and again after step 3): audit the starter-kit data before trusting it.
+"""Audit the kit's runs and the episodes built from them, before trusting either.
 
-    python code/audit_data.py                 # after the kit's runs exist: layout, coverage, leakage
-    python code/audit_data.py                 # after build_dataset.py: adds replay and dataset checks
+    python code/audit_data.py --scenarios S --results R --dataset D     # S, R: folders the kit wrote; D: build_dataset.py --out
 
-Writes data/audit/audit.md (readable) and data/audit/audit.json, and exits with code 1 if
-any HARD check fails.  Checks:
+Writes <D>/../audit/audit.md (readable) and audit.json, and exits with code 1 if any HARD check fails.  Checks:
 
   kit        the starter kit is unmodified (git status)
   layout     every planned scenario has config.gin + floor_plan.npy + zone_map.npy; every run has
              timeseries.csv, ahu_log.csv, reward_components.csv, summary.json; row counts reach the
              requested steps; no NaN; CSV row 0 is the reset state (all rooms 294 K) and the episode
              starts on a Sunday at 06:00 (the evaluation's convention)
-  coverage   per split: buildings, scenarios, runs; building parameters against the generator's own
-             ranges (run_floor_generator.DEFAULT_RANGES) and materials against materials.PROPERTIES;
-             realized rooms V and AHUs K; station x strip matrix; policies
-  leakage    no building in two splits; the test station never in train/val; the val station never in train
+  coverage   per split tier: buildings, scenarios, runs, stations, policies; generated building parameters against
+             the generator's own ranges (run_floor_generator.DEFAULT_RANGES) and materials.PROPERTIES; station x window
+  leakage    (needs make_splits.py: <D>/split.json) no scenario in two tiers; held-out buildings only in test_medium /
+             test_hard; hard-station scenarios only in test_hard / test_station; validation not empty
   replay     (needs build_dataset.py) every run's replay reproduces the logged per-AHU airflow and run commands
   dataset    (needs build_dataset.py) temperature and input ranges, NaN, and how much each policy
              excites the building (AHU-on fraction, damper and reheat activity, temperature spread)
@@ -56,17 +54,21 @@ class Report:
         self.lines.append(t)
 
 
-def split_of(scen, split):
+TIERS = ("val", "test_easy", "test_medium", "test_hard", "test_station")
+
+
+def tiers_of(scen, split):
+    """Every tier whose list names (or pattern-matches) this scenario; more than one is leakage."""
     def hit(p):
         return fnmatch(scen, p) if "/" in p else fnmatch(scen.split("/")[0], p)
-    for name, pats in split.items():
-        if name.startswith("_"):
-            continue
+    out = []
+    for name in TIERS:
+        pats = split.get(name) or []
         if any(hit(p[1:]) for p in pats if p.startswith("!")):
             continue
         if any(hit(p) for p in pats if not p.startswith("!")):
-            return name
-    return None
+            out.append(name)
+    return out
 
 
 def kit_ranges():
@@ -79,13 +81,25 @@ def kit_ranges():
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--data", type=Path, default=DATA)
+    ap.add_argument("--scenarios", type=Path, nargs="+", help="scenario folders the kit wrote (default: <data>/scenarios)")
+    ap.add_argument("--results", type=Path, nargs="+", help="the kit's result folders, same order (default: <data>/results)")
+    ap.add_argument("--dataset", type=Path, help="episodes from build_dataset.py (default: <data>/dataset)")
+    ap.add_argument("--buildings", type=Path, help="generated building YAMLs (default: <data>/buildings)")
+    ap.add_argument("--steps", type=int, default=8640, help="steps every run must reach (8640 = 30 days)")
+    ap.add_argument("--data", type=Path, default=DATA, help="data root for the defaults ($SB_DATA)")
+    ap.add_argument("--out", type=Path, help="report folder (default: next to the dataset, audit/)")
     ap.add_argument("--max-csv-checks", type=int, default=100000, help="cap on runs whose CSVs are opened")
     a = ap.parse_args()
     data = a.data.resolve()
+    scen_dirs = [p.resolve() for p in (a.scenarios or [data / "scenarios"])]
+    res_dirs = [p.resolve() for p in (a.results or [data / "results"])]
+    if len(scen_dirs) != len(res_dirs):
+        raise SystemExit("give as many --scenarios folders as --results folders (matched in order)")
+    dataset = (a.dataset or data / "dataset").resolve()
+    bdir_root = (a.buildings or data / "buildings").resolve()
     R = Report()
-    R.text(f"# Data audit\n\ndata root: `{data}`  \nstarter kit: `{KIT}`")
-    from discovery.starterkit_data import resolve
+    R.text(f"# Data audit\n\nscenarios: `{[str(p) for p in scen_dirs]}`  \nresults: `{[str(p) for p in res_dirs]}`  \n"
+           f"dataset: `{dataset}`  \nstarter kit: `{KIT}`")
 
     # ------------------------------------------------------------------ kit
     R.h("Starter kit untouched")
@@ -97,15 +111,9 @@ def main():
     else:
         R.ok("git status clean")
 
-    plan = json.loads((data / "plan.json").read_text()) if (data / "plan.json").exists() else None   # optional manifest
-    split = json.loads((data / "split.json").read_text()) if (data / "split.json").exists() else {}
-    if plan is None:
-        R.ok("no plan.json manifest; auditing every results folder under data/results")
-        sources = [(data / "scenarios", data / "results")]
-        steps_req = None
-    else:
-        sources = [(resolve(s["scenarios"], data), resolve(s["results"], data)) for s in plan["sources"]]
-        steps_req = plan["steps"]
+    split = json.loads((dataset / "split.json").read_text()) if (dataset / "split.json").exists() else {}
+    sources = list(zip(scen_dirs, res_dirs))
+    steps_req = a.steps
 
     # ------------------------------------------------------------------ layout
     R.h("Layout and episode conventions")
@@ -125,13 +133,13 @@ def main():
                     if not all((pdir / f).exists() for f in need):
                         missing_csv.append(f"{b}/{w}/{pdir.name}"); continue
                     runs.append((sdir, rdir, b, w, pdir.name))
-    if plan:
-        expected = {(b, w, pol) for b, ws in plan.get("generated_scenarios", {}).items() for w in ws for pol in plan["policies"]}
-        have = {(b, w, pol) for _, _, b, w, pol in runs}
-        miss = sorted(expected - have)
-        (R.fail if miss else R.ok)(f"planned runs present: {len(expected & have)}/{len(expected)}" + (f"; missing e.g. {miss[:5]}" if miss else ""))
-        if plan.get("failures"):
-            R.warning(f"{len(plan['failures'])} generation failures recorded in the manifest (e.g. rooms under 20 m2): {list(plan['failures'].items())[:5]}")
+    pols = Counter(pol for *_, pol in runs)
+    per_scen = Counter((b, w) for _, _, b, w, _ in runs)
+    if pols and len(set(per_scen.values())) > 1:
+        few = sorted(k for k, n in per_scen.items() if n < max(per_scen.values()))
+        R.warning(f"not every scenario has all {max(per_scen.values())} controllers: e.g. {['/'.join(k) for k in few[:5]]}")
+    elif pols:
+        R.ok(f"every scenario has the same {len(pols)} controllers: {sorted(pols)}")
     rejected = sorted(p.parent.name for sdir, _ in sources for p in Path(sdir).glob("*/.failed"))
     if rejected:
         used = sorted({b for _, _, b, _, _ in runs if b in rejected})
@@ -161,15 +169,14 @@ def main():
     (R.fail if nan_runs else R.ok)("no NaN temperatures" + (f": {nan_runs[:5]}" if nan_runs else ""))
     (R.fail if bad_reset else R.ok)("CSV row 0 is the reset state (all rooms 294 K)" + (f": not for {bad_reset[:5]}" if bad_reset else ""))
     (R.warning if bad_start else R.ok)("every episode starts on a Sunday at 06:00, as in the evaluation" + (f": {bad_start[:5]}" if bad_start else ""))
-    if min(lengths or [10 ** 9]) < 864:
-        R.warning("some runs are shorter than 864 steps: day-1 identification plus two scoring days needs 3 days")
 
     # ------------------------------------------------------------------ coverage
     R.h("Coverage against the evaluation's distribution")
     rng_b, rng_m = kit_ranges()
     scen_split = {}
     for _, _, b, w, _ in runs:
-        scen_split[f"{b}/{w}"] = split_of(f"{b}/{w}", split) if split else "unsplit"
+        t = tiers_of(f"{b}/{w}", split) if split else ["unsplit"]
+        scen_split[f"{b}/{w}"] = t[0] if len(t) == 1 else (None if not t else "+".join(t))
     by_split = defaultdict(lambda: dict(buildings=set(), scenarios=set(), runs=0, policies=Counter(), stations=Counter()))
     for _, _, b, w, pol in runs:
         s = scen_split[f"{b}/{w}"]
@@ -178,19 +185,19 @@ def main():
     R.text("\n| split | buildings | scenarios | runs | stations (runs) | policies (runs) |\n|---|---|---|---|---|---|")
     for s, d in sorted(by_split.items(), key=lambda kv: str(kv[0])):
         R.text(f"| {s} | {len(d['buildings'])} | {len(d['scenarios'])} | {d['runs']} | {dict(d['stations'])} | {dict(d['policies'])} |")
-    if None in by_split:
-        R.ok(f"{len(by_split[None]['scenarios'])} scenarios are in no split under the current val station (train buildings on the "
-             "val station, val buildings on other stations): kept on purpose so the val station can be rotated; not used now")
-    for need in ("train", "val", "test"):
-        if split and need not in by_split:
-            R.fail(f"split '{need}' has no runs")
+    if split:
+        if None in by_split:
+            R.warning(f"{len(by_split[None]['scenarios'])} scenarios are in no tier (re-run make_splits.py after adding data)")
+        (R.ok if "val" in by_split else R.fail)("validation has runs" + (f" ({by_split['val']['runs']})" if "val" in by_split else ""))
+        empty = [t for t in TIERS[1:] if t not in by_split]
+        (R.warning if empty else R.ok)("every test tier has runs" + (f": empty {empty}" if empty else ""))
     # building parameters from the YAMLs
-    ydirs = list((data / "buildings").glob("*/*.yaml")) + list((data / "buildings").glob("*.yaml"))
+    ydirs = list(bdir_root.glob("*/*.yaml")) + list(bdir_root.glob("*.yaml"))
     rows = []
     for y in ydirs:
         c = yaml.safe_load(open(y))
         fp, m = c.get("floor_plan", {}), c.get("materials", {})
-        rows.append(dict(building=c.get("name", y.stem), split=y.parent.name, width=fp.get("width"), height=fp.get("height"),
+        rows.append(dict(building=c.get("name", y.stem), width=fp.get("width"), height=fp.get("height"),
                          num_floors=fp.get("num_floors"), min_room_size=fp.get("min_room_size"),
                          room_size_span=(fp.get("max_room_size", 0) - fp.get("min_room_size", 0)), shape_ratio=fp.get("shape_ratio"),
                          composite_coverage=fp.get("composite_coverage"), num_ahus=c.get("ahu", {}).get("num_ahus"),
@@ -198,23 +205,20 @@ def main():
                          has_materials=bool(m), **{k: m.get(k) for k in rng_m}))
     if rows:
         B = pd.DataFrame(rows)
-        R.text("\nBuilding parameters (generated YAMLs) against the generator's ranges:\n\n| parameter | range in kit | train | val | test |\n|---|---|---|---|---|")
+        R.text(f"\nGenerated building parameters ({len(B)} YAMLs) against the generator's ranges:\n\n| parameter | range in kit | generated |\n|---|---|---|")
         out_of_range = []
         for k, (lo, hi) in list({kk: tuple(v) for kk, v in rng_b.items() if isinstance(v, tuple)}.items()) + list(rng_m.items()):
             if k not in B:
                 continue
-            cells = []
-            for s in ("train", "val", "test"):
-                v = pd.to_numeric(B.loc[B.split == s, k], errors="coerce").dropna()
-                cells.append(f"{v.min():.3g}-{v.max():.3g}" if len(v) else "-")
-                if len(v) and ((v < lo - 1e-9).any() or (v > hi + 1e-9).any()):
-                    out_of_range.append(f"{k} in {s}")
-            R.text(f"| {k} | {lo}-{hi} | " + " | ".join(cells) + " |")
+            v = pd.to_numeric(B[k], errors="coerce").dropna()
+            if len(v) and ((v < lo - 1e-9).any() or (v > hi + 1e-9).any()):
+                out_of_range.append(k)
+            R.text(f"| {k} | {lo}-{hi} | " + (f"{v.min():.3g}-{v.max():.3g}" if len(v) else "-") + " |")
         (R.warning if out_of_range else R.ok)("all generated building parameters inside the generator's ranges" + (f": outside for {out_of_range}" if out_of_range else ""))
         (R.fail if (~B.has_materials).any() else R.ok)("every generated building has a materials block" + ("" if B.has_materials.all() else f": missing for {B.loc[~B.has_materials, 'building'].tolist()[:5]}"))
         (R.warning if (B["shape"] != "composite").any() else R.ok)("every generated building has the composite shape")
     else:
-        R.warning("no generated building YAMLs under data/buildings (only shipped scenarios?)")
+        R.ok(f"no generated building YAMLs under {bdir_root} (shipped buildings only)")
     # station x strip matrix
     R.text("\nStation x strip (scenarios) per split:\n")
     for s, d in sorted(by_split.items(), key=lambda kv: str(kv[0])):
@@ -227,24 +231,21 @@ def main():
     # ------------------------------------------------------------------ leakage
     R.h("Leakage between splits")
     if split:
-        bsplits = defaultdict(set)
-        for sc, s in scen_split.items():
-            if s:
-                bsplits[sc.split("/")[0]].add(s)
-        multi = {b: sorted(s) for b, s in bsplits.items() if len(s) > 1}
-        (R.fail if multi else R.ok)("no building in two splits" + (f": {list(multi.items())[:5]}" if multi else ""))
-        if plan:
-            ts_, vs_ = plan["test_station"], plan["val_station"]
-            bad = [sc for sc, s in scen_split.items() if s in ("train", "val") and sc.split("/")[1].startswith(ts_)]
-            (R.fail if bad else R.ok)(f"test station '{ts_}' absent from train and val" + (f": {bad[:5]}" if bad else ""))
-            bad = [sc for sc, s in scen_split.items() if s == "train" and sc.split("/")[1].startswith(vs_)]
-            (R.fail if bad else R.ok)(f"val station '{vs_}' absent from train" + (f": {bad[:5]}" if bad else ""))
+        multi = {sc: s for sc, s in scen_split.items() if s and "+" in s}
+        (R.fail if multi else R.ok)("no scenario in two tiers" + (f": {list(multi.items())[:5]}" if multi else ""))
+        why = split.get("_why", {})
+        held, hard = set(why.get("held_out_buildings") or []), why.get("hard_station")
+        bad = [sc for sc, s in scen_split.items() if sc.split("/")[0] in held and s not in ("test_medium", "test_hard", None)]
+        (R.fail if bad else R.ok)(f"held-out buildings {sorted(held)} only in test_medium / test_hard" + (f": {bad[:5]}" if bad else ""))
+        if hard:
+            bad = [sc for sc, s in scen_split.items() if sc.split("/")[1].rsplit("_", 1)[0] == hard and s not in ("test_hard", "test_station", None)]
+            (R.fail if bad else R.ok)(f"hard station '{hard}' only in test_hard / test_station" + (f": {bad[:5]}" if bad else ""))
     else:
-        R.warning("no split.json: train/val/test separation not checked")
+        R.warning(f"no {dataset / 'split.json'} yet: run code/make_splits.py, then audit again")
 
     # ------------------------------------------------------------------ replay + dataset
     R.h("Replay and dataset (after build_dataset.py)")
-    idx_path = data / "dataset" / "index.json"
+    idx_path = dataset / "index.json"
     if not idx_path.exists():
         R.warning("dataset not built yet: run code/build_dataset.py, then audit again")
     else:
@@ -265,7 +266,7 @@ def main():
         for name, v in idx.items():
             if v.get("status") != "ok":
                 continue
-            Z = np.load(data / "dataset" / v["file"])
+            Z = np.load(dataset / v["file"])
             T = Z["T_meas"]
             if not np.isfinite(T).all() or not all(np.isfinite(Z[k]).all() for k in Z.files if k.startswith("in__")):
                 nan_files.append(name)
@@ -284,7 +285,7 @@ def main():
     # ------------------------------------------------------------------ verdict
     R.h("Verdict")
     R.text(f"{len(R.hard)} hard failures, {len(R.warn)} warnings.")
-    out = data / "audit"; out.mkdir(parents=True, exist_ok=True)
+    out = (a.out or dataset.parent / "audit").resolve(); out.mkdir(parents=True, exist_ok=True)
     (out / "audit.md").write_text("\n".join(R.lines) + "\n")
     (out / "audit.json").write_text(json.dumps(dict(hard=R.hard, warnings=R.warn), indent=1))
     print("\n".join(R.lines))

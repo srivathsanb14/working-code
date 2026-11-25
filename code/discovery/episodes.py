@@ -124,6 +124,16 @@ def _save_cached(ep, path):
                                                                                   policy=ep.policy, scenario=ep.scenario, T0=ep.T0))), **flat)
 
 
+def load_light(path):
+    """Metadata, geometry and the outside temperature of one episode file, without the large per-step, per-room arrays
+    (np.load reads each member of the .npz on demand).  Enough for the split; a few hundred KB instead of tens of MB."""
+    Z = np.load(path)
+    m = json.loads(str(Z["meta"]))
+    geo = {k[5:]: (int(Z[k]) if k == "geo__V" else Z[k]) for k in Z.files if k.startswith("geo__")}
+    return Episode(name=m["name"], building=m["building"], weather=m["weather"], policy=m["policy"], scenario=m["scenario"],
+                   geo=geo, inputs={"T_out": Z["in__T_out"]}, T_meas=np.empty((0, int(geo["V"]))), T0=m["T0"])
+
+
 def _load_cached(path):
     Z = np.load(path)
     m = json.loads(str(Z["meta"]))

@@ -49,7 +49,11 @@ def make_cls(model_src, controller):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--scenarios", nargs="*", help="building/weather pairs (default: the 30 in training_set.yaml)")
+    ap.add_argument("--scenarios", nargs="*", help="building/weather pairs (default: the 30 in training_set.yaml, or with "
+                    "--scenarios-dir every scenario folder in it)")
+    ap.add_argument("--scenarios-dir", type=Path, help="scenario folders the kit wrote (default: the kit's shipped training_scenarios)")
+    ap.add_argument("--baseline-results", type=Path, help="the kit's result folders for the same scenarios (e.g. $D/results): "
+                    "their summary.json give the baselines' scores where baseline_returns.json has none")
     ap.add_argument("--steps", type=int, default=8640)
     ap.add_argument("--model", type=Path, help="closed-form best.py to carry as a tracker")
     ap.add_argument("--controller", default="pid_water", choices=["pid_water", "rule", "ff", "mpc"],
@@ -57,8 +61,13 @@ def main():
     ap.add_argument("--tag", help="default: the controller name")
     a = ap.parse_args()
     import yaml
-    sd = KIT / "smart_buildings" / "training_scenarios"
-    scen = a.scenarios or [f"{s['building']}/{s['weather']}" for s in yaml.safe_load(open(KIT / "smart_buildings" / "training_set.yaml"))["scenarios"]]
+    sd = (a.scenarios_dir or KIT / "smart_buildings" / "training_scenarios").resolve()
+    if a.scenarios:
+        scen = a.scenarios
+    elif a.scenarios_dir:
+        scen = sorted(f"{c.parent.parent.name}/{c.parent.name}" for c in sd.glob("*/*/config.gin"))
+    else:
+        scen = [f"{s['building']}/{s['weather']}" for s in yaml.safe_load(open(KIT / "smart_buildings" / "training_set.yaml"))["scenarios"]]
     a.tag = a.tag or a.controller
     out = (WC / "outputs" / "rehearsal" / a.tag).resolve(); out.mkdir(parents=True, exist_ok=True)
     os.environ.setdefault("NUMBA_CACHE_DIR", str(WC / ".numba_cache"))
@@ -78,6 +87,13 @@ def main():
                  sec_per_step=summ.get("seconds_per_step"), repairs=core.safe.repairs, tracker_errors=core.tracker_errors)
         if a.steps == 8640 and s in base:
             r.update({f"base_{k}": -v / 8640 for k, v in base[s].items()})
+        elif a.baseline_results:
+            for f in sorted((a.baseline_results / b / w).glob("*/summary.json")):
+                if f.parent.name == "all_off":            # a reference run, not one of the kit's baselines
+                    continue
+                m = json.loads(f.read_text())
+                if m.get("total_steps") == summ["total_steps"]:
+                    r[f"base_{f.parent.name}"] = -m["avg_reward"]
         if core.tracker is not None and len(core.tracker.X) > 100:
             r["tracker_one_step"] = core.tracker.live_one_step_rmse()
         ctl = core.controller

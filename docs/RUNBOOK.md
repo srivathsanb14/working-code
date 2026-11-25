@@ -4,7 +4,10 @@ Run everything from `working-code/`, on the machine that holds the generated dat
 this pipeline**: the data is made beforehand with the starter kit (its scenario generator and `evaluate.py`, any
 number of buildings, weather windows and controllers). This pipeline only reads it. The starter kit is never written to.
 
-| Step | Command | Reads | Writes |
+The order of work, with the exact commands and the checks between steps, is in `Planning/index.md`. The sections
+below are the reference for each tool.
+
+| `run_pipeline.sh` step | Command | Reads | Writes |
 |---|---|---|---|
 | 1. Episodes | `python code/build_dataset.py --results R --scenarios S --out D` | the kit's result and scenario folders | `D/` episodes (one `.npz` per run) + `index.json` |
 | 2. Split | `python code/make_splits.py --dataset D` | the episodes | `D/split.json`: validation + test_easy / test_medium / test_hard (+ test_station), whole episodes only |
@@ -31,8 +34,9 @@ with the kit; they are kept for reference.
 <root>/
   smart-buildings-starter-kit/     read only (or set STARTER_KIT)
   working-code/
-    data/          buildings, scenarios, results, plan.json, split.json (step 2); audit/ (3, 5); dataset/ (4)
-    outputs/       discovery/<run>/ (6); test/ (7); policy/ (8)
+    data/          scenarios/, results/ (made with the kit), buildings/ (generated YAMLs), dataset/ (episodes,
+                   index.json, split.json), audit/
+    outputs/       discovery/<run>/, policy/, rehearsal/
 ```
 
 Put the generated data on another disk with `SB_DATA=/path/to/data`; every script reads it.
@@ -125,48 +129,48 @@ What this pipeline needs afterwards is only two folders:
 Every run must use one of the shipped controllers (their decisions are re-computed from the logs in step 4). The
 validation / test split is computed from whatever runs exist (step 4b, `make_splits.py`); nothing is decided here.
 
-## 3. Audit the raw data
+## 3. Build the episodes
 
 ```bash
-python code/audit_data.py
-```
-
-It writes `data/audit/audit.md` and exits with an error if a hard check fails. Read the report:
-- **kit untouched:** git status is clean.
-- **layout:** every planned run has its four files; row counts reach `--steps`; no NaN; CSV row 0 is the reset state (294 K); every episode starts on a Sunday at 06:00.
-- **coverage:** buildings, scenarios and runs per split; building parameters and materials against the generator's own ranges; the station × strip matrix per split.
-- **leakage:** no building or scenario in two splits (the split itself comes from `make_splits.py`).
-
-Fix any `[FAIL]` before going on: regenerate the affected run with the kit, or delete the broken run folder.
-
-## 4. Build the dataset
-
-```bash
-python code/build_dataset.py --workers 8
+python code/build_dataset.py --scenarios $D/scenarios --results $D/results --out $D/dataset --workers 8
 ```
 
 For every run it:
 1. loads the scenario's metadata through the kit (no simulation);
 2. rebuilds, from the CSVs, the observations the policy saw;
-3. **replays** the unmodified policy to recover the per-room damper and valve commands and the plant setpoints;
-4. checks the replay against the logged per-AHU airflow and run commands (expect about 1e-4, which is CSV rounding);
+3. **replays** the unmodified controller to recover the per-room damper and valve commands and the plant setpoints;
+4. checks the replay against the logged per-AHU airflow and run commands (seen: 0 to 7e-6);
 5. computes each room's physical inputs (GUIDE.md B.5);
-6. writes `data/dataset/<building>__<weather>__<policy>.npz` (arrays in GUIDE.md B.8), plus `index.json`, `schema.json` and a copy of `split.json`.
+6. writes `<out>/<building>__<weather>__<policy>.npz` (arrays in GUIDE.md B.8), plus `index.json` and `schema.json`.
 
 Up-to-date files are skipped on reruns.
 
-## 5. Audit again
+## 4. Split, then audit
 
 ```bash
-python code/audit_data.py
+python code/make_splits.py --dataset $D/dataset --out $D/dataset/split.json
+python code/audit_data.py --scenarios $D/scenarios --results $D/results --dataset $D/dataset
 ```
 
-It now also reports:
-- **replay status per run.** Every run should be `ok`; a `replay mismatch` run is excluded from fitting.
-- **dataset sanity:** finite arrays and temperatures within 250–330 K.
-- **excitation by policy:** AHU-on fraction, damper and reheat activity, temperature spread. Identification needs movement: `bang_bang` and `all_off` are the informative ones.
+The split reads only `index.json` and one light episode per scenario (geometry and outside temperature). The audit
+writes `$D/audit/audit.md` and exits 1 if a hard check fails:
+- **kit untouched:** git status is clean.
+- **layout:** every run has its four files and reaches `--steps` (default 8,640); no NaN; CSV row 0 is the reset state
+  (294 K); every episode starts on a Sunday at 06:00; every scenario has the same controllers.
+- **coverage:** buildings, scenarios, runs, stations and controllers per tier; generated buildings against the
+  generator's own ranges; the station × window matrix per tier.
+- **leakage:** no scenario in two tiers; held-out buildings only in test_medium / test_hard; hard-station scenarios only
+  in test_hard / test_station; validation not empty.
+- **replay and dataset:** every run `ok` (a `replay mismatch` run is never used); finite arrays; temperatures within
+  250–330 K; excitation by controller.
 
-Only go on when the audit has no hard failures.
+Fix any `[FAIL]` before going on: regenerate the affected run with the kit, or delete the broken run folder.
+
+## 5. Dataset summary
+
+```bash
+python code/dataset_report.py --dataset $D/dataset --out docs/DATASET_REPORT.md
+```
 
 ## 6. Discover the dynamics with an LLM
 
@@ -269,23 +273,23 @@ python code/rehearse_submission.py --controller ff --model outputs/discovery/mai
 python code/rehearse_submission.py --controller pid_water
 ```
 
-## 11. Is it ready to deploy? (Planning 15)
+## 11. Is it ready to deploy? (Planning 12)
 
 The design is building- and weather-agnostic: positions come from the metadata, geometry from the floor plan, nothing is fitted, and occupancy is learned online. It has **not yet been shown** to work at the scale of the hidden test.
 
-**Deployable today:** the pid_water-only notebook (no `best.py` attached; Planning 14). Submit it first to prove the Kaggle interface.
+**Deployable today:** the pid_water-only notebook (no `best.py` attached; Planning 11). Submit it first to prove the Kaggle interface.
 
 **Before the model-based (MPC) version:**
-- [ ] Planning 14: the pid_water notebook has been scored on Kaggle.
-- [ ] Planning 12: a per-step time guard. Large generated buildings leave the policy only milliseconds per step.
-- [ ] Planning 13: unsupported HVAC variants, such as the kit's heat pump, are detected and fall back to pid_water.
-- [ ] Planning 11: a benchmark on the 30 shipped scenarios at 8,640 steps and on generated hold-out buildings (including the largest) on the hard station. The MPC must beat pid_water on average and in the worst case, within the time budget.
+- [ ] Planning 11: the pid_water notebook has been scored on Kaggle.
+- [ ] Planning 08: a per-step time guard. Large generated buildings leave the policy only milliseconds per step.
+- [ ] Planning 09: unsupported HVAC variants, such as the kit's heat pump, are detected and fall back to pid_water.
+- [ ] Planning 10: a benchmark on the 30 shipped scenarios at 8,640 steps and on generated hold-out buildings (including the largest) on the hard station. The MPC must beat pid_water on average and in the worst case, within the time budget.
 - [ ] The packaged dataset has been rehearsed locally (`rehearse_submission.py`), and the fallback to pid_water verified by injecting faults.
 
 Known gaps that do not block deployment:
-- the model is about persistence level at 3 h (Planning 08);
-- some simulator constants are assumed equal in the hidden set (Planning 16);
-- holidays and the gas price by month are not handled (Planning 16).
+- the model is about persistence level at 3 h (Planning 06);
+- some simulator constants are assumed equal in the hidden set (Planning 13);
+- holidays and the gas price by month are not handled (Planning 13).
 
 ## Other tools
 
@@ -313,6 +317,6 @@ Known gaps that do not block deployment:
 | `setup_check` cannot load the scenario | kit path or dependencies | set `STARTER_KIT`; `pip install -r requirements.txt` |
 | many `FAILED … 20.0 m2` | normal generator rejections | widen the seed ranges |
 | `replay mismatch` | the policy is not deterministic, or reads fields the CSVs do not contain | use the shipped policies (GUIDE.md A.2) |
-| `split 'val' matched no episodes` | the split does not match the data | check `data/split.json` and the audit's split table |
+| `split 'val' matched no episodes` | the split does not match the data | check `<dataset>/split.json` and the audit's tier table |
 | the kit shows changes in `git status` | something ran in the kit without the driver's settings | run kit commands only through these scripts, or with `NUMBA_CACHE_DIR` and `--output-dir`/`--results-dir` outside the kit |
 | slow | large generated buildings (100+ rooms) | more `--workers`; `--steps 864` |

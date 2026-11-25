@@ -35,13 +35,17 @@ def main():
     ap.add_argument("--days", type=int, default=30, help="length of each scenario's weather window")
     a = ap.parse_args()
     if not a.from_scenarios and (a.dataset / "index.json").exists():
-        from discovery.episodes import _load_cached
         idx = json.loads((a.dataset / "index.json").read_text())
-        eps = [_load_cached(a.dataset / v["file"]) for v in idx.values() if v.get("status") == "ok"]
+        first = {}                                        # one episode file per scenario: the split needs no more
+        for v in idx.values():
+            if v.get("status") == "ok":
+                first.setdefault(v.get("scenario") or f"{v['building']}/{v['weather']}", a.dataset / v["file"])
+        eps = splits.light_per_scenario(list(first.values()))
         sp = splits.split_from_episodes(eps, a.hard_station, a.hard_buildings, a.hard_frac, a.easy_frac)
     else:
         if not a.from_scenarios:
-            print(f"no dataset at {a.dataset}: using scenario folders")
+            raise SystemExit(f"no dataset at {a.dataset} (index.json missing): build it with code/build_dataset.py, or pass "
+                             "--from-scenarios to split scenario folders instead")
         roots = [KIT / "smart_buildings" / "training_scenarios"] + ([] if a.only_shipped else [DATA / "scenarios"])
         scen = splits.scan_scenarios(roots, KIT)
         if not scen:
